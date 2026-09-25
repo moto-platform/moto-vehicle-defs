@@ -96,6 +96,9 @@ CRC-8/SAE-J1850 (0x1D, init 0xFF, xorout 0xFF) over DataID low, DataID high, byt
 **D-027 — codegen targets and vehicle-bus guard** (2026-09-25, Claude proposal refining D-003 — revise if the user objects)
 C is generated for RT_CORE, SAFETY, IO, CONN, HIL_SIM (`gen/c/<node>/`, cantools `use_float`, C99, no heap); HIL_SIM gets every message (restbus impersonation). LINUX and TESTER use the DBC/VSS at runtime and get Python/VSS only. The CL250 DID table goes to rt_core, conn (temporary tester, D-023) and hil_sim (ECU simulator), together with generated `vehicle_cl250_request_allowed()` (payload) and `vehicle_cl250_frame_allowed()` (raw ISO-TP Single Frame only) implementing D-020, which every vehicle-bus transmission must pass, and `vehicle_cl250_parse_response()` (checks SID 0x62 + DID echo). codegen holds a golden copy of the D-020 allow-list: the YAML policy may narrow it but never widen it (safety-reviewer finding).
 
+**D-028 — First `Vehicle.Motorcycle.*` VSS extensions** (2026-09-25, user: "add as many as you can, we will revisit"; partly resolves Q-016)
+Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `LeanAngle`, `FrictionCoefficient`, `EstimatedMass`, each with `...Quality` (uint8 %) and `...State` (string ESTIMATED/CLAMPED/DEFAULT/INVALID); `ThrottlePosition` (throttle valve %, since VSS 6 has no `Vehicle.OBD` and `Chassis.Accelerator.PedalPosition` is driver demand); `IsEcuPresent`. For display, logging, MCP and ML only; safety decisions keep reading platform CAN. Not mapped yet: heartbeats (same signal names in five messages; kuksa-can-provider maps by name, so they need unique names first) and the `*_VALID` bits. The set is provisional and will be revisited.
+
 ---
 
 ## Open questions (awaiting decision)
@@ -117,4 +120,4 @@ C is generated for RT_CORE, SAFETY, IO, CONN, HIL_SIM (`gen/c/<node>/`, cantools
 | Q-013 | ~~resolved~~ → D-023 | — | — |
 | Q-014 | How conservative must the rt-core DEFAULT fallback values be (µ, mass, lean)? E.g. DEFAULT µ = low bound (wet/gravel) vs. safety-node ignoring DEFAULT and using its own constant | before rt-core EKF / safety-node decision code | safety-reviewer S4; must never loosen the ceiling (§5b.2) |
 | Q-015 | Maximum acceptable VEHICLE_SPEED_AGE for safety-node, and should DID 0xF40D be polled faster than the legacy 800 ms (e.g. 100 ms, second priority after RPM)? | before safety-node uses speed | safety-reviewer S3; 800 ms at 0.5 g ≈ 14 km/h error |
-| Q-016 | `Vehicle.Motorcycle.*` extensions for lean angle, friction, mass, node health, and where TPS maps (VSS 6 has no `Vehicle.OBD.ThrottlePosition`) | when linux-node needs them | D-004: user approves each path |
+| Q-016 | Partly resolved by D-028. Still open: VSS paths for node health (heartbeats) and the `*_VALID` bits, and a final review of the D-028 names | when linux-node needs them | D-004: user approves each path |
