@@ -84,6 +84,18 @@ Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as br
 - **Single tester:** until rt-core exists, connectivity-node is the temporary sole poller. When rt-core starts polling, connectivity-node's poller must be disabled (never two testers, D-021).
 - Nextion is in scope (hardware-architecture §5b.4: target is UART to rt-core). The connectivity-node driver is temporary.
 
+**D-024 — VSS base: COVESA VSS 6.0 via pinned release files** (2026-09-25, Claude proposal during the defs bootstrap — revise if the user objects)
+`gen/vss/vss_dbc.json` = VSS 6.0 release (`vss.yaml`, `units.yaml`, `quantities.yaml`, sha256-pinned in `gen_vss.py`) + `vss/overlay.vspec`, exported with vss-tools **6.0** (6.1 rejects the 6.0 `units.yaml` with a duplicate-unit error). Why: 6.0 is the newest release kuksa-can-provider ships a mapping for (`mapping/vss_6.0`). Consequences: VSS 6 has no `Vehicle.OBD` branch and uses `CombustionEngine.EngineCoolant.Temperature`; Kuksa Databroker on linux-node must load the same JSON; a VSS upgrade is a deliberate MAJOR/MINOR change here.
+
+**D-025 — platform.dbc v0.1 message set** (2026-09-25, Claude proposal — revise if the user objects)
+Safety range (E2E): `EkfLean` 0x020 / 20 ms, `VehicleSpeed` 0x021 / 50 ms, `EkfFrictionMass` 0x022 / 100 ms, all RT_CORE → SAFETY, LINUX (speed also CONN). Each EKF estimate carries a quality % and a 2-bit state (ESTIMATED / CLAMPED / DEFAULT fallback / INVALID, per hardware-architecture §5b.2); `VehicleSpeed` carries VALID + AGE (ms since the ECU sample) because the ECU speed DID is polled every 800 ms. Heartbeats 0x081-0x085 / 100 ms (E2E): NODE_MODE, ERROR_COUNT, UPTIME. State range: `VehicleEngine` 0x110 / 50 ms (RPM, battery, coolant, TPS with the J1979 source scaling, per-signal VALID + ECU_PRESENT). `E2E_DataID` convention `0x1000 + CAN ID`; `NodeId` is a BU_ attribute. CoG height and a cornering-warning output message are not defined yet (later MINOR). `uds/vehicle_cl250.yaml` gets a platform-chosen `stale_after_ms` = 3 × poll period per DID (not a legacy value). rt-core sends `*_STATE = INVALID`, `QUALITY = 0` until the EKF has converged.
+
+**D-026 — E2E profile details** (2026-09-25, Claude proposal refining D-005 — revise if the user objects)
+CRC-8/SAE-J1850 (0x1D, init 0xFF, xorout 0xFF) over DataID low, DataID high, bytes 1..n-1; 4-bit counter 0..15; receiver max delta counter 1 (a single lost frame invalidates that cycle); timeout 3 × cycle, enforced both by `check_timeout()` and inside `check()` (a frame after a gap longer than the timeout resyncs as `INITIAL`, so a stalled sender never resumes as `OK`); `INITIAL` is not usable. Spec: `docs/e2e-profile.md`. Generated C is cross-checked against the Python reference.
+
+**D-027 — codegen targets and vehicle-bus guard** (2026-09-25, Claude proposal refining D-003 — revise if the user objects)
+C is generated for RT_CORE, SAFETY, IO, CONN, HIL_SIM (`gen/c/<node>/`, cantools `use_float`, C99, no heap); HIL_SIM gets every message (restbus impersonation). LINUX and TESTER use the DBC/VSS at runtime and get Python/VSS only. The CL250 DID table goes to rt_core, conn (temporary tester, D-023) and hil_sim (ECU simulator), together with generated `vehicle_cl250_request_allowed()` (payload) and `vehicle_cl250_frame_allowed()` (raw ISO-TP Single Frame only) implementing D-020, which every vehicle-bus transmission must pass, and `vehicle_cl250_parse_response()` (checks SID 0x62 + DID echo). codegen holds a golden copy of the D-020 allow-list: the YAML policy may narrow it but never widen it (safety-reviewer finding).
+
 ---
 
 ## Open questions (awaiting decision)
@@ -103,3 +115,6 @@ Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as br
 | Q-011 | ~~resolved~~ → D-020 | — | — |
 | Q-012 | ~~resolved~~ → D-021 | — | — |
 | Q-013 | ~~resolved~~ → D-023 | — | — |
+| Q-014 | How conservative must the rt-core DEFAULT fallback values be (µ, mass, lean)? E.g. DEFAULT µ = low bound (wet/gravel) vs. safety-node ignoring DEFAULT and using its own constant | before rt-core EKF / safety-node decision code | safety-reviewer S4; must never loosen the ceiling (§5b.2) |
+| Q-015 | Maximum acceptable VEHICLE_SPEED_AGE for safety-node, and should DID 0xF40D be polled faster than the legacy 800 ms (e.g. 100 ms, second priority after RPM)? | before safety-node uses speed | safety-reviewer S3; 800 ms at 0.5 g ≈ 14 km/h error |
+| Q-016 | `Vehicle.Motorcycle.*` extensions for lean angle, friction, mass, node health, and where TPS maps (VSS 6 has no `Vehicle.OBD.ThrottlePosition`) | when linux-node needs them | D-004: user approves each path |
