@@ -35,7 +35,7 @@ Classic AUTOSAR BSW (commercial automotive toolchain + MCAL + hundreds of KB of 
 - Context-classification inference lives in **rt-core `context/`**. The "ESP32-S3" column in the §5b.0 table is a leftover from before the H7 decision.
 - The blind-spot/io-node target chip is **STM32G0**. The STM32F103 in §5b.1 is a **prototype** using the board already on hand. Its overlap with F103's role in HIL → Q-003.
 
-**D-009 — Two separate CAN buses: vehicle (listen) + platform (dedicated)** (2026-09-25, Claude architecture proposal — revise if the user objects)
+**D-009 — Two separate CAN buses: vehicle (listen) + platform (dedicated)** _(bullets on safety-node/Raspi tapping the vehicle bus superseded by D-021)_ (2026-09-25, Claude architecture proposal — revise if the user objects)
 The architecture document stated both that "only the main MCU writes to the vehicle bus" (§4) and that io-node/rt-core publish status onto the vehicle bus (§5b.1, §5b.2); this was a contradiction. Resolution: our nodes talk on their own **platform CAN** bus. The vehicle bus is hardware listen-only; the sole exception is rt-core's OBD/UDS read requests. Why: this removes the risks of OEM ID collisions, confusing the OEM ECU, and added bus load; the two buses are simulated separately in HIL. The platform bus is classic CAN at 500 kbps (F103/ESP32 TWAI don't support FD). Details in `ARCHITECTURE.md` §3-4.
 
 **D-010 — moto-server language: Python** (2026-09-25, Claude)
@@ -69,6 +69,21 @@ Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 - Still unknown: whether any passive broadcast traffic exists on this bus (Q-001 remains open only for that part).
 Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as broadcast messages in `cl250.dbc`). The allowed vehicle-bus services must include `0x10` (sub-functions 0x01/0x03 only) and `0x3E` → Q-011.
 
+**D-020 — Vehicle-bus service allow-list** (2026-09-25, user; resolves Q-011) rt-core may send only `0x10` (sub-function 0x01 default / 0x03 extended), `0x3E` tester-present, `0x22`, `0x19`, and OBD `0x01/0x09` to the vehicle. Forbidden: `0x10 0x02` (programming), `0x11` ECU reset, `0x14` clear DTC, `0x27`, `0x2E`, `0x2F`, `0x31`, `0x34`, `0x36`, `0x37`. Why: the verified read path needs an extended session and tester-present (D-019); nothing that changes ECU state is allowed.
+
+**D-021 — rt-core is the single vehicle-bus tester and republishes vehicle signals** (2026-09-25, user; resolves Q-012; supersedes two D-009 bullets) Poll-based ECU data allows only one tester. rt-core polls the DIDs in `uds/vehicle_cl250.yaml` and republishes decoded values on the platform bus. Vehicle speed also goes to safety-node, so it is E2E-protected in the safety range. The Raspi reads vehicle signals from the platform bus (kuksa-can-provider with `platform.dbc`) and may tap the vehicle bus listen-only for raw logs. safety-node no longer connects to the vehicle bus. Accepted cost: safety-node depends on rt-core for speed, which raises the priority of Q-002.
+
+**D-022 — Legacy telemetry repo = read-only reference; mobile = Flutter** (2026-09-25, user; resolves Q-007, partly Q-013) `HondaCl250_Telemetry` was transferred to `moto-platform` (private) and is to be archived as a read-only reference. Its knowledge (DIDs, timing, pitfalls) is extracted so nothing is rediscovered. Whether each component is ported or rewritten follows a standards/scope analysis (Q-013 remainder). `moto-mobile` uses Flutter (the legacy Flutter app is its starting point if the analysis says it is worth porting).
+
+**D-023 — Legacy telemetry: hybrid port/extract/rewrite** (2026-09-25, Claude after a component analysis; the user asked for whichever path is most effective; resolves Q-013)
+- **EXTRACT → moto-vehicle-defs:** DID table + formulas + poll periods (RPM 50 ms, others 800 ms), addressing, session/tester-present timing (0x10 0x03 retried every 2 s until 0x50; 0x3E 0x80 every 1 s), UDS timeouts (100 ms base, doubling on NRC 0x78 up to 2 s; 5 consecutive timeouts → 5 s DID skip), ECU-absent 3 s, bus-off backoff 1→30 s, the NRC table, the ISO-TP first-frame pitfall, and the pin map. Goes into `uds/vehicle_cl250.yaml` + `docs/legacy-telemetry-notes.md`.
+- **PORT → moto-connectivity-node** (temporary telemetry home): HondaCANModule + UDS state machine, `ICanBus`/`TwaiCanBus`, MockCANModule, BLEServerModule + packet schema, NextionModule, SerialLogger, the native test pattern + CI. Toolchain: **PlatformIO with Arduino as an ESP-IDF component** (`framework = arduino, espidf`), which keeps the working code and still allows ESP-SR (refines D-007 for this repo). Hand-written DIDs are replaced by generated `gen/c/conn/` once codegen exists.
+- **REWRITE:** WiFiServerModule (Arduino `String` → static buffers), and later in moto-rt-core (C): UDS client with full multi-frame ISO-TP plus the SystemState/IModule health/staleness pattern on FreeRTOS.
+- **PORT → moto-mobile:** `mobile_app/flutter_app` as the initial skeleton.
+- **DROP:** the web PWA (`mobile_app/*.html/js/css/py`), and the complementary-filter lean angle (known to be wrong; replaced by rt-core EKF).
+- **Single tester:** until rt-core exists, connectivity-node is the temporary sole poller. When rt-core starts polling, connectivity-node's poller must be disabled (never two testers, D-021).
+- Nextion is in scope (hardware-architecture §5b.4: target is UART to rt-core). The connectivity-node driver is temporary.
+
 ---
 
 ## Open questions (awaiting decision)
@@ -81,10 +96,10 @@ Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as br
 | Q-004 | H7 ↔ ESP32-S3 SPI/UART bridge frame format | rt-core + connectivity, jointly | Proposal: COBS + CRC16 + msg-id, defined in defs |
 | Q-005 | Will `tr/bitirme-projesi-kapsam.md` be updated per D-001 and re-presented to the advisor? When will the H7 hardware be acquired? | before the advisor meeting | Schedule risk: Ç1-Ç3 can proceed on host tests + Renode before the H7 arrives |
 | Q-006 | Where do the HARA/FMEA/requirements files live? (proposal: `moto-vehicle-defs/safety/` + `requirements/`) | at the start of Ç8 (schedule week 1-2) | |
-| Q-007 | moto-mobile: Flutter or React Native? | last repo | Flutter by default |
+| Q-007 | ~~resolved~~ → D-022 (Flutter) | — | — |
 | Q-008 | Time synchronization: how is GPS PPS/NTP distributed to the MCUs? | Logging system (WP-4) | hardware-architecture.md §5b.8 proposes NTP |
 | Q-009 | HIL realism level (replayed logs vs. live model) and the first target test function | while setting up the hil-bench host | hardware-architecture.md §10.3 |
 | Q-010 | Will suspension potentiometers be added? | Group 11 | |
-| Q-011 | Vehicle-bus rule update: allow `0x10` (0x01 default / 0x03 extended only, NEVER 0x02 programming) and `0x3E` next to `0x22/0x19` and OBD `0x01/0x09`; explicitly forbid `0x11` ECU reset alongside `0x2E/0x31/0x34/0x36/0x27` | Before rt-core UDS client work | Needed because the verified path uses them (D-019) |
-| Q-012 | Poll-based vehicle data vs D-009: only ONE tester may poll the ECU. Proposal: rt-core is the single poller and republishes decoded vehicle signals on the platform bus (state range, E2E for speed); Raspi and safety-node read them from the platform bus. safety-node then depends on rt-core for vehicle speed (impacts Q-002; GPS/IMU fallback?) | Before platform.dbc v0.1.0 | Invalidates D-009's "safety-node/Raspi listen to the vehicle bus directly" bullet |
-| Q-013 | How to bring `HondaCl250_Telemetry` into the org: transfer it as a read-only legacy repo and port its code into `moto-connectivity-node` (temporary telemetry home) + its `mobile_app/flutter_app` into `moto-mobile` (would resolve Q-007 as Flutter)? Keep PlatformIO/Arduino for the ported telemetry, or migrate to ESP-IDF (D-007)? | Before connectivity-node work | Repo is currently public in the personal account |
+| Q-011 | ~~resolved~~ → D-020 | — | — |
+| Q-012 | ~~resolved~~ → D-021 | — | — |
+| Q-013 | ~~resolved~~ → D-023 | — | — |

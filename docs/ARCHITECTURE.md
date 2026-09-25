@@ -35,9 +35,9 @@ Incremental rollout: a unit is not added until its function arrives (see hardwar
 ## 3. Bus topology — two separate CAN buses (D-009)
 
 ```
- VEHICLE CAN (CL250, OEM — listen only) ══╤════════════╤══════════════╤═══
-   500 kbps classic (verify, Q-001)       │ FDCAN1     │ FDCAN silent │ can0 listen-only
-                                     ┌────┴────┐  ┌────┴────┐   ┌─────┴─────┐
+ VEHICLE CAN (CL250 DLC, rt-core polls)  ═╤═══════════════════════════╤═══
+   500 kbps classic (verified, D-019)     │ FDCAN1 (only tester)       │ can0 optional, listen-only
+                                     ┌────┴────┐  ┌─────────┐   ┌─────┴─────┐
                                      │ rt-core │  │ safety  │   │  Raspi 5  │
                                      │ STM32H7 │  │ STM32G4 │   │ linux-node│
                                      └──┬───┬──┘  └────┬────┘   └─────┬─────┘
@@ -53,10 +53,10 @@ Incremental rollout: a unit is not added until its function arrives (see hardwar
                                                             └──────────┘
 ```
 
-- **Vehicle bus:** OEM network. Hardware-level **silent/listen-only mode** (FDCAN bus-monitoring, SocketCAN `listen-only on`). ONE exception: rt-core's OBD-II/UDS **read** requests (0x01/0x09/0x22/0x19). 0x2E/0x31/0x34/0x36/0x27 are NEVER sent to the vehicle. No additional termination resistor is added to the vehicle bus.
+- **Vehicle bus:** OEM network reached through the diagnostic connector (DLC). CL250 data is **poll-based** (UDS `0x22`, 29-bit `0x18DA10F1` → `0x18DAF110`, D-019), so there must be exactly **one tester: rt-core** (D-021). Allowed services: `0x10` (0x01/0x03 only), `0x3E`, `0x22`, `0x19`, OBD `0x01/0x09`. Forbidden: `0x10 0x02`, `0x11`, `0x14`, `0x27`, `0x2E`, `0x2F`, `0x31`, `0x34`, `0x36`, `0x37` (D-020). No other node transmits here. The Raspi may tap it strictly listen-only for raw logging. No additional termination resistor is added to the vehicle bus.
 - **Platform bus:** the dedicated bus our own nodes talk on. No risk of ID collisions, confusing the OEM ECU, or added OEM bus load. Classic CAN was chosen because F103 and ESP32-S3 TWAI don't support FD (an FD frame produces an error frame on a classic node). Migration will be reconsidered once all nodes support FD.
-- **The safety node also listens to the vehicle bus** (silent): it receives vehicle signals such as wheel speed without depending on rt-core. Only the EKF outputs (lean angle, µ, mass) come from rt-core.
-- **The Raspi listens to both buses:** kuksa-can-provider feeds from both `cl250.dbc` and `platform.dbc`. rt-core does **not** forward vehicle signals onto the platform bus (so bus load doesn't double).
+- **rt-core republishes vehicle signals** (speed, RPM, coolant, TPS, battery) on the platform bus (state range 0x100-0x3FF; vehicle speed is also consumed by safety-node, so its message is E2E-protected in the safety range). Everyone else, including safety-node and the Raspi's kuksa-can-provider (`platform.dbc`), reads them there (D-021). Consequence: safety-node depends on rt-core for vehicle speed, which makes Q-002 (behaviour on INVALID data) more important.
+- ~~The safety node also listens to the vehicle bus~~ and ~~rt-core does not forward vehicle signals~~ (D-009 bullets superseded by D-021).
 - H7 ↔ ESP32-S3: SPI/UART simple framed messaging (format to be co-designed, Q-004). Phase 2: SOME/IP.
 
 ---
@@ -87,10 +87,11 @@ Incremental rollout: a unit is not added until its function arrives (see hardwar
 
 ```
 moto-vehicle-defs/
-  dbc/cl250.dbc         vehicle bus (reverse-engineered, UNVERIFIED signals flagged)
-  dbc/platform.dbc      platform bus (ours; GenMsgCycleTime, E2E_DataID, E2E_Protected attributes)
-  vss/overlay.vspec     motorcycle extensions (Vehicle.Motorcycle.*) + dbc2vss mappings
-  uds/dids.yaml         DID/DTC/routine definitions (per node)
+  uds/vehicle_cl250.yaml  vehicle ECU DIDs polled by rt-core (addressing, DID, formula, poll rate; verified per D-019)
+  dbc/cl250.dbc         vehicle-bus broadcast frames — only if passive traffic is ever found (Q-001); skeleton for now
+  dbc/platform.dbc      platform bus (ours; GenMsgCycleTime, E2E_DataID, E2E_Protected attributes), incl. rt-core's republished vehicle signals
+  vss/overlay.vspec     motorcycle extensions (Vehicle.Motorcycle.*) + dbc2vss mappings (from platform.dbc)
+  uds/dids.yaml         our platform nodes' own DID/DTC/routine definitions
   tools/codegen/        python: cantools + vss-tools wrapper
         │ make gen  (run before tagging, output is committed)
         ▼

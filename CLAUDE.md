@@ -14,7 +14,8 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 ## File structure (D-003, D-004 — `docs/ARCHITECTURE.md` §5)
 
 ```
-/dbc/cl250.dbc        → vehicle bus (OEM, reverse-engineered; unverified signals are flagged)
+/uds/vehicle_cl250.yaml → CL250 ECU DIDs polled by rt-core (addressing, formulas, poll rates; verified, D-019)
+/dbc/cl250.dbc        → vehicle-bus broadcast frames, only if passive traffic is found (Q-001); skeleton
 /dbc/platform.dbc     → platform bus (our nodes; ID plan in ARCHITECTURE §4; E2E attributes)
 /vss/overlay.vspec    → Vehicle.Motorcycle.* extensions + dbc2vss mappings (kuksa-can-provider format)
 /uds/dids.yaml        → per-node DID/DTC/routine definitions
@@ -46,4 +47,4 @@ For the full hardware/repo architecture: `docs/ARCHITECTURE.md` (summary) and `d
 
 ## Vehicle: CL250 (first application)
 
-Motorcycle: Honda CL250, classic CAN (not CAN-FD — work under this assumption until verified, Q-001). The platform bus is independent of it: classic CAN 500 kbps (D-009). `/dbc/cl250.dbc` is this vehicle's concrete definition; the schema under `/vss/` is vehicle-independent.
+Motorcycle: Honda CL250. Verified (D-019): classic CAN 500 kbps on the DLC, data by UDS `0x22` polling on 29-bit `0x18DA10F1`→`0x18DAF110`. The platform bus is independent of it: classic CAN 500 kbps (D-009). `/dbc/cl250.dbc` is this vehicle's concrete definition; the schema under `/vss/` is vehicle-independent.
