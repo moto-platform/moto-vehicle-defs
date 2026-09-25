@@ -1,1 +1,7 @@
 .DS_Store
+# codegen tooling
+tools/codegen/.venv/
+tools/codegen/.cache/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
