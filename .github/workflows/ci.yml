@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  defs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.11"
+      - name: Lint
+        run: make lint
+      - name: Tests (incl. generated C on the host)
+        run: make test
+      - name: gen/ in sync with the sources
+        run: make check

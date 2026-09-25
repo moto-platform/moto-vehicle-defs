@@ -27,6 +27,10 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 
 Signal add/change flow: the `/signal-change` skill. CI must fail red if `gen/` is out of sync with the source.
 
+## Build
+
+`make gen` (validate + regenerate `gen/`), `make check` (CI: gen/ in sync), `make test` (codegen tests incl. host-compiled generated C), `make lint`. Needs uv, git, gcc. The codegen lives in `tools/codegen` (uv package `moto-codegen`).
+
 ## Versioning rule — THE MOST IMPORTANT RULE
 
 This repo is **semantically versioned** (v1.0.0, v1.1.0...). Other repos pin to a specific version (git submodule + tag, or package version). Adding/changing/removing a signal:

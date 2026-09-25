@@ -11,6 +11,7 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs > `tr/`
 | `hardware-architecture.md` | Authoritative (detail) | Subsystem rationale, references, Phase 2 list |
 | `vehicle-work-plan.md` | Authoritative (on-vehicle) | CL250 data, mounting, field test protocols T0-T4, virtual dyno |
 | `phase0-data-collection-plan.md` | Authoritative (data) | Recording format, metadata schema, work packages WP-1..WP-7 |
+| `legacy-telemetry-notes.md` | Current (D-023) | Verified CL250 CAN/UDS facts and pitfalls from the legacy firmware |
 | `feature-pool.md` | Pool | All feature candidates (IDs F1.., K1.., ...), open-source references |
 | `hardware-procurement-list.md` | Current | Hardware groups 1-12, items on hand |
 | `tr/bitirme-projesi-kapsam.md` | Turkish, advisor-facing, **partly outdated** (ESP32 DUT, no Raspi — see D-001) | Thesis core/extended scope Ç1-Ç8 / G1-G5, 14-week schedule |

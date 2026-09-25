@@ -1,0 +1,70 @@
+# moto-platform VSS overlay (applied on top of COVESA VSS v6.1 by `make gen`).
+#
+# Maps platform.dbc signals (rt-core's republished vehicle values, D-021) to standard
+# VSS paths in the kuksa-can-provider dbc2vss format. Only signals consumed on the Raspi
+# side are listed. Motorcycle-specific paths (Vehicle.Motorcycle.*) need the user's
+# approval before they are added (CLAUDE.md, signal naming). Safety decisions never read
+# from VSS (ARCHITECTURE section 5).
+
+Vehicle.Speed:
+  type: sensor
+  datatype: float
+  unit: km/h
+  description: Vehicle speed.
+  dbc2vss:
+    signal: VEHICLE_SPEED
+    interval_ms: 100
+
+Vehicle.Powertrain.CombustionEngine.Speed:
+  type: sensor
+  datatype: float
+  unit: rpm
+  description: Engine speed measured as rotations per minute.
+  dbc2vss:
+    signal: ENGINE_SPEED
+    interval_ms: 50
+
+Vehicle.Powertrain.CombustionEngine.TPS:
+  type: sensor
+  datatype: uint8
+  unit: percent
+  description: Current throttle position.
+  dbc2vss:
+    signal: THROTTLE_POSITION
+    interval_ms: 100
+
+Vehicle.Powertrain.CombustionEngine.EngineCoolant.Temperature:
+  type: sensor
+  datatype: float
+  unit: Celsius
+  description: Engine coolant temperature.
+  dbc2vss:
+    signal: COOLANT_TEMPERATURE
+    interval_ms: 1000
+
+Vehicle.LowVoltageBattery.CurrentVoltage:
+  type: sensor
+  datatype: float
+  unit: V
+  description: Current Voltage of the low voltage battery.
+  dbc2vss:
+    signal: BATTERY_VOLTAGE
+    interval_ms: 1000
+
+Vehicle.Orientation.Roll:
+  type: sensor
+  datatype: float
+  unit: degrees
+  description: Vehicle rotation (tilt) around X (longitudinal). Positive values = right side down.
+  dbc2vss:
+    signal: LEAN_ANGLE
+    interval_ms: 50
+
+Vehicle.AngularVelocity.Roll:
+  type: sensor
+  datatype: float
+  unit: degrees/s
+  description: Vehicle rotation rate along X (longitudinal).
+  dbc2vss:
+    signal: LEAN_RATE
+    interval_ms: 50

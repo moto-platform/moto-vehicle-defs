@@ -1,0 +1,19 @@
+# Platform nodes' own UDS data identifiers, DTCs and routines (served by each node's
+# diagnostic server on the platform bus, IDs 0x7N0/0x7N8, ARCHITECTURE section 4).
+#
+# Not the vehicle ECU: its DIDs live in uds/vehicle_cl250.yaml and it is never written to.
+# Entry format (added through the /signal-change skill):
+#   - did: 0xF195            # 0xF1xx identification, 0xFDxx platform-specific
+#     name: SOFTWARE_VERSION
+#     length: 16
+#     encoding: ascii        # ascii | uint | int | bytes
+#     access: read           # read-only unless the user approves otherwise
+#     description: ...
+
+schema_version: 1
+
+nodes:
+  RT_CORE: {dids: [], dtcs: [], routines: []}
+  SAFETY: {dids: [], dtcs: [], routines: []}
+  IO: {dids: [], dtcs: [], routines: []}
+  CONN: {dids: [], dtcs: [], routines: []}

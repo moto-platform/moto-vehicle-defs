@@ -1,0 +1,173 @@
+# Honda CL250 engine ECU — diagnostic data polled over the vehicle bus.
+#
+# Source: verified on the real bike by the legacy telemetry firmware
+# (moto-platform/HondaCl250_Telemetry@legacy-final, src/HondaCANModule.*), see D-019 and
+# D-023 and docs/legacy-telemetry-notes.md. Consumers never hand-write these values; they
+# include the generated tables (gen/c/<node>/vehicle_cl250.*, gen/python/moto_defs/).
+#
+# Only the vehicle-bus tester polls this ECU: rt-core (D-021). Until rt-core exists,
+# connectivity-node is the temporary sole tester (D-023). There are never two testers.
+#
+# Formula convention: raw = big-endian unsigned integer of `length` bytes that follow the
+# echoed DID in the 0x62 response; physical = raw * factor_num / factor_den + offset.
+
+schema_version: 1
+vehicle: cl250
+ecu: engine
+
+# Nodes that get the generated DID table (gen/c/<node>/vehicle_cl250.*):
+#   RT_CORE  the vehicle-bus tester (D-021)
+#   CONN     temporary sole tester until rt-core polls; its poller is then disabled (D-023)
+#   HIL_SIM  simulates this ECU on the HIL bench (answers requests, never sends them)
+c_nodes: [RT_CORE, CONN, HIL_SIM]
+
+bus:
+  protocol: classic-can
+  bitrate: 500000
+  transport: iso15765-2      # single frames only so far; see docs/legacy-telemetry-notes.md
+  frame_padding: 0xAA        # request padding byte used by the verified legacy firmware
+
+addressing:
+  # Primary: ISO 15765-4 29-bit normal fixed addressing, target ECU 0x10, tester 0xF1.
+  primary:
+    id_type: extended
+    request_id: 0x18DA10F1
+    response_id: 0x18DAF110
+  # Fallback: 11-bit physical addressing, sent together with every primary request.
+  fallback:
+    id_type: standard
+    request_id: 0x7E0
+    response_id: 0x7E8
+
+# D-020 allow-list. The codegen refuses any other service (see tools/codegen checks) and
+# generates a frame guard that the tester calls before every transmit. min_length counts
+# the UDS request bytes (SID included, ISO-TP PCI excluded).
+allowed_services:
+  - sid: 0x10
+    name: DiagnosticSessionControl
+    subfunctions: [0x01, 0x03]   # default, extended (0x02 programming is forbidden)
+    min_length: 2
+  - sid: 0x3E
+    name: TesterPresent
+    subfunctions: [0x00, 0x80]   # 0x80 = suppress positive response (used by legacy)
+    min_length: 2
+  - sid: 0x22
+    name: ReadDataByIdentifier
+    min_length: 3
+  - sid: 0x19
+    name: ReadDTCInformation
+    min_length: 2
+  - sid: 0x01
+    name: ObdShowCurrentData
+    min_length: 2
+  - sid: 0x09
+    name: ObdRequestVehicleInformation
+    min_length: 2
+
+session:
+  request_subfunction: 0x03        # extended session, needed for the 0x22 reads
+  retry_period_ms: 2000            # re-sent until a positive 0x50 response arrives
+  tester_present_subfunction: 0x80
+  tester_present_period_ms: 1000
+
+timing:
+  response_timeout_ms: 100         # base P2 wait for one request
+  response_pending_max_ms: 2000    # NRC 0x78 doubles the wait up to this ceiling
+  max_consecutive_timeouts: 5      # after this many timeouts in a row the DID is skipped
+  did_skip_cooldown_ms: 5000
+  ecu_absent_timeout_ms: 3000      # no positive/negative response for this long = ECU absent
+  bus_off_backoff_min_ms: 1000     # bus-off recovery retry, doubling
+  bus_off_backoff_max_ms: 30000
+
+# Priority order = list order (the scheduler checks the first entry first, so the 50 ms
+# engine-speed poll is never starved by a slower DID).
+dids:
+  - name: ENGINE_SPEED
+    did: 0xF40C
+    obd_pid: 0x0C
+    description: Engine speed (SAE J1979 PID 0x0C).
+    length: 2
+    factor_num: 1
+    factor_den: 4
+    offset: 0
+    unit: rpm
+    min: 0
+    max: 16383.75
+    poll_period_ms: 50
+    verified: true
+    evidence: D-019; legacy HondaCANModule (A*256+B)/4, validated on the CL250.
+  - name: VEHICLE_SPEED
+    did: 0xF40D
+    obd_pid: 0x0D
+    description: Vehicle speed (SAE J1979 PID 0x0D).
+    length: 1
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: km/h
+    min: 0
+    max: 255
+    poll_period_ms: 800
+    verified: true
+    evidence: D-019; legacy HondaCANModule A, validated on the CL250.
+  - name: THROTTLE_POSITION
+    did: 0xF411
+    obd_pid: 0x11
+    description: Absolute throttle position (SAE J1979 PID 0x11).
+    length: 1
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 800
+    verified: true
+    evidence: D-019; legacy HondaCANModule A*100/255, validated on the CL250.
+  - name: COOLANT_TEMPERATURE
+    did: 0xF405
+    obd_pid: 0x05
+    description: Engine coolant temperature (SAE J1979 PID 0x05).
+    length: 1
+    factor_num: 1
+    factor_den: 1
+    offset: -40
+    unit: degC
+    min: -40
+    max: 215
+    poll_period_ms: 800
+    verified: true
+    evidence: D-019; legacy HondaCANModule A-40, validated on the CL250.
+  - name: BATTERY_VOLTAGE
+    did: 0xF442
+    obd_pid: 0x42
+    description: Control module voltage (SAE J1979 PID 0x42).
+    length: 2
+    factor_num: 1
+    factor_den: 1000
+    offset: 0
+    unit: V
+    min: 0
+    max: 65.535
+    poll_period_ms: 800
+    verified: true
+    evidence: >-
+      D-019; legacy HondaCANModule (A*256+B)/1000. The legacy code also had an
+      unexplained fallback to A/10 for short or small responses; not carried over
+      (docs/legacy-telemetry-notes.md).
+
+# UDS negative response codes the tester logs by name (ISO 14229-1 Annex A).
+nrc:
+  0x10: generalReject
+  0x11: serviceNotSupported
+  0x12: subFunctionNotSupported
+  0x13: incorrectMessageLengthOrInvalidFormat
+  0x21: busyRepeatRequest
+  0x22: conditionsNotCorrect
+  0x24: requestSequenceError
+  0x31: requestOutOfRange
+  0x33: securityAccessDenied
+  0x35: invalidKey
+  0x78: responsePending
+  0x7E: subFunctionNotSupportedInActiveSession
+  0x7F: serviceNotSupportedInActiveSession
