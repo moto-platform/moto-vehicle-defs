@@ -1,0 +1,40 @@
+# moto-platform VSS overlay (D-004) on top of COVESA VSS 6.0 (base pinned in
+# tools/codegen/src/moto_codegen/gen_vss.py). Consumed by kuksa-can-provider
+# (dbc2vss keys) together with dbc/platform.dbc on the Raspi. Output:
+# gen/vss/vss_dbc.json (`make gen`).
+#
+# Rules:
+# - Standard COVESA paths only. A Vehicle.Motorcycle.* extension needs the user's
+#   approval first (D-004); tools/codegen rejects unknown paths.
+# - Safety-path signals may be mirrored here for display/logging only; no safety
+#   decision ever reads VSS (ARCHITECTURE section 5).
+# - kuksa-can-provider cannot gate a value on a *_VALID bit; consumers must treat
+#   Vehicle.* values as display data (VALID bits are in platform.dbc).
+
+Vehicle.Speed:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: VEHICLE_SPEED
+    interval_ms: 100
+
+Vehicle.Powertrain.CombustionEngine.Speed:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: ENGINE_SPEED
+    interval_ms: 100
+
+Vehicle.Powertrain.CombustionEngine.EngineCoolant.Temperature:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: COOLANT_TEMP
+    interval_ms: 1000
+
+Vehicle.LowVoltageBattery.CurrentVoltage:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: BATTERY_VOLTAGE
+    interval_ms: 1000
