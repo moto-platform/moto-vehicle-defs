@@ -37,6 +37,18 @@ This repo is **semantically versioned** (v1.0.0, v1.1.0...). Other repos pin to 
 
 When Claude Code works in this repo: after changing a signal schema, **check which repos depend on this version and remind the user** — do not break them silently.
 
+## Build and checks
+
+Tooling is a uv project in `tools/codegen` (Python 3.11+, cantools, vss-tools 6.0). From the repo root:
+
+```bash
+make check   # strict DBC parse + moto-codegen check + ruff + pytest (needs gcc for C tests)
+make gen     # regenerate gen/ (first run downloads the pinned COVESA VSS 6.0 release)
+make drift   # make gen, then fail if gen/ changed — CI runs this
+```
+
+C targets and the ID plan: `tools/codegen/src/moto_codegen/config.py`. E2E spec: `docs/e2e-profile.md`. Approved `Vehicle.Motorcycle.*` paths go into `APPROVED_EXTENSIONS` in `gen_vss.py` (only after the user says yes).
+
 ## Signal naming
 
 Follow the VSS taxonomy (e.g. `Vehicle.Powertrain.CombustionEngine.Speed`). Do not invent your own arbitrary naming — check COVESA's VSS specification; if there is no VSS equivalent for a motorcycle-specific signal, propose a consistent extension under `Vehicle.Motorcycle.*` and **ask the user first**, do not add it silently.

@@ -2,7 +2,7 @@
 
 **Rule (for Claude):** start with `ARCHITECTURE.md` + `DECISIONS.md`. The raw docs below are large (~3,400 lines, ~60k tokens in total), so read only the needed section with `Read offset/limit`, or ask the `docs-researcher` agent. Line numbers are as of 2026-09-25. If a doc changes, refresh them with `grep -n '^#' <file>`.
 
-Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs > `tr/` archive.
+Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs > `tr/` archive. For vehicle facts, `uds/vehicle_cl250.yaml` beats `legacy-telemetry-notes.md`.
 
 | File | Status | Use for |
 |---|---|---|
@@ -13,6 +13,8 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs > `tr/`
 | `phase0-data-collection-plan.md` | Authoritative (data) | Recording format, metadata schema, work packages WP-1..WP-7 |
 | `feature-pool.md` | Pool | All feature candidates (IDs F1.., K1.., ...), open-source references |
 | `hardware-procurement-list.md` | Current | Hardware groups 1-12, items on hand |
+| `e2e-profile.md` | **Authoritative (spec, short)** | E2E frame layout, CRC, counter, receiver statuses, timeouts (D-005, D-026) |
+| `legacy-telemetry-notes.md` | Reference (short) | Legacy HondaCl250_Telemetry facts per D-023: UDS state machine, NRC table, bus-off backoff, ISO-TP first-frame pitfall, ESP32-S3 pin map, discrepancies, accepted security risks, legacy test coverage |
 | `tr/bitirme-projesi-kapsam.md` | Turkish, advisor-facing, **partly outdated** (ESP32 DUT, no Raspi — see D-001) | Thesis core/extended scope Ç1-Ç8 / G1-G5, 14-week schedule |
 | `tr/bitirme-raporu-hoca-sunumu.md` | Turkish, advisor report | Methodology, MCU adequacy analysis, SDG |
 | `tr/*` (others) | Turkish originals of the English docs | Not maintained. Use only if a translation looks wrong |
