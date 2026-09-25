@@ -1,0 +1,108 @@
+"""Reference implementation of the platform E2E scheme (docs/e2e-profile.md).
+
+The generated C code (gen/c/<node>/moto_e2e.c) must behave exactly like this
+module; tests/test_c_code.py cross-checks the two. Also copied to
+gen/python/moto_defs/e2e.py for host tools (HIL bench, server).
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from enum import IntEnum
+
+CRC_OFFSET = 0
+COUNTER_OFFSET = 1
+COUNTER_MASK = 0x0F
+
+
+class E2EStatus(IntEnum):
+    OK = 0
+    OK_SOME_LOST = 1
+    INITIAL = 2
+    REPEATED = 3
+    WRONG_SEQUENCE = 4
+    WRONG_CRC = 5
+    NO_NEW_DATA = 6
+    BAD_ARGUMENT = 7
+
+
+def is_valid(status: E2EStatus) -> bool:
+    """Only these statuses allow a consumer to use the payload."""
+    return status in (E2EStatus.OK, E2EStatus.OK_SOME_LOST)
+
+
+def crc8_sae_j1850(data: bytes, crc: int = 0xFF) -> int:
+    """CRC-8/SAE-J1850 update without final XOR: poly 0x1D, no reflection."""
+    for byte in data:
+        crc ^= byte
+        for _ in range(8):
+            crc = ((crc << 1) ^ 0x1D) & 0xFF if crc & 0x80 else (crc << 1) & 0xFF
+    return crc
+
+
+def compute_crc(data_id: int, payload: bytes) -> int:
+    """CRC over DataID (low byte, high byte) then payload bytes 1..n-1; init/xorout 0xFF."""
+    buf = bytes([data_id & 0xFF, (data_id >> 8) & 0xFF]) + bytes(payload[1:])
+    return crc8_sae_j1850(buf) ^ 0xFF
+
+
+@dataclass
+class TxState:
+    counter: int = 0
+
+
+@dataclass
+class RxState:
+    last_rx_ms: int = 0
+    last_counter: int = 0
+    synced: bool = False
+
+
+def protect(data_id: int, payload: bytearray, state: TxState) -> None:
+    """Write the alive counter into byte 1 bits 0-3, then the CRC into byte 0."""
+    if len(payload) < 2:
+        raise ValueError("E2E payload needs at least 2 bytes")
+    payload[COUNTER_OFFSET] = (payload[COUNTER_OFFSET] & 0xF0) | (state.counter & COUNTER_MASK)
+    payload[CRC_OFFSET] = compute_crc(data_id, payload)
+    state.counter = (state.counter + 1) & COUNTER_MASK
+
+
+def check(
+    data_id: int, max_delta: int, timeout_ms: int, payload: bytes, state: RxState, now_ms: int
+) -> E2EStatus:
+    """Check one received frame. Only OK/OK_SOME_LOST/INITIAL refresh the timeout.
+
+    A frame arriving more than timeout_ms after the last valid one resyncs
+    (INITIAL, not usable) even if its counter looks consecutive: a stalled
+    sender must never resume as OK, and 16 lost frames alias to delta 1.
+    """
+    if len(payload) < 2 or not 1 <= max_delta <= 14:
+        return E2EStatus.BAD_ARGUMENT
+    if payload[CRC_OFFSET] != compute_crc(data_id, payload):
+        return E2EStatus.WRONG_CRC
+    counter = payload[COUNTER_OFFSET] & COUNTER_MASK
+    if state.synced and ((now_ms - state.last_rx_ms) & 0xFFFFFFFF) > timeout_ms:
+        state.synced = False
+    if not state.synced:
+        state.synced = True
+        state.last_counter = counter
+        state.last_rx_ms = now_ms & 0xFFFFFFFF
+        return E2EStatus.INITIAL
+    delta = (counter - state.last_counter) & COUNTER_MASK
+    if delta == 0:
+        return E2EStatus.REPEATED
+    state.last_counter = counter
+    if delta > max_delta:
+        return E2EStatus.WRONG_SEQUENCE
+    state.last_rx_ms = now_ms & 0xFFFFFFFF
+    return E2EStatus.OK if delta == 1 else E2EStatus.OK_SOME_LOST
+
+
+def check_timeout(state: RxState, timeout_ms: int, now_ms: int) -> E2EStatus:
+    """Call periodically. Returns NO_NEW_DATA (and desyncs) once the timeout expires."""
+    if not state.synced:
+        return E2EStatus.NO_NEW_DATA
+    if ((now_ms - state.last_rx_ms) & 0xFFFFFFFF) > timeout_ms:
+        state.synced = False
+        return E2EStatus.NO_NEW_DATA
+    return E2EStatus.OK
