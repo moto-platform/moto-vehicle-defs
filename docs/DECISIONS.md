@@ -55,6 +55,8 @@ Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 
 **D-015 — Workspace repo `moto-workspace`** (2026-09-25, Claude; user asked to finish remaining setup) The workspace root is its own repo holding `manifest.yaml`, `setup.sh`, root `CLAUDE.md`, `STATUS.md` and the shared `.claude/` agents/skills. It git-ignores `/moto-*/`. Why: otherwise the shared Claude setup exists on one laptop only and cannot reach GitHub or cloud sessions.
 
+**D-016 — Repo visibility: temporarily public** (2026-09-25, user) The planned default stays **private**, but all 12 repos in `moto-platform` are public for now (profile visibility, nothing sensitive at this stage). They can be switched back to private at any time with `gh repo edit moto-platform/<repo> --visibility private --accept-visibility-change-consequences`. No LICENSE yet, so the default is all rights reserved. The license decision is still pending (moto-mcp is intended to be open source). Before committing anything sensitive (real ride GPS data, keys, personal info), re-check visibility.
+
 ---
 
 ## Open questions (awaiting decision)
