@@ -36,7 +36,7 @@ def test_vss_is_up_to_date(platform_db):
         gen_vss.check_overlay(gen_vss.load_overlay(), gen_vss.base_paths(base), platform_db) == []
     )
     assert gen_vss.check_overlay(
-        {"Vehicle.Motorcycle.LeanAngle": {}}, gen_vss.base_paths(base), platform_db
-    ) == ["overlay: Vehicle.Motorcycle.LeanAngle is an extension not yet approved by the user"]
+        {"Vehicle.Motorcycle.WheelieAngle": {}}, gen_vss.base_paths(base), platform_db
+    ) == ["overlay: Vehicle.Motorcycle.WheelieAngle is an extension not yet approved by the user"]
     rel = "vss/vss_dbc.json"
     assert (config.GEN_DIR / rel).read_text(encoding="utf-8") == gen_vss.export_json(base)

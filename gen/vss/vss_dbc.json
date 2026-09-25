@@ -8239,6 +8239,221 @@
         "description": "Motion Management Information.",
         "type": "branch"
       },
+      "Motorcycle": {
+        "children": {
+          "EstimatedMass": {
+            "datatype": "float",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "TOTAL_MASS"
+            },
+            "description": "Total mass (vehicle + rider + load) estimated by the rt-core EKF.",
+            "max": 1000,
+            "min": 0,
+            "type": "sensor",
+            "unit": "kg"
+          },
+          "EstimatedMassQuality": {
+            "datatype": "uint8",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "TOTAL_MASS_QUALITY"
+            },
+            "description": "Estimator confidence of the mass estimate; 0 = no confidence.",
+            "max": 100,
+            "min": 0,
+            "type": "sensor",
+            "unit": "percent"
+          },
+          "EstimatedMassState": {
+            "allowed": [
+              "ESTIMATED",
+              "CLAMPED",
+              "DEFAULT",
+              "INVALID"
+            ],
+            "datatype": "string",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "TOTAL_MASS_STATE",
+              "transform": {
+                "mapping": [
+                  {
+                    "from": "ESTIMATED",
+                    "to": "ESTIMATED"
+                  },
+                  {
+                    "from": "CLAMPED",
+                    "to": "CLAMPED"
+                  },
+                  {
+                    "from": "DEFAULT",
+                    "to": "DEFAULT"
+                  },
+                  {
+                    "from": "INVALID",
+                    "to": "INVALID"
+                  }
+                ]
+              }
+            },
+            "description": "State of the mass estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.",
+            "type": "sensor"
+          },
+          "FrictionCoefficient": {
+            "datatype": "float",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "FRICTION_COEFF"
+            },
+            "description": "Tyre-road friction coefficient mu estimated by the rt-core EKF (dimensionless).",
+            "max": 2,
+            "min": 0,
+            "type": "sensor"
+          },
+          "FrictionCoefficientQuality": {
+            "datatype": "uint8",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "FRICTION_COEFF_QUALITY"
+            },
+            "description": "Estimator confidence of the friction coefficient; 0 = no confidence.",
+            "max": 100,
+            "min": 0,
+            "type": "sensor",
+            "unit": "percent"
+          },
+          "FrictionCoefficientState": {
+            "allowed": [
+              "ESTIMATED",
+              "CLAMPED",
+              "DEFAULT",
+              "INVALID"
+            ],
+            "datatype": "string",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "FRICTION_COEFF_STATE",
+              "transform": {
+                "mapping": [
+                  {
+                    "from": "ESTIMATED",
+                    "to": "ESTIMATED"
+                  },
+                  {
+                    "from": "CLAMPED",
+                    "to": "CLAMPED"
+                  },
+                  {
+                    "from": "DEFAULT",
+                    "to": "DEFAULT"
+                  },
+                  {
+                    "from": "INVALID",
+                    "to": "INVALID"
+                  }
+                ]
+              }
+            },
+            "description": "State of the friction estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.",
+            "type": "sensor"
+          },
+          "IsEcuPresent": {
+            "datatype": "boolean",
+            "dbc2vss": {
+              "interval_ms": 1000,
+              "signal": "ECU_PRESENT",
+              "transform": {
+                "mapping": [
+                  {
+                    "from": "ABSENT",
+                    "to": false
+                  },
+                  {
+                    "from": "PRESENT",
+                    "to": true
+                  }
+                ]
+              }
+            },
+            "description": "True if the engine ECU answered a UDS request within the ECU-absent timeout.",
+            "type": "sensor"
+          },
+          "LeanAngle": {
+            "datatype": "float",
+            "dbc2vss": {
+              "interval_ms": 50,
+              "signal": "LEAN_ANGLE"
+            },
+            "description": "Roll (lean) angle estimated by the rt-core EKF. Positive = leaning right.",
+            "max": 90,
+            "min": -90,
+            "type": "sensor",
+            "unit": "degrees"
+          },
+          "LeanAngleQuality": {
+            "datatype": "uint8",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "LEAN_ANGLE_QUALITY"
+            },
+            "description": "Estimator confidence of the lean angle; 0 = no confidence.",
+            "max": 100,
+            "min": 0,
+            "type": "sensor",
+            "unit": "percent"
+          },
+          "LeanAngleState": {
+            "allowed": [
+              "ESTIMATED",
+              "CLAMPED",
+              "DEFAULT",
+              "INVALID"
+            ],
+            "datatype": "string",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "LEAN_ANGLE_STATE",
+              "transform": {
+                "mapping": [
+                  {
+                    "from": "ESTIMATED",
+                    "to": "ESTIMATED"
+                  },
+                  {
+                    "from": "CLAMPED",
+                    "to": "CLAMPED"
+                  },
+                  {
+                    "from": "DEFAULT",
+                    "to": "DEFAULT"
+                  },
+                  {
+                    "from": "INVALID",
+                    "to": "INVALID"
+                  }
+                ]
+              }
+            },
+            "description": "State of the lean angle estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.",
+            "type": "sensor"
+          },
+          "ThrottlePosition": {
+            "datatype": "float",
+            "dbc2vss": {
+              "interval_ms": 100,
+              "signal": "THROTTLE_POS"
+            },
+            "description": "Throttle valve opening from the ECU TPS (J1979 PID 0x11), not the twist-grip demand.",
+            "max": 100,
+            "min": 0,
+            "type": "sensor",
+            "unit": "percent"
+          }
+        },
+        "description": "Motorcycle-specific signals (moto-platform extension, D-028).",
+        "type": "branch"
+      },
       "Occupant": {
         "children": {
           "Row1": {

@@ -26,8 +26,23 @@ VSS_BASE_FILES = {
 }
 CACHE_DIR = config.REPO_ROOT / "tools" / "codegen" / ".cache" / f"vss-{VSS_VERSION}"
 EXTENSION_ROOT = "Vehicle.Motorcycle"
-# Extensions the user approved (D-004 requires asking first). Empty until approved.
-APPROVED_EXTENSIONS: frozenset[str] = frozenset()
+# Extensions the user approved (D-004 requires asking first; approved set: D-028).
+APPROVED_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        "Vehicle.Motorcycle",
+        "Vehicle.Motorcycle.LeanAngle",
+        "Vehicle.Motorcycle.LeanAngleQuality",
+        "Vehicle.Motorcycle.LeanAngleState",
+        "Vehicle.Motorcycle.FrictionCoefficient",
+        "Vehicle.Motorcycle.FrictionCoefficientQuality",
+        "Vehicle.Motorcycle.FrictionCoefficientState",
+        "Vehicle.Motorcycle.EstimatedMass",
+        "Vehicle.Motorcycle.EstimatedMassQuality",
+        "Vehicle.Motorcycle.EstimatedMassState",
+        "Vehicle.Motorcycle.ThrottlePosition",
+        "Vehicle.Motorcycle.IsEcuPresent",
+    }
+)
 
 
 def _sha256(path: Path) -> str:
@@ -55,6 +70,11 @@ def load_overlay(path: Path = config.OVERLAY_VSPEC) -> dict:
 def check_overlay(overlay: dict, base_paths: set[str], platform_db: Database) -> list[str]:
     errors: list[str] = []
     signals = {s.name for m in platform_db.messages for s in m.signals}
+    # kuksa-can-provider looks signals up by name: a mapped name must be unique.
+    owners: dict[str, list[str]] = {}
+    for m in platform_db.messages:
+        for sig in m.signals:
+            owners.setdefault(sig.name, []).append(m.name)
     for path, node in overlay.items():
         if path not in base_paths:
             if path.startswith(EXTENSION_ROOT) and path in APPROVED_EXTENSIONS:
@@ -69,6 +89,14 @@ def check_overlay(overlay: dict, base_paths: set[str], platform_db: Database) ->
         sig = mapping.get("signal")
         if sig not in signals:
             errors.append(f"overlay: {path} maps unknown platform.dbc signal {sig}")
+        elif len(owners[sig]) > 1:
+            errors.append(f"overlay: {path} maps {sig}, which is ambiguous ({owners[sig]})")
+        for entry in (mapping.get("transform") or {}).get("mapping", []) or []:
+            msg = platform_db.get_message_by_name(owners[sig][0]) if sig in owners else None
+            choices = msg.get_signal_by_name(sig).choices if msg else None
+            names = {str(v) for v in (choices or {}).values()}
+            if choices is not None and str(entry.get("from")) not in names:
+                errors.append(f"overlay: {path} maps from unknown choice {entry.get('from')}")
         if not isinstance(mapping.get("interval_ms"), int) or mapping["interval_ms"] <= 0:
             errors.append(f"overlay: {path} needs a positive dbc2vss.interval_ms")
     return errors

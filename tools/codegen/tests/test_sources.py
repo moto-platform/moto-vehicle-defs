@@ -34,4 +34,21 @@ def test_overlay_maps_existing_signals_only(platform_db):
         e for e in gen_vss.check_overlay(overlay, set(overlay), platform_db) if "COVESA" not in e
     ]
     assert errors == []
-    assert not any(p.startswith("Vehicle.Motorcycle") for p in overlay)  # needs user approval
+    extensions = {p for p in overlay if p.startswith("Vehicle.Motorcycle")}
+    assert extensions == set(gen_vss.APPROVED_EXTENSIONS)  # only user-approved paths (D-028)
+
+
+def test_overlay_rejects_ambiguous_and_unknown_choices(platform_db):
+    bad = {
+        "Vehicle.Speed": {"dbc2vss": {"signal": "NODE_MODE", "interval_ms": 100}},
+        "Vehicle.Motorcycle.IsEcuPresent": {
+            "dbc2vss": {
+                "signal": "ECU_PRESENT",
+                "interval_ms": 100,
+                "transform": {"mapping": [{"from": "MAYBE", "to": True}]},
+            }
+        },
+    }
+    errors = gen_vss.check_overlay(bad, set(bad), platform_db)
+    assert any("ambiguous" in e for e in errors)
+    assert any("unknown choice MAYBE" in e for e in errors)
