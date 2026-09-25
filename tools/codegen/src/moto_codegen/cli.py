@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import config, gen_c, gen_python, gen_vss
 from .dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
-from .yaml_checks import check_dids, check_vehicle, load_yaml
+from .yaml_checks import check_dids, check_limits, check_vehicle, load_yaml
 
 
 def run_checks(with_vss: bool = True) -> list[str]:
@@ -19,6 +19,9 @@ def run_checks(with_vss: bool = True) -> list[str]:
     errors += check_cl250_dbc(load_dbc(config.CL250_DBC))
     errors += check_vehicle(load_yaml(config.VEHICLE_YAML), platform_db)
     errors += check_dids(load_yaml(config.DIDS_YAML))
+    errors += check_limits(
+        load_yaml(config.LIMITS_YAML), load_yaml(config.VEHICLE_YAML), platform_db
+    )
     if with_vss:
         base = gen_vss.fetch_base()
         errors += gen_vss.check_overlay(
@@ -31,12 +34,15 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     """Every generated file, keyed by path relative to gen/."""
     db = load_dbc(config.PLATFORM_DBC)
     vehicle = load_yaml(config.VEHICLE_YAML)
+    limits = load_yaml(config.LIMITS_YAML)
     files: dict[Path, str] = {}
     for target in config.C_TARGETS:
         out = Path("c") / target.directory
         parts = {**gen_c.generate_platform_c(db, target), **gen_c.generate_e2e_c(db, target)}
         if target.vehicle_dids:
             parts.update(gen_c.generate_vehicle_c(vehicle))
+        if target.limits:
+            parts.update(gen_c.generate_limits_c(limits))
         for name, text in parts.items():
             files[out / name] = text
     py = Path("python") / "moto_defs"
@@ -44,6 +50,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     files[py / "platform.py"] = gen_python.generate_platform_py(db)
     files[py / "vehicle_cl250.py"] = gen_python.generate_vehicle_py(vehicle)
     files[py / "e2e.py"] = gen_python.generate_e2e_py()
+    files[py / "limits.py"] = gen_python.generate_limits_py(limits)
     if with_vss:
         files[Path("vss") / "vss_dbc.json"] = gen_vss.export_json(gen_vss.fetch_base())
     return files

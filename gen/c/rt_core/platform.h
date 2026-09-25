@@ -91,7 +91,7 @@ extern "C" {
 /* Signal choices. */
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_ESTIMATED_CHOICE (0u)
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_CLAMPED_CHOICE (1u)
-#define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_DEFAULT_CHOICE (2u)
+#define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_RESERVED_CHOICE (2u)
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_INVALID_CHOICE (3u)
 
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_INVALID_CHOICE (0u)
@@ -245,7 +245,7 @@ struct platform_ekf_lean_t {
     uint8_t e2_e_counter;
 
     /**
-     * Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; how conservative the DEFAULT value must be is open (Q-014).
+     * Estimate state: ESTIMATED, CLAMPED to the physical range, or INVALID. There is no safe default lean angle: rt-core sends INVALID instead (D-029); 2 is reserved and must be treated as INVALID.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -295,7 +295,7 @@ struct platform_vehicle_speed_t {
     uint8_t e2_e_counter;
 
     /**
-     * 1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; safety consumers must also bound VEHICLE_SPEED_AGE (limit open, Q-015).
+     * 1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; safety consumers must also bound VEHICLE_SPEED_AGE (vehicle_speed_max_age_ms in limits/platform_limits.yaml, D-029).
      *
      * Range: 0..1 (0..1 -)
      * Scale: 1
@@ -343,7 +343,7 @@ struct platform_ekf_friction_mass_t {
     uint8_t e2_e_counter;
 
     /**
-     * Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; how conservative the DEFAULT value must be is open (Q-014).
+     * Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -352,7 +352,7 @@ struct platform_ekf_friction_mass_t {
     uint8_t friction_coeff_state;
 
     /**
-     * Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; how conservative the DEFAULT value must be is open (Q-014).
+     * Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1

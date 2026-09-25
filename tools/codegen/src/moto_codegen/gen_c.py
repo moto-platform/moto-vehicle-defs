@@ -555,3 +555,37 @@ def generate_vehicle_c(vehicle: dict[str, Any]) -> dict[str, str]:
         "",
     ]
     return {"vehicle_cl250.h": "\n".join(h), "vehicle_cl250.c": "\n".join(c)}
+
+
+# --------------------------------------------------------------------------- limits
+
+
+def generate_limits_c(limits: dict[str, Any]) -> dict[str, str]:
+    """Shared cornering/speed limits (D-029). Values only; the rules live in the YAML."""
+    h = [BANNER.format(source="limits/platform_limits.yaml"), "#ifndef PLATFORM_LIMITS_H"]
+    h += ["#define PLATFORM_LIMITS_H", "", "#include <stdbool.h>", "#include <stdint.h>", ""]
+    h += ["/* Provisional values are revisited with measured data; each value's rule is in",
+          " * limits/platform_limits.yaml. */"]  # fmt: skip
+    for section in ("cornering", "vehicle_speed"):
+        for key, entry in limits[section].items():
+            if entry["value"] is None:
+                h.append(f"/* {key}: none by design ({entry['status']}), see the YAML rule. */")
+                continue
+            name = f"PLATFORM_LIMIT_{key.upper()}"
+            val = entry["value"]
+            text = f"{val}u" if isinstance(val, int) and key.endswith("_ms") else _c_float(val)
+            h.append(f"#define {name} ({text}) /* {entry['status']} */")
+    h += [
+        "",
+        "/* EKF estimate states (*_STATE): only ESTIMATED (0) and CLAMPED (1) are usable.",
+        " * DEFAULT (2) follows the per-value rule; INVALID (3), RESERVED and any unknown",
+        " * value are never usable. Allow-list on purpose: new states default to unusable. */",
+        "static inline bool platform_estimate_state_usable(uint8_t state)",
+        "{",
+        "    return (state == 0u) || (state == 1u);",
+        "}",
+        "",
+        "#endif /* PLATFORM_LIMITS_H */",
+        "",
+    ]
+    return {"platform_limits.h": "\n".join(h)}

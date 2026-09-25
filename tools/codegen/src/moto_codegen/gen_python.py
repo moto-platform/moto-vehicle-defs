@@ -123,3 +123,14 @@ def generate_init_py() -> str:
         + "\n# Modules: platform (platform.dbc constants), vehicle_cl250 (CL250 DIDs),\n"
         "# e2e (reference E2E protect/check).\n"
     )
+
+
+def generate_limits_py(limits: dict[str, Any]) -> str:
+    lines = [BANNER.format(source="limits/platform_limits.yaml"), ""]
+    lines.append("# name -> (value, status); rules: limits/platform_limits.yaml")
+    lines.append("LIMITS = {")
+    for section in ("cornering", "vehicle_speed"):
+        for key, entry in limits[section].items():
+            lines.append(f'    "{key}": ({entry["value"]!r}, "{entry["status"]}"),')
+    lines += ["}", ""]
+    return "\n".join(lines)

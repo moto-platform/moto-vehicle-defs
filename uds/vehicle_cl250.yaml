@@ -103,6 +103,9 @@ timing:
   ecu_absent_timeout_ms: 3000        # ECU "present" if any positive response or NRC within this
   bus_off_backoff_initial_ms: 1000   # recovery attempts back off exponentially
   bus_off_backoff_max_ms: 30000
+  # PROVISIONAL (D-029), not measured: round-trip time assumed for the polling
+  # budget check; sum(assumed_round_trip_ms / poll_period_ms) must stay <= 0.8.
+  assumed_round_trip_ms: 20
   verified: true
   evidence:
     - src/HondaCANModule.h:34-41
@@ -115,6 +118,9 @@ timing:
 # Response layout (Single Frame): [PCI=0x0N][0x62][DID_hi][DID_lo][A][B]...
 # raw = data bytes as unsigned big-endian; physical = raw * factor_num / factor_den + offset.
 # Order = poll priority (index 0 is checked first every cycle).
+# poll_period_verified: false = provisional platform value (D-029) that differs from
+# the verified legacy period (legacy_poll_period_ms); to be confirmed by the
+# measurement system. The DID itself and its formula stay verified.
 # stale_after_ms is a PLATFORM choice (3 x poll period, D-025), not a legacy value:
 # a sample older than this must not be used or republished as VALID. The legacy
 # code used one 500 ms threshold for everything (src/SystemState.h:10).
@@ -151,8 +157,10 @@ dids:
     unit: km/h
     min: 0
     max: 255
-    poll_period_ms: 800
-    stale_after_ms: 2400
+    poll_period_ms: 100
+    poll_period_verified: false
+    legacy_poll_period_ms: 800
+    stale_after_ms: 300
     platform_signal: VehicleSpeed.VEHICLE_SPEED
     verified: true
     evidence:
@@ -171,8 +179,10 @@ dids:
     unit: "%"
     min: 0
     max: 100
-    poll_period_ms: 800
-    stale_after_ms: 2400
+    poll_period_ms: 200
+    poll_period_verified: false
+    legacy_poll_period_ms: 800
+    stale_after_ms: 600
     platform_signal: VehicleEngine.THROTTLE_POS
     verified: true
     evidence:

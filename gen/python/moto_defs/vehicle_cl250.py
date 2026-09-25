@@ -13,6 +13,7 @@ SESSION_POSITIVE_SID = 0x50
 SESSION_RETRY_INTERVAL_MS = 2000
 TESTER_PRESENT_REQUEST = bytes([0x3E, 0x80])
 TESTER_PRESENT_PERIOD_MS = 1000
+ASSUMED_ROUND_TRIP_MS = 20
 BUS_OFF_BACKOFF_INITIAL_MS = 1000
 BUS_OFF_BACKOFF_MAX_MS = 30000
 DID_SKIP_COOLDOWN_MS = 5000
@@ -25,8 +26,8 @@ RESPONSE_TIMEOUT_MAX_MS = 2000
 # name -> (did, length, factor_num, factor_den, offset, unit, min, max, poll_ms)
 DIDS = {
     "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 50),
-    "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 800),
-    "THROTTLE_POS": (0xF411, 1, 100, 255, 0, "%", 0, 100, 800),
+    "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 100),
+    "THROTTLE_POS": (0xF411, 1, 100, 255, 0, "%", 0, 100, 200),
     "COOLANT_TEMP": (0xF405, 1, 1, 1, -40, "degC", -40, 215, 800),
     "BATTERY_VOLTAGE": (0xF442, 2, 1, 1000, 0, "V", 0, 65.535, 800),
 }

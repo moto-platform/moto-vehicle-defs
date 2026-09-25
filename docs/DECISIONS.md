@@ -99,6 +99,16 @@ C is generated for RT_CORE, SAFETY, IO, CONN, HIL_SIM (`gen/c/<node>/`, cantools
 **D-028 — First `Vehicle.Motorcycle.*` VSS extensions** (2026-09-25, user: "add as many as you can, we will revisit"; partly resolves Q-016)
 Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `LeanAngle`, `FrictionCoefficient`, `EstimatedMass`, each with `...Quality` (uint8 %) and `...State` (string ESTIMATED/CLAMPED/DEFAULT/INVALID); `ThrottlePosition` (throttle valve %, since VSS 6 has no `Vehicle.OBD` and `Chassis.Accelerator.PedalPosition` is driver demand); `IsEcuPresent`. For display, logging, MCP and ML only; safety decisions keep reading platform CAN. Not mapped yet: heartbeats (same signal names in five messages; kuksa-can-provider maps by name, so they need unique names first) and the `*_VALID` bits. The set is provisional and will be revisited.
 
+**D-029 — Provisional base values until the measurement system exists** (2026-09-25, user: "put the basic values that can be changed later; measurements come from a separate test device + server"; provisional answers to Q-014/Q-015; safety-reviewer findings applied)
+- Poll periods: speed `0xF40D` 800 → **100 ms**, TPS `0xF411` 800 → **200 ms** (not a safety input), both `poll_period_verified: false` with `legacy_poll_period_ms: 800`; RPM 50 ms, coolant/battery 800 ms. `stale_after_ms` = 3 × poll period. A budget check requires sum(`assumed_round_trip_ms` / period) ≤ 0.8, with `assumed_round_trip_ms: 20` (provisional).
+- `limits/platform_limits.yaml` (new; generated into `platform_limits.h` for rt_core/safety/hil_sim and `moto_defs/limits.py`):
+  - DEFAULT µ **0.5**, clamp **0.1-1.2**, applied by both rt-core and safety-node. 1.2 is the ceiling ML may never raise.
+  - µ rule: ESTIMATED/CLAMPED → clamp; DEFAULT → max(0.1, min(received, 0.5)); INVALID/RESERVED/unknown → the received value is ignored. The result is always finite.
+  - **No default lean angle**: rt-core sends INVALID, and `LEAN_ANGLE_STATE` value 2 becomes RESERVED. Generated `platform_estimate_state_usable()` accepts only ESTIMATED/CLAMPED.
+  - DEFAULT total mass **252 kg** (172 kg wet + 80 kg rider). Mass is not a Layer 1 cornering input; heavier is the conservative side elsewhere.
+  - Speed: safety-node uses it only if VALID, E2E OK and effective age (AGE + time since the frame arrived) ≤ **400 ms**. It adds age × **5 m/s²** as an acceleration margin.
+- Not decided here: what safety-node does when a value or the whole frame is not usable (Q-002 stays open). If it keeps computing, it uses these defaults.
+- Every value carries `status: provisional` and a rule. Changing one is a `/signal-change` + safety-reviewer, and it is revisited with measured data. Why: consumers need concrete numbers now, both sides must use the same ones, and the conservative side is always chosen (hardware-architecture §5b.2).
 ---
 
 ## Open questions (awaiting decision)
@@ -118,6 +128,6 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 | Q-011 | ~~resolved~~ → D-020 | — | — |
 | Q-012 | ~~resolved~~ → D-021 | — | — |
 | Q-013 | ~~resolved~~ → D-023 | — | — |
-| Q-014 | How conservative must the rt-core DEFAULT fallback values be (µ, mass, lean)? E.g. DEFAULT µ = low bound (wet/gravel) vs. safety-node ignoring DEFAULT and using its own constant | before rt-core EKF / safety-node decision code | safety-reviewer S4; must never loosen the ceiling (§5b.2) |
-| Q-015 | Maximum acceptable VEHICLE_SPEED_AGE for safety-node, and should DID 0xF40D be polled faster than the legacy 800 ms (e.g. 100 ms, second priority after RPM)? | before safety-node uses speed | safety-reviewer S3; 800 ms at 0.5 g ≈ 14 km/h error |
+| Q-014 | Provisional answer in D-029 (DEFAULT µ 0.5 + min rule, no default lean, mass 252 kg). Final values after measurement | with the measurement system | safety-reviewer S4 |
+| Q-015 | Provisional answer in D-029 (speed poll 100 ms, TPS 200 ms, effective speed age ≤ 400 ms + accel margin). Confirm the ECU round-trip time and load, and add an EKF-fused high-rate speed | with the measurement system | safety-reviewer S3 |
 | Q-016 | Partly resolved by D-028. Still open: VSS paths for node health (heartbeats) and the `*_VALID` bits, and a final review of the D-028 names | when linux-node needs them | D-004: user approves each path |

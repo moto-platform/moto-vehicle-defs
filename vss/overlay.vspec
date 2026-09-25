@@ -73,8 +73,8 @@ Vehicle.Motorcycle.LeanAngleQuality:
 Vehicle.Motorcycle.LeanAngleState:
   type: sensor
   datatype: string
-  allowed: [ESTIMATED, CLAMPED, DEFAULT, INVALID]
-  description: State of the lean angle estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.
+  allowed: [ESTIMATED, CLAMPED, INVALID]
+  description: State of the lean angle estimate. There is no default lean angle (D-029).
   dbc2vss:
     signal: LEAN_ANGLE_STATE
     interval_ms: 100
@@ -84,8 +84,8 @@ Vehicle.Motorcycle.LeanAngleState:
           to: ESTIMATED
         - from: CLAMPED
           to: CLAMPED
-        - from: DEFAULT
-          to: DEFAULT
+        - from: RESERVED
+          to: INVALID
         - from: INVALID
           to: INVALID
 
@@ -114,7 +114,7 @@ Vehicle.Motorcycle.FrictionCoefficientState:
   type: sensor
   datatype: string
   allowed: [ESTIMATED, CLAMPED, DEFAULT, INVALID]
-  description: State of the friction estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.
+  description: State of the friction estimate. DEFAULT = rt-core fallback value from limits/platform_limits.yaml (D-029), not an estimate.
   dbc2vss:
     signal: FRICTION_COEFF_STATE
     interval_ms: 100
@@ -155,7 +155,7 @@ Vehicle.Motorcycle.EstimatedMassState:
   type: sensor
   datatype: string
   allowed: [ESTIMATED, CLAMPED, DEFAULT, INVALID]
-  description: State of the mass estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.
+  description: State of the mass estimate. DEFAULT = rt-core fallback value from limits/platform_limits.yaml (D-029), not an estimate.
   dbc2vss:
     signal: TOTAL_MASS_STATE
     interval_ms: 100

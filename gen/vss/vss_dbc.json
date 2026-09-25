@@ -8297,7 +8297,7 @@
                 ]
               }
             },
-            "description": "State of the mass estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.",
+            "description": "State of the mass estimate. DEFAULT = rt-core fallback value from limits/platform_limits.yaml (D-029), not an estimate.",
             "type": "sensor"
           },
           "FrictionCoefficient": {
@@ -8355,7 +8355,7 @@
                 ]
               }
             },
-            "description": "State of the friction estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.",
+            "description": "State of the friction estimate. DEFAULT = rt-core fallback value from limits/platform_limits.yaml (D-029), not an estimate.",
             "type": "sensor"
           },
           "IsEcuPresent": {
@@ -8407,7 +8407,6 @@
             "allowed": [
               "ESTIMATED",
               "CLAMPED",
-              "DEFAULT",
               "INVALID"
             ],
             "datatype": "string",
@@ -8425,8 +8424,8 @@
                     "to": "CLAMPED"
                   },
                   {
-                    "from": "DEFAULT",
-                    "to": "DEFAULT"
+                    "from": "RESERVED",
+                    "to": "INVALID"
                   },
                   {
                     "from": "INVALID",
@@ -8435,7 +8434,7 @@
                 ]
               }
             },
-            "description": "State of the lean angle estimate. DEFAULT = rt-core fallback value (Q-014), not an estimate.",
+            "description": "State of the lean angle estimate. There is no default lean angle (D-029).",
             "type": "sensor"
           },
           "ThrottlePosition": {

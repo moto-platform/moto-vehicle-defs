@@ -19,6 +19,7 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /dbc/platform.dbc     → platform bus (our nodes; ID plan in ARCHITECTURE §4; E2E attributes)
 /vss/overlay.vspec    → Vehicle.Motorcycle.* extensions + dbc2vss mappings (kuksa-can-provider format)
 /uds/dids.yaml        → per-node DID/DTC/routine definitions
+/limits/platform_limits.yaml → shared cornering/speed limits + fallback values (provisional, D-029)
 /tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, VSS JSON
 /gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging)
 /docs/                → all platform documentation (index: docs/README.md)
