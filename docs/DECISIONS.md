@@ -53,6 +53,8 @@ rt-core: FreeRTOS (CMSIS-RTOS2, CubeMX). safety-node and io-node: bare-metal sup
 **D-014 — Docs archive** (2026-09-25, Claude)
 Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 
+**D-015 — Workspace repo `moto-workspace`** (2026-09-25, Claude; user asked to finish remaining setup) The workspace root is its own repo holding `manifest.yaml`, `setup.sh`, root `CLAUDE.md`, `STATUS.md` and the shared `.claude/` agents/skills. It git-ignores `/moto-*/`. Why: otherwise the shared Claude setup exists on one laptop only and cannot reach GitHub or cloud sessions.
+
 ---
 
 ## Open questions (awaiting decision)
