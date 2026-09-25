@@ -61,13 +61,21 @@ Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 
 **D-018 — Shared Claude assets synced into each repo** (2026-09-25, Claude; user asked for it as the next task) Cloud sessions clone only the selected repo(s). So `moto-workspace` stays the source of truth for `PLATFORM-RULES.md`, `.claude/agents/` and `.claude/skills/`, and `scripts/sync_claude.py` copies the relevant subset into each repo's `.claude/`. Each repo's `CLAUDE.md` imports `@.claude/PLATFORM-RULES.md`. Copies carry a "do not edit" marker and are listed in `.claude/.synced`. Run `--check` to detect drift. Agents use relative doc locations (no absolute paths).
 
+**D-019 — CL250 vehicle bus facts (verified on the real bike)** (2026-09-25, from `github.com/alihanesentas/HondaCl250_Telemetry`, whose CAN/UDS path was validated on the CL250)
+- Diagnostic connector (DLC) CAN: **classic CAN, 500 kbps** (ESP32-S3 TWAI).
+- ECU data is obtained by **polling**, not by passive broadcast: UDS `0x22 ReadDataByIdentifier`, 29-bit normal-fixed addressing request `0x18DA10F1` → response `0x18DAF110` (11-bit `0x7E0`/`0x7E8` also sent as a fallback).
+- DIDs, OBD-mapped (`0xF4xx` = SAE J1979 PID), with J1979 scaling: `0xF40C` RPM = (A·256+B)/4 · `0xF40D` speed km/h = A · `0xF405` coolant °C = A−40 · `0xF411` TPS % = A·100/255 · `0xF442` battery V = (A·256+B)/1000.
+- Session handling: `0x10 0x03` (extended session, retried until a positive `0x50`), and `0x3E 0x80` tester-present every 1000 ms.
+- Still unknown: whether any passive broadcast traffic exists on this bus (Q-001 remains open only for that part).
+Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as broadcast messages in `cl250.dbc`). The allowed vehicle-bus services must include `0x10` (sub-functions 0x01/0x03 only) and `0x3E` → Q-011.
+
 ---
 
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
 |---|---|---|---|
-| Q-001 | Is the CL250 vehicle bus classic CAN or FD? Bitrate? Is OBD-II accessible? | Before starting cl250.dbc (signal-map extraction, vehicle-work-plan.md §5.5) | Classic 500 kbps assumed for now |
+| Q-001 | ~~Classic CAN or FD, bitrate, OBD access~~ resolved by D-019; still open: does any passive broadcast traffic exist? | Before starting cl250.dbc (signal-map extraction, vehicle-work-plan.md §5.5) | Classic 500 kbps assumed for now |
 | Q-002 | What does the safety node do once rt-core data becomes `INVALID` via E2E? (a) continue independently on its own minimal IMU, (b) conservative/low-confidence warning mode | once the safety-node hardware is finalized (Group 7) | The detection side is resolved by D-005 |
 | Q-003 | Only one F103 is on hand: is it the io-node prototype or the HIL fault/power node? Will a second F103/G0 be procured? | during HIL hardware setup | |
 | Q-004 | H7 ↔ ESP32-S3 SPI/UART bridge frame format | rt-core + connectivity, jointly | Proposal: COBS + CRC16 + msg-id, defined in defs |
@@ -77,3 +85,6 @@ Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 | Q-008 | Time synchronization: how is GPS PPS/NTP distributed to the MCUs? | Logging system (WP-4) | hardware-architecture.md §5b.8 proposes NTP |
 | Q-009 | HIL realism level (replayed logs vs. live model) and the first target test function | while setting up the hil-bench host | hardware-architecture.md §10.3 |
 | Q-010 | Will suspension potentiometers be added? | Group 11 | |
+| Q-011 | Vehicle-bus rule update: allow `0x10` (0x01 default / 0x03 extended only, NEVER 0x02 programming) and `0x3E` next to `0x22/0x19` and OBD `0x01/0x09`; explicitly forbid `0x11` ECU reset alongside `0x2E/0x31/0x34/0x36/0x27` | Before rt-core UDS client work | Needed because the verified path uses them (D-019) |
+| Q-012 | Poll-based vehicle data vs D-009: only ONE tester may poll the ECU. Proposal: rt-core is the single poller and republishes decoded vehicle signals on the platform bus (state range, E2E for speed); Raspi and safety-node read them from the platform bus. safety-node then depends on rt-core for vehicle speed (impacts Q-002; GPS/IMU fallback?) | Before platform.dbc v0.1.0 | Invalidates D-009's "safety-node/Raspi listen to the vehicle bus directly" bullet |
+| Q-013 | How to bring `HondaCl250_Telemetry` into the org: transfer it as a read-only legacy repo and port its code into `moto-connectivity-node` (temporary telemetry home) + its `mobile_app/flutter_app` into `moto-mobile` (would resolve Q-007 as Flutter)? Keep PlatformIO/Arduino for the ported telemetry, or migrate to ESP-IDF (D-007)? | Before connectivity-node work | Repo is currently public in the personal account |
