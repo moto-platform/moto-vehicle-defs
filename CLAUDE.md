@@ -1,5 +1,7 @@
 # CLAUDE.md — moto-vehicle-defs
 
+@.claude/PLATFORM-RULES.md
+
 ## What this repo is
 
 The **single source of truth for signals** in the motorcycle platform. The CAN message map, the VSS (COVESA Vehicle Signal Specification) semantic model, and the diagnostic (UDS) service definitions live here. **The other 10 repos read this repo; none of them invent their own signal definitions.**
