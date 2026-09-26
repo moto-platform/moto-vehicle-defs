@@ -84,6 +84,31 @@ Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as br
 - **Single tester:** until rt-core exists, connectivity-node is the temporary sole poller. When rt-core starts polling, connectivity-node's poller must be disabled (never two testers, D-021).
 - Nextion is in scope (hardware-architecture §5b.4: target is UART to rt-core). The connectivity-node driver is temporary.
 
+**D-024 — VSS base: COVESA VSS 6.0 via pinned release files** (2026-09-25, Claude proposal during the defs bootstrap — revise if the user objects)
+`gen/vss/vss_dbc.json` = VSS 6.0 release (`vss.yaml`, `units.yaml`, `quantities.yaml`, sha256-pinned in `gen_vss.py`) + `vss/overlay.vspec`, exported with vss-tools **6.0** (6.1 rejects the 6.0 `units.yaml` with a duplicate-unit error). Why: 6.0 is the newest release kuksa-can-provider ships a mapping for (`mapping/vss_6.0`). Consequences: VSS 6 has no `Vehicle.OBD` branch and uses `CombustionEngine.EngineCoolant.Temperature`; Kuksa Databroker on linux-node must load the same JSON; a VSS upgrade is a deliberate MAJOR/MINOR change here.
+
+**D-025 — platform.dbc v0.1 message set** (2026-09-25, Claude proposal — revise if the user objects)
+Safety range (E2E): `EkfLean` 0x020 / 20 ms, `VehicleSpeed` 0x021 / 50 ms, `EkfFrictionMass` 0x022 / 100 ms, all RT_CORE → SAFETY, LINUX (speed also CONN). Each EKF estimate carries a quality % and a 2-bit state (ESTIMATED / CLAMPED / DEFAULT fallback / INVALID, per hardware-architecture §5b.2); `VehicleSpeed` carries VALID + AGE (ms since the ECU sample) because the ECU speed DID is polled every 800 ms. Heartbeats 0x081-0x085 / 100 ms (E2E): NODE_MODE, ERROR_COUNT, UPTIME. State range: `VehicleEngine` 0x110 / 50 ms (RPM, battery, coolant, TPS with the J1979 source scaling, per-signal VALID + ECU_PRESENT). `E2E_DataID` convention `0x1000 + CAN ID`; `NodeId` is a BU_ attribute. CoG height and a cornering-warning output message are not defined yet (later MINOR). `uds/vehicle_cl250.yaml` gets a platform-chosen `stale_after_ms` = 3 × poll period per DID (not a legacy value). rt-core sends `*_STATE = INVALID`, `QUALITY = 0` until the EKF has converged.
+
+**D-026 — E2E profile details** (2026-09-25, Claude proposal refining D-005 — revise if the user objects)
+CRC-8/SAE-J1850 (0x1D, init 0xFF, xorout 0xFF) over DataID low, DataID high, bytes 1..n-1; 4-bit counter 0..15; receiver max delta counter 1 (a single lost frame invalidates that cycle); timeout 3 × cycle, enforced both by `check_timeout()` and inside `check()` (a frame after a gap longer than the timeout resyncs as `INITIAL`, so a stalled sender never resumes as `OK`); `INITIAL` is not usable. Spec: `docs/e2e-profile.md`. Generated C is cross-checked against the Python reference.
+
+**D-027 — codegen targets and vehicle-bus guard** (2026-09-25, Claude proposal refining D-003 — revise if the user objects)
+C is generated for RT_CORE, SAFETY, IO, CONN, HIL_SIM (`gen/c/<node>/`, cantools `use_float`, C99, no heap); HIL_SIM gets every message (restbus impersonation). LINUX and TESTER use the DBC/VSS at runtime and get Python/VSS only. The CL250 DID table goes to rt_core, conn (temporary tester, D-023) and hil_sim (ECU simulator), together with generated `vehicle_cl250_request_allowed()` (payload) and `vehicle_cl250_frame_allowed()` (raw ISO-TP Single Frame only) implementing D-020, which every vehicle-bus transmission must pass, and `vehicle_cl250_parse_response()` (checks SID 0x62 + DID echo). codegen holds a golden copy of the D-020 allow-list: the YAML policy may narrow it but never widen it (safety-reviewer finding).
+
+**D-028 — First `Vehicle.Motorcycle.*` VSS extensions** (2026-09-25, user: "add as many as you can, we will revisit"; partly resolves Q-016)
+Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `LeanAngle`, `FrictionCoefficient`, `EstimatedMass`, each with `...Quality` (uint8 %) and `...State` (string ESTIMATED/CLAMPED/DEFAULT/INVALID); `ThrottlePosition` (throttle valve %, since VSS 6 has no `Vehicle.OBD` and `Chassis.Accelerator.PedalPosition` is driver demand); `IsEcuPresent`. For display, logging, MCP and ML only; safety decisions keep reading platform CAN. Not mapped yet: heartbeats (same signal names in five messages; kuksa-can-provider maps by name, so they need unique names first) and the `*_VALID` bits. The set is provisional and will be revisited.
+
+**D-029 — Provisional base values until the measurement system exists** (2026-09-25, user: "put the basic values that can be changed later; measurements come from a separate test device + server"; provisional answers to Q-014/Q-015; safety-reviewer findings applied)
+- Poll periods: speed `0xF40D` 800 → **100 ms**, TPS `0xF411` 800 → **200 ms** (not a safety input), both `poll_period_verified: false` with `legacy_poll_period_ms: 800`; RPM 50 ms, coolant/battery 800 ms. `stale_after_ms` = 3 × poll period. A budget check requires sum(`assumed_round_trip_ms` / period) ≤ 0.8, with `assumed_round_trip_ms: 20` (provisional).
+- `limits/platform_limits.yaml` (new; generated into `platform_limits.h` for rt_core/safety/hil_sim and `moto_defs/limits.py`):
+  - DEFAULT µ **0.5**, clamp **0.1-1.2**, applied by both rt-core and safety-node. 1.2 is the ceiling ML may never raise.
+  - µ rule: ESTIMATED/CLAMPED → clamp; DEFAULT → max(0.1, min(received, 0.5)); INVALID/RESERVED/unknown → the received value is ignored. The result is always finite.
+  - **No default lean angle**: rt-core sends INVALID, and `LEAN_ANGLE_STATE` value 2 becomes RESERVED. Generated `platform_estimate_state_usable()` accepts only ESTIMATED/CLAMPED.
+  - DEFAULT total mass **252 kg** (172 kg wet + 80 kg rider). Mass is not a Layer 1 cornering input; heavier is the conservative side elsewhere.
+  - Speed: safety-node uses it only if VALID, E2E OK and effective age (AGE + time since the frame arrived) ≤ **400 ms**. It adds age × **5 m/s²** as an acceleration margin.
+- Not decided here: what safety-node does when a value or the whole frame is not usable (Q-002 stays open). If it keeps computing, it uses these defaults.
+- Every value carries `status: provisional` and a rule. Changing one is a `/signal-change` + safety-reviewer, and it is revisited with measured data. Why: consumers need concrete numbers now, both sides must use the same ones, and the conservative side is always chosen (hardware-architecture §5b.2).
 ---
 
 ## Open questions (awaiting decision)
@@ -103,3 +128,6 @@ Consequences: CL250 signals are defined as **vehicle DIDs in `uds/`** (not as br
 | Q-011 | ~~resolved~~ → D-020 | — | — |
 | Q-012 | ~~resolved~~ → D-021 | — | — |
 | Q-013 | ~~resolved~~ → D-023 | — | — |
+| Q-014 | Provisional answer in D-029 (DEFAULT µ 0.5 + min rule, no default lean, mass 252 kg). Final values after measurement | with the measurement system | safety-reviewer S4 |
+| Q-015 | Provisional answer in D-029 (speed poll 100 ms, TPS 200 ms, effective speed age ≤ 400 ms + accel margin). Confirm the ECU round-trip time and load, and add an EKF-fused high-rate speed | with the measurement system | safety-reviewer S3 |
+| Q-016 | Partly resolved by D-028. Still open: VSS paths for node health (heartbeats) and the `*_VALID` bits, and a final review of the D-028 names | when linux-node needs them | D-004: user approves each path |

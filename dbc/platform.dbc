@@ -1,0 +1,186 @@
+VERSION "0.1.0"
+
+
+NS_ :
+	NS_DESC_
+	CM_
+	BA_DEF_
+	BA_
+	VAL_
+	BA_DEF_DEF_
+	VAL_TABLE_
+	SIG_GROUP_
+	SIG_VALTYPE_
+	BO_TX_BU_
+
+BS_:
+
+BU_: RT_CORE SAFETY IO CONN LINUX HIL_SIM TESTER
+
+
+BO_ 32 EkfLean: 8 RT_CORE
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,LINUX
+ SG_ LEAN_ANGLE_STATE : 12|2@1+ (1,0) [0|3] "" SAFETY,LINUX
+ SG_ LEAN_ANGLE : 16|16@1- (0.01,0) [-90|90] "deg" SAFETY,LINUX
+ SG_ LEAN_ANGLE_QUALITY : 32|8@1+ (1,0) [0|100] "%" SAFETY,LINUX
+
+BO_ 33 VehicleSpeed: 8 RT_CORE
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,CONN,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,CONN,LINUX
+ SG_ VEHICLE_SPEED_VALID : 12|1@1+ (1,0) [0|1] "" SAFETY,CONN,LINUX
+ SG_ VEHICLE_SPEED : 16|16@1+ (0.01,0) [0|300] "km/h" SAFETY,CONN,LINUX
+ SG_ VEHICLE_SPEED_AGE : 32|8@1+ (10,0) [0|2550] "ms" SAFETY,CONN,LINUX
+
+BO_ 34 EkfFrictionMass: 8 RT_CORE
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,LINUX
+ SG_ FRICTION_COEFF_STATE : 12|2@1+ (1,0) [0|3] "" SAFETY,LINUX
+ SG_ TOTAL_MASS_STATE : 14|2@1+ (1,0) [0|3] "" SAFETY,LINUX
+ SG_ FRICTION_COEFF : 16|16@1+ (0.001,0) [0|2] "" SAFETY,LINUX
+ SG_ FRICTION_COEFF_QUALITY : 32|8@1+ (1,0) [0|100] "%" SAFETY,LINUX
+ SG_ TOTAL_MASS : 40|16@1+ (0.1,0) [0|1000] "kg" SAFETY,LINUX
+ SG_ TOTAL_MASS_QUALITY : 56|8@1+ (1,0) [0|100] "%" SAFETY,LINUX
+
+BO_ 129 HeartbeatRtCore: 8 RT_CORE
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,IO,CONN,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,IO,CONN,LINUX
+ SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" SAFETY,IO,CONN,LINUX
+ SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" SAFETY,IO,CONN,LINUX
+ SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" SAFETY,IO,CONN,LINUX
+
+BO_ 130 HeartbeatSafety: 8 SAFETY
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
+ SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
+ SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
+ SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" RT_CORE,LINUX
+
+BO_ 131 HeartbeatIo: 8 IO
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
+ SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
+ SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
+ SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" RT_CORE,LINUX
+
+BO_ 132 HeartbeatConn: 8 CONN
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
+ SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
+ SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
+ SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" RT_CORE,LINUX
+
+BO_ 133 HeartbeatLinux: 8 LINUX
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE
+ SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" RT_CORE
+ SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" RT_CORE
+ SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" RT_CORE
+
+BO_ 272 VehicleEngine: 8 RT_CORE
+ SG_ ENGINE_SPEED : 0|16@1+ (0.25,0) [0|16383.75] "rpm" CONN,LINUX
+ SG_ BATTERY_VOLTAGE : 16|16@1+ (0.001,0) [0|65.535] "V" CONN,LINUX
+ SG_ COOLANT_TEMP : 32|8@1+ (1,-40) [-40|215] "degC" CONN,LINUX
+ SG_ THROTTLE_POS : 40|8@1+ (0.392156862745098,0) [0|100] "%" CONN,LINUX
+ SG_ ENGINE_SPEED_VALID : 48|1@1+ (1,0) [0|1] "" CONN,LINUX
+ SG_ BATTERY_VOLTAGE_VALID : 49|1@1+ (1,0) [0|1] "" CONN,LINUX
+ SG_ COOLANT_TEMP_VALID : 50|1@1+ (1,0) [0|1] "" CONN,LINUX
+ SG_ THROTTLE_POS_VALID : 51|1@1+ (1,0) [0|1] "" CONN,LINUX
+ SG_ ECU_PRESENT : 52|1@1+ (1,0) [0|1] "" CONN,LINUX
+
+
+CM_ "moto-platform platform CAN bus (classic CAN 500 kbps, 11-bit IDs, D-009). ID plan and E2E scheme: docs/ARCHITECTURE.md section 4 and docs/e2e-profile.md. Only our own nodes are on this bus.";
+CM_ BU_ RT_CORE "STM32H7 domain controller; sole vehicle-bus tester, republishes vehicle signals (D-021).";
+CM_ BU_ SAFETY "STM32G4 cornering safety monitor.";
+CM_ BU_ IO "STM32G0 zone/I-O node (blind spot, immobilizer, power).";
+CM_ BU_ CONN "ESP32-S3 connectivity + audio node.";
+CM_ BU_ LINUX "Raspberry Pi 5 HPC (Kuksa, kuksa-can-provider).";
+CM_ BU_ HIL_SIM "STM32F4 HIL restbus simulator; may impersonate any node on the bench.";
+CM_ BU_ TESTER "Development/diagnostic tester (host PC).";
+CM_ BO_ 32 "rt-core EKF lean (roll) angle estimate for the cornering decision (hardware-architecture 5b.2 Layer 2). Until the EKF has converged after a restart, rt-core sends LEAN_ANGLE_STATE=INVALID and QUALITY=0.";
+CM_ SG_ 32 LEAN_ANGLE_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, or INVALID. There is no safe default lean angle: rt-core sends INVALID instead (D-029); 2 is reserved and must be treated as INVALID.";
+CM_ SG_ 32 LEAN_ANGLE "Roll angle; positive = leaning right.";
+CM_ SG_ 32 LEAN_ANGLE_QUALITY "Estimator confidence; 0 = no confidence.";
+CM_ BO_ 33 "Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). Safety range because safety-node consumes it.";
+CM_ SG_ 33 VEHICLE_SPEED_VALID "1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; safety consumers must also bound VEHICLE_SPEED_AGE (vehicle_speed_max_age_ms in limits/platform_limits.yaml, D-029).";
+CM_ SG_ 33 VEHICLE_SPEED_AGE "Time since rt-core received the source sample; saturates at 2550 ms.";
+CM_ BO_ 34 "rt-core EKF road friction and total mass estimates for the cornering decision (hardware-architecture 5b.2 Layer 2). Until the EKF has converged after a restart, rt-core sends *_STATE=INVALID and QUALITY=0.";
+CM_ SG_ 34 FRICTION_COEFF_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).";
+CM_ SG_ 34 TOTAL_MASS_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).";
+CM_ SG_ 34 FRICTION_COEFF "Estimated tyre-road friction coefficient mu (dimensionless).";
+CM_ SG_ 34 TOTAL_MASS "Estimated total mass (vehicle + rider + load).";
+CM_ BO_ 129 "rt-core heartbeat (0x080 + node_id).";
+CM_ BO_ 130 "safety-node heartbeat (0x080 + node_id).";
+CM_ BO_ 131 "io-node heartbeat (0x080 + node_id).";
+CM_ BO_ 132 "connectivity-node heartbeat (0x080 + node_id).";
+CM_ BO_ 133 "linux-node heartbeat (0x080 + node_id).";
+CM_ SG_ 129 ERROR_COUNT "Faults detected since boot; saturates at 255.";
+CM_ SG_ 129 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
+CM_ SG_ 130 ERROR_COUNT "Faults detected since boot; saturates at 255.";
+CM_ SG_ 130 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
+CM_ SG_ 131 ERROR_COUNT "Faults detected since boot; saturates at 255.";
+CM_ SG_ 131 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
+CM_ SG_ 132 ERROR_COUNT "Faults detected since boot; saturates at 255.";
+CM_ SG_ 132 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
+CM_ SG_ 133 ERROR_COUNT "Faults detected since boot; saturates at 255.";
+CM_ SG_ 133 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
+CM_ BO_ 272 "CL250 engine values republished by rt-core from UDS DIDs 0xF40C/0xF442/0xF405/0xF411 (D-021, uds/vehicle_cl250.yaml). Scaling equals the J1979 source scaling.";
+CM_ SG_ 272 ENGINE_SPEED "From DID 0xF40C, (A*256+B)/4.";
+CM_ SG_ 272 BATTERY_VOLTAGE "From DID 0xF442, (A*256+B)/1000.";
+CM_ SG_ 272 COOLANT_TEMP "From DID 0xF405, A-40.";
+CM_ SG_ 272 THROTTLE_POS "From DID 0xF411, A*100/255 (raw byte carried unchanged).";
+CM_ SG_ 272 ECU_PRESENT "1 = the ECU answered any UDS request within the ECU-absent timeout.";
+BA_DEF_ BU_ "NodeId" INT 0 15;
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
+BA_DEF_ BO_ "E2E_Protected" ENUM "No","Yes";
+BA_DEF_ BO_ "E2E_DataID" INT 0 65535;
+BA_DEF_DEF_ "NodeId" 0;
+BA_DEF_DEF_ "GenMsgCycleTime" 0;
+BA_DEF_DEF_ "E2E_Protected" "No";
+BA_DEF_DEF_ "E2E_DataID" 0;
+BA_ "NodeId" BU_ RT_CORE 1;
+BA_ "NodeId" BU_ SAFETY 2;
+BA_ "NodeId" BU_ IO 3;
+BA_ "NodeId" BU_ CONN 4;
+BA_ "NodeId" BU_ LINUX 5;
+BA_ "NodeId" BU_ HIL_SIM 14;
+BA_ "NodeId" BU_ TESTER 15;
+BA_ "GenMsgCycleTime" BO_ 32 20;
+BA_ "E2E_Protected" BO_ 32 1;
+BA_ "E2E_DataID" BO_ 32 4128;
+BA_ "GenMsgCycleTime" BO_ 33 50;
+BA_ "E2E_Protected" BO_ 33 1;
+BA_ "E2E_DataID" BO_ 33 4129;
+BA_ "GenMsgCycleTime" BO_ 34 100;
+BA_ "E2E_Protected" BO_ 34 1;
+BA_ "E2E_DataID" BO_ 34 4130;
+BA_ "GenMsgCycleTime" BO_ 129 100;
+BA_ "E2E_Protected" BO_ 129 1;
+BA_ "E2E_DataID" BO_ 129 4225;
+BA_ "GenMsgCycleTime" BO_ 130 100;
+BA_ "E2E_Protected" BO_ 130 1;
+BA_ "E2E_DataID" BO_ 130 4226;
+BA_ "GenMsgCycleTime" BO_ 131 100;
+BA_ "E2E_Protected" BO_ 131 1;
+BA_ "E2E_DataID" BO_ 131 4227;
+BA_ "GenMsgCycleTime" BO_ 132 100;
+BA_ "E2E_Protected" BO_ 132 1;
+BA_ "E2E_DataID" BO_ 132 4228;
+BA_ "GenMsgCycleTime" BO_ 133 100;
+BA_ "E2E_Protected" BO_ 133 1;
+BA_ "E2E_DataID" BO_ 133 4229;
+BA_ "GenMsgCycleTime" BO_ 272 50;
+VAL_ 32 LEAN_ANGLE_STATE 0 "ESTIMATED" 1 "CLAMPED" 2 "RESERVED" 3 "INVALID" ;
+VAL_ 33 VEHICLE_SPEED_VALID 0 "INVALID" 1 "VALID" ;
+VAL_ 34 FRICTION_COEFF_STATE 0 "ESTIMATED" 1 "CLAMPED" 2 "DEFAULT" 3 "INVALID" ;
+VAL_ 34 TOTAL_MASS_STATE 0 "ESTIMATED" 1 "CLAMPED" 2 "DEFAULT" 3 "INVALID" ;
+VAL_ 129 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
+VAL_ 130 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
+VAL_ 131 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
+VAL_ 132 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
+VAL_ 133 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
+VAL_ 272 ENGINE_SPEED_VALID 0 "INVALID" 1 "VALID" ;
+VAL_ 272 BATTERY_VOLTAGE_VALID 0 "INVALID" 1 "VALID" ;
+VAL_ 272 COOLANT_TEMP_VALID 0 "INVALID" 1 "VALID" ;
+VAL_ 272 THROTTLE_POS_VALID 0 "INVALID" 1 "VALID" ;
+VAL_ 272 ECU_PRESENT 0 "ABSENT" 1 "PRESENT" ;

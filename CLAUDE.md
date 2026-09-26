@@ -19,6 +19,7 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /dbc/platform.dbc     → platform bus (our nodes; ID plan in ARCHITECTURE §4; E2E attributes)
 /vss/overlay.vspec    → Vehicle.Motorcycle.* extensions + dbc2vss mappings (kuksa-can-provider format)
 /uds/dids.yaml        → per-node DID/DTC/routine definitions
+/limits/platform_limits.yaml → shared cornering/speed limits + fallback values (provisional, D-029)
 /tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, VSS JSON
 /gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging)
 /docs/                → all platform documentation (index: docs/README.md)
@@ -36,6 +37,18 @@ This repo is **semantically versioned** (v1.0.0, v1.1.0...). Other repos pin to 
 3. **Only after that** are dependent repos (`moto-rt-core`, `moto-linux-node`, etc.) updated to the new version — not automatic, a deliberate step
 
 When Claude Code works in this repo: after changing a signal schema, **check which repos depend on this version and remind the user** — do not break them silently.
+
+## Build and checks
+
+Tooling is a uv project in `tools/codegen` (Python 3.11+, cantools, vss-tools 6.0). From the repo root:
+
+```bash
+make check   # strict DBC parse + moto-codegen check + ruff + pytest (needs gcc for C tests)
+make gen     # regenerate gen/ (first run downloads the pinned COVESA VSS 6.0 release)
+make drift   # make gen, then fail if gen/ changed — CI runs this
+```
+
+C targets and the ID plan: `tools/codegen/src/moto_codegen/config.py`. E2E spec: `docs/e2e-profile.md`. Approved `Vehicle.Motorcycle.*` paths go into `APPROVED_EXTENSIONS` in `gen_vss.py` (only after the user says yes).
 
 ## Signal naming
 

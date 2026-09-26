@@ -1,0 +1,233 @@
+# Honda CL250 engine ECU: UDS polling definition for the single vehicle-bus tester
+# (rt-core, D-021; connectivity-node until rt-core exists, D-023).
+#
+# Every value here is extracted from the legacy firmware whose CAN/UDS path was
+# validated on the real motorcycle (D-019). Evidence is "<path>:<line(s)>" inside
+# `source.repo` at `source.commit`. Human notes: docs/legacy-telemetry-notes.md.
+# Nothing here may cause a write to the ECU: the requests are checked against
+# `tester_policy` (D-020) by tools/codegen, and generated code enforces it again.
+
+schema_version: 1
+vehicle: Honda CL250
+ecu: CL250_ECU
+
+source:
+  repo: moto-platform/HondaCl250_Telemetry
+  commit: 16a4b26
+  status: archived, read-only (D-022)
+
+bus:
+  type: classic_can
+  bitrate: 500000
+  verified: true
+  evidence:
+    - src/hal/TwaiCanBus.cpp:7
+    - CONTEXT.md:20
+
+addressing:
+  primary:
+    id_type: extended_29bit
+    scheme: normal_fixed          # ISO 15765-4: 0x18DA<TA><SA>
+    request_id: 0x18DA10F1
+    response_id: 0x18DAF110
+    ecu_address: 0x10
+    tester_address: 0xF1
+    verified: true
+    evidence:
+      - src/HondaCANModule.cpp:3-6
+      - src/HondaCANModule.h:21
+      - CONTEXT.md:47-48
+  fallback:
+    id_type: standard_11bit
+    request_id: 0x7E0
+    response_id: 0x7E8
+    # The legacy code sends every request on both IDs and accepts either response.
+    # Which of the two the CL250 ECU actually answers was not recorded.
+    verified: false
+    evidence:
+      - src/HondaCANModule.cpp:8-9
+      - src/HondaCANModule.h:22
+      - src/HondaCANModule.cpp:99-103
+
+transport:
+  protocol: iso15765_2
+  frame_dlc: 8
+  padding_byte: 0xAA
+  # All DIDs below fit in a Single Frame. Legacy code drops any other PCI type;
+  # a First Frame's byte 1 is part of the length, not a SID (ISO-TP pitfall).
+  single_frame_only_in_legacy: true
+  evidence:
+    - src/HondaCANModule.cpp:52-64
+    - src/HondaCANModule.cpp:222-239
+
+# D-020: the only services the vehicle-bus tester may ever send. Sub-function
+# checks ignore bit 7 (suppressPosRspMsgIndicationBit).
+tester_policy:
+  decision: D-020
+  allowed:
+    - {sid: 0x10, name: DiagnosticSessionControl, subfunctions: [0x01, 0x03]}
+    - {sid: 0x3E, name: TesterPresent, subfunctions: [0x00]}
+    - {sid: 0x22, name: ReadDataByIdentifier}
+    - {sid: 0x19, name: ReadDTCInformation}
+    - {sid: 0x01, name: OBD show current data}
+    - {sid: 0x09, name: OBD request vehicle information}
+  forbidden: [0x11, 0x14, 0x27, 0x2E, 0x2F, 0x31, 0x34, 0x36, 0x37]
+  forbidden_subfunctions:
+    - {sid: 0x10, subfunctions: [0x02]}
+
+session:
+  start:
+    request: [0x10, 0x03]            # UDS payload (without ISO-TP PCI)
+    positive_response_sid: 0x50
+    retry_interval_ms: 2000          # retried until a positive 0x50 is seen
+    verified: true
+    evidence:
+      - src/HondaCANModule.cpp:37-42
+      - src/HondaCANModule.cpp:151-158
+      - src/HondaCANModule.cpp:276-282
+      - src/HondaCANModule.h:103-105
+  tester_present:
+    request: [0x3E, 0x80]            # zeroSubFunction, positive response suppressed
+    period_ms: 1000
+    verified: true
+    evidence:
+      - src/HondaCANModule.cpp:143-149
+      - CONTEXT.md:52
+
+timing:
+  requests_in_flight: 1              # strict single-request state machine
+  response_timeout_base_ms: 100
+  response_timeout_max_ms: 2000      # NRC 0x78 resets and doubles the timeout up to this
+  max_consecutive_timeouts: 5
+  did_skip_cooldown_ms: 5000         # DID skipped this long after max_consecutive_timeouts
+  ecu_absent_timeout_ms: 3000        # ECU "present" if any positive response or NRC within this
+  bus_off_backoff_initial_ms: 1000   # recovery attempts back off exponentially
+  bus_off_backoff_max_ms: 30000
+  # PROVISIONAL (D-029), not measured: round-trip time assumed for the polling
+  # budget check; sum(assumed_round_trip_ms / poll_period_ms) must stay <= 0.8.
+  assumed_round_trip_ms: 20
+  verified: true
+  evidence:
+    - src/HondaCANModule.h:34-41
+    - src/HondaCANModule.h:59-92
+    - src/HondaCANModule.h:107-109
+    - src/HondaCANModule.cpp:105-141
+    - src/HondaCANModule.cpp:195-214
+    - src/HondaCANModule.cpp:283-309
+
+# Response layout (Single Frame): [PCI=0x0N][0x62][DID_hi][DID_lo][A][B]...
+# raw = data bytes as unsigned big-endian; physical = raw * factor_num / factor_den + offset.
+# Order = poll priority (index 0 is checked first every cycle).
+# poll_period_verified: false = provisional platform value (D-029) that differs from
+# the verified legacy period (legacy_poll_period_ms); to be confirmed by the
+# measurement system. The DID itself and its formula stay verified.
+# stale_after_ms is a PLATFORM choice (3 x poll period, D-025), not a legacy value:
+# a sample older than this must not be used or republished as VALID. The legacy
+# code used one 500 ms threshold for everything (src/SystemState.h:10).
+dids:
+  - did: 0xF40C
+    name: ENGINE_SPEED
+    description: Engine speed (SAE J1979 PID 0x0C).
+    obd_pid: 0x0C
+    length: 2
+    formula: (A*256+B)/4
+    factor_num: 1
+    factor_den: 4
+    offset: 0
+    unit: rpm
+    min: 0
+    max: 16383.75
+    poll_period_ms: 50
+    stale_after_ms: 150
+    platform_signal: VehicleEngine.ENGINE_SPEED
+    verified: true
+    evidence:
+      - src/HondaCANModule.h:76
+      - src/HondaCANModule.cpp:244-247
+
+  - did: 0xF40D
+    name: VEHICLE_SPEED
+    description: Vehicle speed (SAE J1979 PID 0x0D).
+    obd_pid: 0x0D
+    length: 1
+    formula: A
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: km/h
+    min: 0
+    max: 255
+    poll_period_ms: 100
+    poll_period_verified: false
+    legacy_poll_period_ms: 800
+    stale_after_ms: 300
+    platform_signal: VehicleSpeed.VEHICLE_SPEED
+    verified: true
+    evidence:
+      - src/HondaCANModule.h:77
+      - src/HondaCANModule.cpp:248-251
+
+  - did: 0xF411
+    name: THROTTLE_POS
+    description: Absolute throttle position (SAE J1979 PID 0x11).
+    obd_pid: 0x11
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 200
+    poll_period_verified: false
+    legacy_poll_period_ms: 800
+    stale_after_ms: 600
+    platform_signal: VehicleEngine.THROTTLE_POS
+    verified: true
+    evidence:
+      - src/HondaCANModule.h:78
+      - src/HondaCANModule.cpp:256-259
+
+  - did: 0xF405
+    name: COOLANT_TEMP
+    description: Engine coolant temperature (SAE J1979 PID 0x05).
+    obd_pid: 0x05
+    length: 1
+    formula: A-40
+    factor_num: 1
+    factor_den: 1
+    offset: -40
+    unit: degC
+    min: -40
+    max: 215
+    poll_period_ms: 800
+    stale_after_ms: 2400
+    platform_signal: VehicleEngine.COOLANT_TEMP
+    verified: true
+    evidence:
+      - src/HondaCANModule.h:79
+      - src/HondaCANModule.cpp:252-255
+
+  - did: 0xF442
+    name: BATTERY_VOLTAGE
+    description: Control module voltage (SAE J1979 PID 0x42).
+    obd_pid: 0x42
+    length: 2
+    formula: (A*256+B)/1000
+    factor_num: 1
+    factor_den: 1000
+    offset: 0
+    unit: V
+    min: 0
+    max: 65.535
+    poll_period_ms: 800
+    stale_after_ms: 2400
+    platform_signal: VehicleEngine.BATTERY_VOLTAGE
+    verified: true
+    # The legacy decoder also has an A/10 heuristic for short/small responses;
+    # it is not carried over (see docs/legacy-telemetry-notes.md).
+    evidence:
+      - src/HondaCANModule.h:80
+      - src/HondaCANModule.cpp:260-268
+      - CONTEXT.md:59

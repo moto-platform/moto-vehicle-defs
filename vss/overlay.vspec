@@ -1,0 +1,196 @@
+# moto-platform VSS overlay (D-004) on top of COVESA VSS 6.0 (base pinned in
+# tools/codegen/src/moto_codegen/gen_vss.py). Consumed by kuksa-can-provider
+# (dbc2vss keys) together with dbc/platform.dbc on the Raspi. Output:
+# gen/vss/vss_dbc.json (`make gen`).
+#
+# Rules:
+# - Standard COVESA paths where one exists. Vehicle.Motorcycle.* extensions need the
+#   user's approval first (D-004; approved set: D-028); tools/codegen rejects any
+#   other unknown path.
+# - Safety-path signals may be mirrored here for display/logging only; no safety
+#   decision ever reads VSS (ARCHITECTURE section 5).
+# - kuksa-can-provider cannot gate a value on a *_VALID bit; consumers must treat
+#   Vehicle.* values as display data (VALID bits are in platform.dbc).
+
+Vehicle.Speed:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: VEHICLE_SPEED
+    interval_ms: 100
+
+Vehicle.Powertrain.CombustionEngine.Speed:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: ENGINE_SPEED
+    interval_ms: 100
+
+Vehicle.Powertrain.CombustionEngine.EngineCoolant.Temperature:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: COOLANT_TEMP
+    interval_ms: 1000
+
+Vehicle.LowVoltageBattery.CurrentVoltage:
+  type: sensor
+  datatype: float
+  dbc2vss:
+    signal: BATTERY_VOLTAGE
+    interval_ms: 1000
+
+# --------------------------------------------------------------------------
+# Vehicle.Motorcycle.* extensions (approved by the user, D-028). Display,
+# logging, MCP and ML use only; safety decisions read platform CAN directly.
+
+Vehicle.Motorcycle:
+  type: branch
+  description: Motorcycle-specific signals (moto-platform extension, D-028).
+
+Vehicle.Motorcycle.LeanAngle:
+  type: sensor
+  datatype: float
+  unit: degrees
+  min: -90
+  max: 90
+  description: Roll (lean) angle estimated by the rt-core EKF. Positive = leaning right.
+  dbc2vss:
+    signal: LEAN_ANGLE
+    interval_ms: 50
+
+Vehicle.Motorcycle.LeanAngleQuality:
+  type: sensor
+  datatype: uint8
+  unit: percent
+  min: 0
+  max: 100
+  description: Estimator confidence of the lean angle; 0 = no confidence.
+  dbc2vss:
+    signal: LEAN_ANGLE_QUALITY
+    interval_ms: 100
+
+Vehicle.Motorcycle.LeanAngleState:
+  type: sensor
+  datatype: string
+  allowed: [ESTIMATED, CLAMPED, INVALID]
+  description: State of the lean angle estimate. There is no default lean angle (D-029).
+  dbc2vss:
+    signal: LEAN_ANGLE_STATE
+    interval_ms: 100
+    transform:
+      mapping:
+        - from: ESTIMATED
+          to: ESTIMATED
+        - from: CLAMPED
+          to: CLAMPED
+        - from: RESERVED
+          to: INVALID
+        - from: INVALID
+          to: INVALID
+
+Vehicle.Motorcycle.FrictionCoefficient:
+  type: sensor
+  datatype: float
+  min: 0
+  max: 2
+  description: Tyre-road friction coefficient mu estimated by the rt-core EKF (dimensionless).
+  dbc2vss:
+    signal: FRICTION_COEFF
+    interval_ms: 100
+
+Vehicle.Motorcycle.FrictionCoefficientQuality:
+  type: sensor
+  datatype: uint8
+  unit: percent
+  min: 0
+  max: 100
+  description: Estimator confidence of the friction coefficient; 0 = no confidence.
+  dbc2vss:
+    signal: FRICTION_COEFF_QUALITY
+    interval_ms: 100
+
+Vehicle.Motorcycle.FrictionCoefficientState:
+  type: sensor
+  datatype: string
+  allowed: [ESTIMATED, CLAMPED, DEFAULT, INVALID]
+  description: State of the friction estimate. DEFAULT = rt-core fallback value from limits/platform_limits.yaml (D-029), not an estimate.
+  dbc2vss:
+    signal: FRICTION_COEFF_STATE
+    interval_ms: 100
+    transform:
+      mapping:
+        - from: ESTIMATED
+          to: ESTIMATED
+        - from: CLAMPED
+          to: CLAMPED
+        - from: DEFAULT
+          to: DEFAULT
+        - from: INVALID
+          to: INVALID
+
+Vehicle.Motorcycle.EstimatedMass:
+  type: sensor
+  datatype: float
+  unit: kg
+  min: 0
+  max: 1000
+  description: Total mass (vehicle + rider + load) estimated by the rt-core EKF.
+  dbc2vss:
+    signal: TOTAL_MASS
+    interval_ms: 100
+
+Vehicle.Motorcycle.EstimatedMassQuality:
+  type: sensor
+  datatype: uint8
+  unit: percent
+  min: 0
+  max: 100
+  description: Estimator confidence of the mass estimate; 0 = no confidence.
+  dbc2vss:
+    signal: TOTAL_MASS_QUALITY
+    interval_ms: 100
+
+Vehicle.Motorcycle.EstimatedMassState:
+  type: sensor
+  datatype: string
+  allowed: [ESTIMATED, CLAMPED, DEFAULT, INVALID]
+  description: State of the mass estimate. DEFAULT = rt-core fallback value from limits/platform_limits.yaml (D-029), not an estimate.
+  dbc2vss:
+    signal: TOTAL_MASS_STATE
+    interval_ms: 100
+    transform:
+      mapping:
+        - from: ESTIMATED
+          to: ESTIMATED
+        - from: CLAMPED
+          to: CLAMPED
+        - from: DEFAULT
+          to: DEFAULT
+        - from: INVALID
+          to: INVALID
+
+Vehicle.Motorcycle.ThrottlePosition:
+  type: sensor
+  datatype: float
+  unit: percent
+  min: 0
+  max: 100
+  description: Throttle valve opening from the ECU TPS (J1979 PID 0x11), not the twist-grip demand.
+  dbc2vss:
+    signal: THROTTLE_POS
+    interval_ms: 100
+
+Vehicle.Motorcycle.IsEcuPresent:
+  type: sensor
+  datatype: boolean
+  description: True if the engine ECU answered a UDS request within the ECU-absent timeout.
+  dbc2vss:
+    signal: ECU_PRESENT
+    interval_ms: 1000
+    transform:
+      mapping:
+        - from: ABSENT
+          to: false
+        - from: PRESENT
+          to: true

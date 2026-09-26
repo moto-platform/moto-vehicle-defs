@@ -1,0 +1,35 @@
+# UDS DIDs, DTCs and routines served by OUR platform nodes (UDS on the platform
+# bus, 0x700-0x7FF: physical 0x7N0/0x7N8, functional 0x7DF; ARCHITECTURE section 4).
+# The vehicle ECU is defined in uds/vehicle_cl250.yaml and is never written to.
+#
+# SKELETON: no DIDs are defined yet. Entry format (add via /signal-change):
+#   - did: 0xF189            # 0xF1xx identification, 0xFDxx platform-specific
+#     name: SW_VERSION
+#     length: 16             # bytes
+#     encoding: ascii        # ascii | uint | int | bytes
+#     access: read           # read-only unless the user approves otherwise
+#     description: Application software version.
+
+schema_version: 1
+
+nodes:
+  RT_CORE:
+    dids: []
+    dtcs: []
+    routines: []
+  SAFETY:
+    dids: []
+    dtcs: []
+    routines: []
+  IO:
+    dids: []
+    dtcs: []
+    routines: []
+  CONN:
+    dids: []
+    dtcs: []
+    routines: []
+  LINUX:
+    dids: []
+    dtcs: []
+    routines: []
