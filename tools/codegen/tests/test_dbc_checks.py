@@ -60,3 +60,26 @@ def test_naming_rules(platform_text):
 def test_unknown_node_id_attribute(platform_text):
     text = platform_text.replace('BA_ "NodeId" BU_ SAFETY 2;', 'BA_ "NodeId" BU_ SAFETY 7;')
     assert any("NodeId 7 != 2" in e for e in errors_for(text))
+
+
+def test_cl250_rejects_diagnostic_ids_and_missing_evidence():
+    from moto_codegen.dbc_checks import check_cl250_dbc
+
+    text = """VERSION ""
+NS_ :
+BS_:
+BU_: CL250_ECU
+BO_ 2564485392 Diag29: 8 CL250_ECU
+ SG_ X : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+BO_ 2024 Diag11: 8 CL250_ECU
+ SG_ Y : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+BO_ 256 Broadcast: 8 CL250_ECU
+ SG_ Z : 0|8@1+ (1,0) [0|255] "" Vector__XXX
+CM_ BO_ 2564485392 "UNVERIFIED - sniffed once";
+CM_ BO_ 2024 "VERIFIED - log 3";
+"""
+    errs = check_cl250_dbc(parse_dbc(text))
+    assert any("Diag29" in e and "diagnostic ID" in e for e in errs)
+    assert any("Diag11" in e and "diagnostic ID" in e for e in errs)
+    assert any("Broadcast" in e and "VERIFIED" in e for e in errs)
+    assert not any("Broadcast" in e and "diagnostic" in e for e in errs)

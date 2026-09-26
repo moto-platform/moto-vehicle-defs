@@ -152,11 +152,15 @@ def _check_e2e_layout(msg: Message, where: str) -> list[str]:
 
 
 def check_cl250_dbc(db: Database) -> list[str]:
+    """Future passive-broadcast frames: never a diagnostic ID, always with evidence."""
     errors = []
     for msg in db.messages:
-        comment = msg.comment or ""
-        if not msg.is_extended_frame and msg.frame_id in range(0x7E0, 0x7F0):
-            errors.append(f"{msg.name}: 0x7E0-0x7EF are diagnostic IDs, not broadcast frames")
-        if "UNVERIFIED" not in comment and "VERIFIED" not in comment:
+        diag_11 = not msg.is_extended_frame and 0x7DF <= msg.frame_id <= 0x7EF
+        diag_29 = msg.is_extended_frame and (msg.frame_id >> 16) in (0x18DA, 0x18DB)
+        if diag_11 or diag_29:
+            errors.append(
+                f"{msg.name}: 0x{msg.frame_id:X} is a diagnostic ID, not a broadcast frame"
+            )
+        if "VERIFIED" not in (msg.comment or ""):  # also matches "UNVERIFIED - <evidence>"
             errors.append(f"{msg.name}: comment must state VERIFIED or UNVERIFIED - <evidence>")
     return errors

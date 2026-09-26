@@ -38,3 +38,4 @@ testpaths = ["tests"]
 [tool.ruff.lint.per-file-ignores]
 # Embedded C templates keep C formatting.
 "src/moto_codegen/gen_c.py" = ["E501"]
+"src/moto_codegen/c_e2e_templates.py" = ["E501"]
