@@ -109,6 +109,17 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
   - Speed: safety-node uses it only if VALID, E2E OK and effective age (AGE + time since the frame arrived) ≤ **400 ms**. It adds age × **5 m/s²** as an acceleration margin.
 - Not decided here: what safety-node does when a value or the whole frame is not usable (Q-002 stays open). If it keeps computing, it uses these defaults.
 - Every value carries `status: provisional` and a rule. Changing one is a `/signal-change` + safety-reviewer, and it is revisited with measured data. Why: consumers need concrete numbers now, both sides must use the same ones, and the conservative side is always chosen (hardware-architecture §5b.2).
+**D-030 — Temporary tester safeguards and private-submodule CI** (2026-09-26, Claude proposal from the connectivity-node realignment and its safety review — pending user confirmation)
+- connectivity-node, the temporary sole tester (D-023), gains four safeguards:
+  - A foreign-tester latch: any frame received on the ECU request IDs stops the poller and the TWAI driver until reboot (D-021).
+  - A latch-off after 5 bus-off events (local constant for now; candidate for `uds/vehicle_cl250.yaml`).
+  - A cap on NRC 0x78 extensions at `response_timeout_max_ms` total, and only NRCs for 0x22 can resolve the pending read.
+  - A poller-off build (`CONN_VEHICLE_TESTER=0`, env `esp32-s3-devkitc-1-no-tester`) that never installs the TWAI driver and holds CAN TX recessive.
+- Generic ISO 14229/11898 protocol constants (SIDs, NRCs, max 11-bit ID) may live in a consumer's own header. Vehicle IDs, DIDs, formulas and timings still come only from `gen/`.
+- CI for private submodules:
+  - Check out the repo with the default token, then fetch `external/moto-vehicle-defs` with the `MOTO_DEFS_TOKEN` secret (Contents: read on moto-vehicle-defs only). Never vendor the defs.
+  - moto-mobile verifies its BLE schema copy against moto-connectivity-node with an optional `MOTO_CONN_READ_TOKEN`.
+
 ---
 
 ## Open questions (awaiting decision)
