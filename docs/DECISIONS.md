@@ -125,6 +125,27 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 - `actions/checkout` must use `persist-credentials: false`. Otherwise its persisted GITHUB_TOKEN (an included credentials config) overrides the URL credentials, and the defs clone fails with 403 "Write access to repository not granted".
 - Fine-grained PATs could not be granted access to the org (no org policy option visible, no approval request appeared), and deploy keys are disabled in the org. So the current token is a **classic PAT with `repo` scope, 90-day expiry (~2026-12-26)**. Accepted trade-off: broader than read-only; it lives only in private-repo secrets and is masked in logs. Move to a read-only deploy key or GitHub App once the org setting is found.
 
+
+**D-032 — BLE telemetry v3, raw IMU stream and the session upload path** (2026-09-27, Claude proposal from the data-pipeline task — pending user confirmation)
+- BLE layouts stay single-sourced in `moto-connectivity-node/docs/ble_telemetry_packet_schema.json`:
+  - **Telemetry v3** (37 B): node clock `deviceTimeMs`, per-signal ages (65535 = never received; valid bits from the generated `stale_after_ms`, D-029), and CAN/tester health (TWAI state, TEC/REC, bus-off count, unanswered DIDs, D-030 latch flags).
+  - v2 (16 B) stays as the fallback when the negotiated MTU cannot carry v3. Nothing is truncated.
+  - Lean fields are deprecated, do not use them for analysis (D-023).
+  - Fields carry `defsSignal` + `scale`, so decoders map them to `gen/python` DIDs without hand tables.
+- **Raw IMU for data collection:**
+  - connectivity-node samples an MPU-6050-compatible IMU (I2C on GPIO1/2, the legacy wiring) at 100 Hz, ±8 g / ±500 dps (4096 LSB/g, 65.5 LSB/(deg/s)).
+  - It sends blocks of up to 10 samples at 10 Hz on a second characteristic. Each block has `deviceTimeMs`, `seq` and a tick index for exact loss counting.
+  - Timer-driven task on core 0, static ring; the CAN poller never waits for it.
+  - Offline analysis only: not a vehicle signal, not a safety input, not on the platform bus, no lean estimation (that stays in the rt-core EKF).
+  - The part is provisional: the procurement list names MPU9250/LSM6DSO, and any part must deliver the schema scale.
+- **Session files and upload:**
+  - moto-mobile writes `meta.json`, `telemetry.csv` (v3 columns appended to the v2 ones, `raw_hex` authoritative), `events.csv` (including CAN health / MTU / IMU gap events), `summary.json` and `imu.csv`. Format: `moto-mobile/docs/session-format.md`.
+  - The app uploads a session zip to moto-server `POST /sessions` (Bearer token, size limit, idempotent per `session_id`; recording and sharing work without a server).
+- **moto-server v0:**
+  - Re-decodes every row from `raw_hex` / raw IMU counts with the schema JSON.
+  - Writes a validation report (JSON + text), Parquet with units in column names and `session_id` in every row, and a SQLite index under `$MOTO_DATA_DIR/sessions/<id>/{raw,parquet,report.json}`. MDF4 is an interface stub for now.
+  - It keeps a verbatim copy of the BLE schema with a drift test, the same pattern as moto-mobile: a build-time check, not a runtime dependency on connectivity-node.
+- Why: the phase0 plan (§3) needs timestamped CAN + 100 Hz IMU with loss accounting before any model work. The schema stays where the producer lives until Q-017 is decided.
 ---
 
 ## Open questions (awaiting decision)
@@ -147,3 +168,5 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 | Q-014 | Provisional answer in D-029 (DEFAULT µ 0.5 + min rule, no default lean, mass 252 kg). Final values after measurement | with the measurement system | safety-reviewer S4 |
 | Q-015 | Provisional answer in D-029 (speed poll 100 ms, TPS 200 ms, effective speed age ≤ 400 ms + accel margin). Confirm the ECU round-trip time and load, and add an EKF-fused high-rate speed | with the measurement system | safety-reviewer S3 |
 | Q-016 | Partly resolved by D-028. Still open: VSS paths for node health (heartbeats) and the `*_VALID` bits, and a final review of the D-028 names | when linux-node needs them | D-004: user approves each path |
+| Q-017 | Should the BLE packet schema move into moto-vehicle-defs (generated C/Dart/Python like the DBC) instead of verbatim copies + drift tests in moto-mobile and moto-server? | before BLE v4 | D-032 |
+| Q-018 | Temporary tester hardening (safety-reviewer M1/L3 on connectivity-node#2): persist the D-030 latches across resets (RTC no-init + CRC) and start TWAI listen-only for ≥2 s before the first request; drain RX before the UDS timeout check so a slow loop pass does not count a queued response as a timeout | before the next vehicle-bus session with connectivity-node as tester | D-030 |
