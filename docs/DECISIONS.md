@@ -57,7 +57,7 @@ Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 
 ~~**D-016 — Repo visibility: temporarily public**~~ (superseded by D-017) (2026-09-25, user) The planned default stays **private**, but all 12 repos in `moto-platform` are public for now (profile visibility, nothing sensitive at this stage). They can be switched back to private at any time with `gh repo edit moto-platform/<repo> --visibility private --accept-visibility-change-consequences`. No LICENSE yet, so the default is all rights reserved. The license decision is still pending (moto-mcp is intended to be open source). Before committing anything sensitive (real ride GPS data, keys, personal info), re-check visibility.
 
-**D-017 — Repo visibility: private** (2026-09-25, user) All 12 repos are back to **private** (D-016 was reverted the same day). They will go public later by user decision, together with the license decision.
+~~**D-017 — Repo visibility: private**~~ (superseded by D-033) (2026-09-25, user) All 12 repos are back to **private** (D-016 was reverted the same day). They will go public later by user decision, together with the license decision.
 
 **D-018 — Shared Claude assets synced into each repo** (2026-09-25, Claude; user asked for it as the next task) Cloud sessions clone only the selected repo(s). So `moto-workspace` stays the source of truth for `PLATFORM-RULES.md`, `.claude/agents/` and `.claude/skills/`, and `scripts/sync_claude.py` copies the relevant subset into each repo's `.claude/`. Each repo's `CLAUDE.md` imports `@.claude/PLATFORM-RULES.md`. Copies carry a "do not edit" marker and are listed in `.claude/.synced`. Run `--check` to detect drift. Agents use relative doc locations (no absolute paths).
 
@@ -146,6 +146,9 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
   - Writes a validation report (JSON + text), Parquet with units in column names and `session_id` in every row, and a SQLite index under `$MOTO_DATA_DIR/sessions/<id>/{raw,parquet,report.json}`. MDF4 is an interface stub for now.
   - It keeps a verbatim copy of the BLE schema with a drift test, the same pattern as moto-mobile: a build-time check, not a runtime dependency on connectivity-node.
 - Why: the phase0 plan (§3) needs timestamped CAN + 100 Hz IMU with loss accounting before any model work. The schema stays where the producer lives until Q-017 is decided.
+
+**D-033 — Repo visibility: public** (2026-09-27, user; supersedes D-017) The 12 platform repos are public so the org secret `MOTO_DEFS_TOKEN` works on the Free plan, where org secrets only reach public repos. The full git history of all 12 was scanned for tokens, keys, passwords and credential files before the switch: clean. The archived `HondaCl250_Telemetry` stays private. Consequences: the defs submodule can be cloned anonymously, so the token is now optional for CI (the CI scripts still require it until simplified). No LICENSE yet, so the default is all rights reserved; the license decision is still open. Actions minutes are free for public repos. Never commit real ride GPS data, keys or personal data (check before every data-related PR).
+
 ---
 
 ## Open questions (awaiting decision)
