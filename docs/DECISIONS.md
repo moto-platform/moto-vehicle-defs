@@ -120,6 +120,11 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
   - Check out the repo with the default token, then fetch `external/moto-vehicle-defs` with the `MOTO_DEFS_TOKEN` secret (Contents: read on moto-vehicle-defs only). Never vendor the defs.
   - moto-mobile verifies its BLE schema copy against moto-connectivity-node with an optional `MOTO_CONN_READ_TOKEN`.
 
+**D-031 — CI access to the private defs submodule (Free plan)** (2026-09-27, Claude, verified in moto-connectivity-node CI; refines D-030)
+- Org secrets are not passed to private repos on the Free plan. Each consumer repo gets a **repository** secret `MOTO_DEFS_TOKEN`.
+- `actions/checkout` must use `persist-credentials: false`. Otherwise its persisted GITHUB_TOKEN (an included credentials config) overrides the URL credentials, and the defs clone fails with 403 "Write access to repository not granted".
+- Fine-grained PATs could not be granted access to the org (no org policy option visible, no approval request appeared), and deploy keys are disabled in the org. So the current token is a **classic PAT with `repo` scope, 90-day expiry (~2026-12-26)**. Accepted trade-off: broader than read-only; it lives only in private-repo secrets and is masked in logs. Move to a read-only deploy key or GitHub App once the org setting is found.
+
 ---
 
 ## Open questions (awaiting decision)
