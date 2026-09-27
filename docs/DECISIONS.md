@@ -126,7 +126,7 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 - Fine-grained PATs could not be granted access to the org (no org policy option visible, no approval request appeared), and deploy keys are disabled in the org. So the current token is a **classic PAT with `repo` scope, 90-day expiry (~2026-12-26)**. Accepted trade-off: broader than read-only; it lives only in private-repo secrets and is masked in logs. Move to a read-only deploy key or GitHub App once the org setting is found.
 
 
-**D-032 — BLE telemetry v3, raw IMU stream and the session upload path** (2026-09-27, Claude proposal from the data-pipeline task — pending user confirmation)
+**D-032 — BLE telemetry v3, raw IMU stream and the session upload path** (2026-09-27, Claude proposal from the data-pipeline task; user-confirmed 2026-09-28)
 - BLE layouts stay single-sourced in `moto-connectivity-node/docs/ble_telemetry_packet_schema.json`:
   - **Telemetry v3** (37 B): node clock `deviceTimeMs`, per-signal ages (65535 = never received; valid bits from the generated `stale_after_ms`, D-029), and CAN/tester health (TWAI state, TEC/REC, bus-off count, unanswered DIDs, D-030 latch flags).
   - v2 (16 B) stays as the fallback when the negotiated MTU cannot carry v3. Nothing is truncated.
