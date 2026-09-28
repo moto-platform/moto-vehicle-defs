@@ -149,6 +149,18 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 
 **D-033 — Repo visibility: public** (2026-09-27, user; supersedes D-017) The 12 platform repos are public so the org secret `MOTO_DEFS_TOKEN` works on the Free plan, where org secrets only reach public repos. The full git history of all 12 was scanned for tokens, keys, passwords and credential files before the switch: clean. The archived `HondaCl250_Telemetry` stays private. Consequences: the defs submodule can be cloned anonymously, so the token is now optional for CI (the CI scripts still require it until simplified). No LICENSE yet, so the default is all rights reserved; the license decision is still open. Actions minutes are free for public repos. Never commit real ride GPS data, keys or personal data (check before every data-related PR).
 
+**D-034 — moto-rt-core skeleton and ISO-TP scope** (2026-09-28, Claude proposal from rt-core#1 — pending user confirmation)
+- Host-first, before the H7 board is chosen (Q-005):
+  - Pure logic is built as `moto_rtcore_logic`. Presets: `host-tests` (Unity + ctest, ASan/UBSan) and `target-m7-debug/-release` (arm-none-eabi, `-mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard`, valid for H743 and H723).
+  - No CubeMX project, startup code or linker script until the board is decided. The board choice (H743 vs H723) is still open.
+  - defs is pulled as a plain public submodule (D-033), without a token.
+- ISO-TP core (Ç2) scope, ISO 15765-2:2016:
+  - In scope: classic CAN 8-byte frames with normal / normal-fixed addressing; 12-bit FF_DL (up to 4095 B); BS; STmin; N_Bs/N_Cr (ISO default 1000 ms, configurable per link); N_WFTmax; FC.OVFLW; optional padding; full duplex per link.
+  - Out of scope for now: CAN FD, the 32-bit FF_DL escape, extended/mixed addressing, sending FC.WAIT, N_As/N_Ar (glue).
+  - STmin below 1 ms is rounded up to 1 ms (ms timebase); reserved STmin values count as 127 ms.
+  - Protocol constants live in the core. Per-link values (padding byte, BS/STmin, timeouts) come from the caller; vehicle values come from `gen/`.
+- Static analysis: cppcheck warning/portability/performance is blocking. Style and the MISRA C:2012 addon only report for now. Baseline on rt-core#1: advisory rules only, 15.5 ×28, 8.7 ×1 and 15.7 ×1.
+
 ---
 
 ## Open questions (awaiting decision)
@@ -172,4 +184,4 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 | Q-015 | Provisional answer in D-029 (speed poll 100 ms, TPS 200 ms, effective speed age ≤ 400 ms + accel margin). Confirm the ECU round-trip time and load, and add an EKF-fused high-rate speed | with the measurement system | safety-reviewer S3 |
 | Q-016 | Partly resolved by D-028. Still open: VSS paths for node health (heartbeats) and the `*_VALID` bits, and a final review of the D-028 names | when linux-node needs them | D-004: user approves each path |
 | Q-017 | Should the BLE packet schema move into moto-vehicle-defs (generated C/Dart/Python like the DBC) instead of verbatim copies + drift tests in moto-mobile and moto-server? | before BLE v4 | D-032 |
-| Q-018 | Temporary tester hardening (safety-reviewer M1/L3 on connectivity-node#2): persist the D-030 latches across resets (RTC no-init + CRC) and start TWAI listen-only for ≥2 s before the first request; drain RX before the UDS timeout check so a slow loop pass does not count a queued response as a timeout | before the next vehicle-bus session with connectivity-node as tester | D-030 |
+| Q-018 | ~~Temporary tester hardening~~ done in moto-connectivity-node#3 (2026-09-28): persistent latch + bus-off budget (RTC no-init, CRC, fail-safe restore), ≥2 s listen-only window, RX drained before TX and the timeout check. Remaining: bench/scope checks on target (reset reasons, TX during boot and the mode switch, TXD pull-up) | before the next vehicle-bus session | D-030 |
