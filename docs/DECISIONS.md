@@ -149,17 +149,36 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 
 **D-033 — Repo visibility: public** (2026-09-27, user; supersedes D-017) The 12 platform repos are public so the org secret `MOTO_DEFS_TOKEN` works on the Free plan, where org secrets only reach public repos. The full git history of all 12 was scanned for tokens, keys, passwords and credential files before the switch: clean. The archived `HondaCl250_Telemetry` stays private. Consequences: the defs submodule can be cloned anonymously, so the token is now optional for CI (the CI scripts still require it until simplified). No LICENSE yet, so the default is all rights reserved; the license decision is still open. Actions minutes are free for public repos. Never commit real ride GPS data, keys or personal data (check before every data-related PR).
 
-**D-034 — moto-rt-core skeleton and ISO-TP scope** (2026-09-28, Claude proposal from rt-core#1 — pending user confirmation)
+**D-034 — moto-rt-core skeleton, host platform layer and ISO-TP scope** (2026-09-28, Claude proposal from rt-core#1; user-confirmed 2026-09-28, the user added the host layer)
 - Host-first, before the H7 board is chosen (Q-005):
   - Pure logic is built as `moto_rtcore_logic`. Presets: `host-tests` (Unity + ctest, ASan/UBSan) and `target-m7-debug/-release` (arm-none-eabi, `-mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard`, valid for H743 and H723).
   - No CubeMX project, startup code or linker script until the board is decided. The board choice (H743 vs H723) is still open.
   - defs is pulled as a plain public submodule (D-033), without a token.
+- **Host platform layer (user):** rt-core also runs on the PC as a host program (SIL), not only as host unit tests. A host port of `hal/` provides:
+  - CAN: Linux SocketCAN `vcan`, or an in-process virtual bus on macOS
+  - the timebase
+  - logging
+  The same `services/` and `features/` code runs unchanged on the host and on the H7. This is also what the HIL live-model mode talks to before hardware exists (D-035).
 - ISO-TP core (Ç2) scope, ISO 15765-2:2016:
   - In scope: classic CAN 8-byte frames with normal / normal-fixed addressing; 12-bit FF_DL (up to 4095 B); BS; STmin; N_Bs/N_Cr (ISO default 1000 ms, configurable per link); N_WFTmax; FC.OVFLW; optional padding; full duplex per link.
   - Out of scope for now: CAN FD, the 32-bit FF_DL escape, extended/mixed addressing, sending FC.WAIT, N_As/N_Ar (glue).
   - STmin below 1 ms is rounded up to 1 ms (ms timebase); reserved STmin values count as 127 ms.
   - Protocol constants live in the core. Per-link values (padding byte, BS/STmin, timeouts) come from the caller; vehicle values come from `gen/`.
 - Static analysis: cppcheck warning/portability/performance is blocking. Style and the MISRA C:2012 addon only report for now. Baseline on rt-core#1: advisory rules only, 15.5 ×28, 8.7 ×1 and 15.7 ×1.
+
+**D-035 — HIL realism: two separate modes** (2026-09-28, user; resolves the realism part of Q-009) moto-hil-bench offers two modes, selected per scenario:
+- (a) **Log replay:** it replays recorded CAN/session logs (connectivity sessions, later rt-core logs) with their original timing, plus fault injection on top.
+- (b) **Live vehicle model:** a simulated CL250 ECU and vehicle dynamics answer the node under test in closed loop.
+Both modes share the scenario format and the evaluation/report. Before hardware exists, the node under test is rt-core's host build (D-034). The first target test function is still open (Q-009).
+
+**D-036 — License and versioning** (2026-09-28, the user delegated the choice to Claude)
+- **License: MIT** for all 12 repos (`LICENSE`, "Copyright (c) 2026 The moto-platform authors").
+  - It is permissive and short, fits moto-mcp as open source, and is compatible with the dependencies: Unity/FreeRTOS MIT, STM32 HAL BSD-3, ESP-IDF Apache-2.0, Flutter BSD, cantools MIT, vss-tools MPL-2.0 as a tool.
+  - Check the university's thesis IP rules before the first public release. The license can still be changed while there are no outside contributors.
+- **Versions:** semantic versioning in every code repo, starting at `v0.1.0`.
+  - A tag is placed on `main` after a green CI, and the workspace `manifest.yaml` pins tags, not `main`, for a known-good combination.
+  - moto-vehicle-defs keeps its own rule: every signal change → CHANGELOG + new tag; docs-only changes need no tag.
+  - The build files carry the same version: CMake `project(VERSION)`, `pyproject.toml`, `pubspec.yaml`.
 
 ---
 
@@ -175,7 +194,7 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 | Q-006 | Where do the HARA/FMEA/requirements files live? (proposal: `moto-vehicle-defs/safety/` + `requirements/`) | at the start of Ç8 (schedule week 1-2) | |
 | Q-007 | ~~resolved~~ → D-022 (Flutter) | — | — |
 | Q-008 | Time synchronization: how is GPS PPS/NTP distributed to the MCUs? | Logging system (WP-4) | hardware-architecture.md §5b.8 proposes NTP |
-| Q-009 | HIL realism level (replayed logs vs. live model) and the first target test function | while setting up the hil-bench host | hardware-architecture.md §10.3 |
+| Q-009 | Realism level resolved by D-035 (log replay and live model as separate modes). Still open: the first target test function | while setting up the hil-bench host | hardware-architecture.md §10.3 |
 | Q-010 | Will suspension potentiometers be added? | Group 11 | |
 | Q-011 | ~~resolved~~ → D-020 | — | — |
 | Q-012 | ~~resolved~~ → D-021 | — | — |
@@ -185,3 +204,4 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
 | Q-016 | Partly resolved by D-028. Still open: VSS paths for node health (heartbeats) and the `*_VALID` bits, and a final review of the D-028 names | when linux-node needs them | D-004: user approves each path |
 | Q-017 | Should the BLE packet schema move into moto-vehicle-defs (generated C/Dart/Python like the DBC) instead of verbatim copies + drift tests in moto-mobile and moto-server? | before BLE v4 | D-032 |
 | Q-018 | ~~Temporary tester hardening~~ done in moto-connectivity-node#3 (2026-09-28): persistent latch + bus-off budget (RTC no-init, CRC, fail-safe restore), ≥2 s listen-only window, RX drained before TX and the timeout check. Remaining: bench/scope checks on target (reset reasons, TX during boot and the mode switch, TXD pull-up) | before the next vehicle-bus session | D-030 |
+| Q-019 | Which H7 board: STM32H743 or H723 (flash/RAM, FDCAN count, package, price, Renode model)? Not decided (user, 2026-09-28) | before the CubeMX project, Renode L1 and Ç6 | D-001, D-034 |

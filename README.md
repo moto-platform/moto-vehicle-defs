@@ -33,4 +33,4 @@ Changing a signal: follow the `/signal-change` skill, add a `CHANGELOG.md` line,
 
 ## License
 
-Not decided yet (all rights reserved until a LICENSE is added).
+MIT, see `LICENSE` (D-036).
