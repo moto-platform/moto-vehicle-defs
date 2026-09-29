@@ -6,7 +6,7 @@ Format: brief. Each decision states **what**, **why**, and, where relevant, **co
 
 ## Decisions
 
-**D-001 — Authoritative document: hardware architecture** (2026-09-25, user)
+**D-001 — Authoritative document: hardware architecture** _(bus topology in hardware-architecture.md superseded by D-009/D-021/D-037; the Turkish docs moved by D-038)_ (2026-09-25, user)
 `hardware-architecture.md` + `ARCHITECTURE.md` are authoritative. `tr/bitirme-projesi-kapsam.md` is partially outdated: the DUT is not the ESP32-S3 but the **STM32H7 (rt-core)**, the HIL simulator is not the ESP32-S3 but the **STM32F4**, and the Raspi 5 is in scope. The Ç1-Ç8 work packages remain valid, but Ç1's target is H7 FDCAN. Updating the scope document → Q-005.
 
 **D-002 — GitHub org: `moto-platform`** (2026-09-25, user)
@@ -35,22 +35,22 @@ Classic AUTOSAR BSW (commercial automotive toolchain + MCAL + hundreds of KB of 
 - Context-classification inference lives in **rt-core `context/`**. The "ESP32-S3" column in the §5b.0 table is a leftover from before the H7 decision.
 - The blind-spot/io-node target chip is **STM32G0**. The STM32F103 in §5b.1 is a **prototype** using the board already on hand. Its overlap with F103's role in HIL → Q-003.
 
-**D-009 — Two separate CAN buses: vehicle (listen) + platform (dedicated)** _(bullets on safety-node/Raspi tapping the vehicle bus superseded by D-021)_ (2026-09-25, Claude architecture proposal — revise if the user objects)
+**D-009 — Two separate CAN buses: vehicle (single read-only tester, D-037) + platform (dedicated)** _(bullets on safety-node/Raspi tapping the vehicle bus superseded by D-021; "hardware listen-only" wording superseded by D-037)_ (2026-09-25, Claude architecture proposal — revise if the user objects)
 The architecture document stated both that "only the main MCU writes to the vehicle bus" (§4) and that io-node/rt-core publish status onto the vehicle bus (§5b.1, §5b.2); this was a contradiction. Resolution: our nodes talk on their own **platform CAN** bus. The vehicle bus is hardware listen-only; the sole exception is rt-core's OBD/UDS read requests. Why: this removes the risks of OEM ID collisions, confusing the OEM ECU, and added bus load; the two buses are simulated separately in HIL. The platform bus is classic CAN at 500 kbps (F103/ESP32 TWAI don't support FD). Details in `ARCHITECTURE.md` §3-4.
 
 **D-010 — moto-server language: Python** (2026-09-25, Claude)
 The document said "Python/Go". Python (FastAPI) was chosen so it shares the same language and toolchain as hil-host, ml, mcp, and linux-node. Starting point: file + Python, or InfluxDB+Grafana (hardware-architecture.md §5b.8).
 
 **D-011 — Language convention** (2026-09-25, user)
-All project documentation, CLAUDE.md files, code, identifiers, comments, commit messages and READMEs are in English. Turkish originals are archived under `docs/tr/` (not maintained). Exception: advisor-facing university documents (`tr/bitirme-projesi-kapsam.md`, `tr/bitirme-raporu-hoca-sunumu.md`) remain Turkish. Commits: Conventional Commits.
+All project documentation, CLAUDE.md files, code, identifiers, comments, commit messages and READMEs are in English. Turkish originals are archived under `docs/tr/` (not maintained; moved to `docs/archive/tr/` by D-038). Exception: advisor-facing university documents (`tr/bitirme-projesi-kapsam.md`, `tr/bitirme-raporu-hoca-sunumu.md`) remain Turkish. Commits: Conventional Commits.
 
 **D-012 — RTOS** (2026-09-25, Claude)
 rt-core: FreeRTOS (CMSIS-RTOS2, CubeMX). safety-node and io-node: bare-metal super loop + timer interrupt (determinism, verifiability). HIL simulator: bare-metal or FreeRTOS, chosen when the repo is set up.
 
-**D-013 — manifest ref** (2026-09-25, Claude)
+**D-013 — manifest ref** _(superseded: defs was tagged `v0.1.0` and the manifest pins tags, D-036)_ (2026-09-25, Claude)
 `moto-vehicle-defs` is referenced as `main` in the manifest since it hasn't been tagged yet. The first release will be `v0.1.0` (`v1.0.0` once platform.dbc is stable).
 
-**D-014 — Docs archive** (2026-09-25, Claude)
+**D-014 — Docs archive** _(path changed to `docs/archive/tr/` by D-038)_ (2026-09-25, Claude)
 Turkish source docs moved to `docs/tr/`; English translations are authoritative.
 
 **D-015 — Workspace repo `moto-workspace`** (2026-09-25, Claude; user asked to finish remaining setup) The workspace root is its own repo holding `manifest.yaml`, `setup.sh`, root `CLAUDE.md`, `STATUS.md` and the shared `.claude/` agents/skills. It git-ignores `/moto-*/`. Why: otherwise the shared Claude setup exists on one laptop only and cannot reach GitHub or cloud sessions.
@@ -147,10 +147,10 @@ Added to `vss/overlay.vspec` (whitelisted in `gen_vss.APPROVED_EXTENSIONS`): `Le
   - It keeps a verbatim copy of the BLE schema with a drift test, the same pattern as moto-mobile: a build-time check, not a runtime dependency on connectivity-node.
 - Why: the phase0 plan (§3) needs timestamped CAN + 100 Hz IMU with loss accounting before any model work. The schema stays where the producer lives until Q-017 is decided.
 
-**D-033 — Repo visibility: public** (2026-09-27, user; supersedes D-017) The 12 platform repos are public so the org secret `MOTO_DEFS_TOKEN` works on the Free plan, where org secrets only reach public repos. The full git history of all 12 was scanned for tokens, keys, passwords and credential files before the switch: clean. The archived `HondaCl250_Telemetry` stays private. Consequences: the defs submodule can be cloned anonymously, so the token is now optional for CI (the CI scripts still require it until simplified). No LICENSE yet, so the default is all rights reserved; the license decision is still open. Actions minutes are free for public repos. Never commit real ride GPS data, keys or personal data (check before every data-related PR).
+**D-033 — Repo visibility: public** (2026-09-27, user; supersedes D-017) The 12 platform repos are public so the org secret `MOTO_DEFS_TOKEN` works on the Free plan, where org secrets only reach public repos. The full git history of all 12 was scanned for tokens, keys, passwords and credential files before the switch: clean. The archived `HondaCl250_Telemetry` stays private. Consequences: the defs submodule can be cloned anonymously, so the token is now optional for CI (the CI scripts still require it until simplified). ~~No LICENSE yet, so the default is all rights reserved; the license decision is still open.~~ (license: MIT, D-036) Actions minutes are free for public repos. Never commit real ride GPS data, keys or personal data (check before every data-related PR).
 
 **D-034 — moto-rt-core skeleton, host platform layer and ISO-TP scope** (2026-09-28, Claude proposal from rt-core#1; user-confirmed 2026-09-28, the user added the host layer)
-- Host-first, before the H7 board is chosen (Q-005):
+- Host-first, before the H7 board is chosen (Q-019):
   - Pure logic is built as `moto_rtcore_logic`. Presets: `host-tests` (Unity + ctest, ASan/UBSan) and `target-m7-debug/-release` (arm-none-eabi, `-mcpu=cortex-m7 -mfpu=fpv5-d16 -mfloat-abi=hard`, valid for H743 and H723).
   - No CubeMX project, startup code or linker script until the board is decided. The board choice (H743 vs H723) is still open.
   - defs is pulled as a plain public submodule (D-033), without a token.
@@ -180,6 +180,18 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
   - moto-vehicle-defs keeps its own rule: every signal change → CHANGELOG + new tag; docs-only changes need no tag.
   - The build files carry the same version: CMake `project(VERSION)`, `pyproject.toml`, `pubspec.yaml`.
 
+**D-037 — Vehicle bus: a single read-only tester, not listen-only** (2026-09-29, user; clarifies D-009, D-020, D-021)
+- The CL250 ECU does not broadcast its data; it answers UDS read requests (D-019). Collecting vehicle data therefore requires transmitting, so "listen-only" is not a possible scope for the vehicle bus. The scope is: **one tester (rt-core, D-021) that only reads**.
+- What the tester may send is defined in **one place**: `uds/vehicle_cl250.yaml` → `tester_policy` (D-020). Today that is session control `0x10` 0x01/0x03, tester present `0x3E`, and the reads `0x22`, `0x19`, OBD `0x01`/`0x09`. Anything that writes data, clears DTCs, resets, unlocks security access, controls I/O, runs routines or reprograms the ECU is forbidden.
+- codegen keeps its golden copy of the list on purpose (D-027: the YAML may narrow it, never widen it), and the generated gates enforce it at runtime. Docs, rules and agents link to `tester_policy` instead of repeating the list.
+- Listen-only remains only for the Q-001 probe (is there passive traffic?) and the Raspi's optional raw-log tap (D-021).
+- Q-020 (Flow Control for segmented responses) is deferred: the Ç3 vehicle client works with Single Frame responses only.
+
+**D-038 — Turkish archive moved out of Claude's reading path** (2026-09-29, user)
+- `docs/tr/` → `docs/archive/tr/` (nothing deleted; git history kept). The advisor documents (`bitirme-projesi-kapsam.md`, `bitirme-raporu-hoca-sunumu.md`) stay Turkish and live there too.
+- Claude sessions do not read `docs/archive/` (a `Read` deny rule in the workspace and moto-vehicle-defs `.claude/settings.json`), so it never bloats the context. To use an archived file, the user removes the rule for that session.
+- The thesis work packages Ç1-Ç8 that the English docs use are defined in English, with current targets, in `ARCHITECTURE.md` §9.
+
 ---
 
 ## Open questions (awaiting decision)
@@ -190,7 +202,7 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 | Q-002 | What does the safety node do once rt-core data becomes `INVALID` via E2E? (a) continue independently on its own minimal IMU, (b) conservative/low-confidence warning mode | once the safety-node hardware is finalized (Group 7) | The detection side is resolved by D-005 |
 | Q-003 | Only one F103 is on hand: is it the io-node prototype or the HIL fault/power node? Will a second F103/G0 be procured? | during HIL hardware setup | |
 | Q-004 | H7 ↔ ESP32-S3 SPI/UART bridge frame format | rt-core + connectivity, jointly | Proposal: COBS + CRC16 + msg-id, defined in defs |
-| Q-005 | Will `tr/bitirme-projesi-kapsam.md` be updated per D-001 and re-presented to the advisor? When will the H7 hardware be acquired? | before the advisor meeting | Schedule risk: Ç1-Ç3 can proceed on host tests + Renode before the H7 arrives |
+| Q-005 | Will `archive/tr/bitirme-projesi-kapsam.md` be updated per D-001 and re-presented to the advisor? When will the H7 hardware be acquired? | before the advisor meeting | Schedule risk: Ç1-Ç3 can proceed on host tests + Renode before the H7 arrives |
 | Q-006 | Where do the HARA/FMEA/requirements files live? (proposal: `moto-vehicle-defs/safety/` + `requirements/`) | at the start of Ç8 (schedule week 1-2) | |
 | Q-007 | ~~resolved~~ → D-022 (Flutter) | — | — |
 | Q-008 | Time synchronization: how is GPS PPS/NTP distributed to the MCUs? | Logging system (WP-4) | hardware-architecture.md §5b.8 proposes NTP |
@@ -205,4 +217,4 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 | Q-017 | Should the BLE packet schema move into moto-vehicle-defs (generated C/Dart/Python like the DBC) instead of verbatim copies + drift tests in moto-mobile and moto-server? | before BLE v4 | D-032 |
 | Q-018 | ~~Temporary tester hardening~~ done in moto-connectivity-node#3 (2026-09-28): persistent latch + bus-off budget (RTC no-init, CRC, fail-safe restore), ≥2 s listen-only window, RX drained before TX and the timeout check. Remaining: bench/scope checks on target (reset reasons, TX during boot and the mode switch, TXD pull-up) | before the next vehicle-bus session | D-030 |
 | Q-019 | Which H7 board: STM32H743 or H723 (flash/RAM, FDCAN count, package, price, Renode model)? Not decided (user, 2026-09-28) | before the CubeMX project, Renode L1 and Ç6 | D-001, D-034 |
-| Q-020 | Should the D-020 frame gate (`vehicle_cl250_frame_allowed()`) let rt-core send a Flow Control (FC.CTS) on the vehicle bus? It passes Single Frames only today, so the tester cannot receive segmented responses: 0x19 with several DTCs and OBD 0x09 (VIN) end in N_TIMEOUT_CR. All current DIDs fit in a Single Frame. If yes: a versioned defs change with a byte-exact FC.CTS (fixed BS/STmin, padding), sent only while a reception runs for an allowed request (a link-state check in rt-core, not in the stateless can_if guard), capped FF_DL, requests stay Single Frame; safety-reviewer before the tag (conditions in moto-rt-core `src/features/uds/README.md`) | before the Ç3 UDS client needs 0x19 / 0x09 | D-020, D-021, moto-rt-core#2 |
+| Q-020 | Should the D-020 frame gate (`vehicle_cl250_frame_allowed()`) let rt-core send a Flow Control (FC.CTS) on the vehicle bus? It passes Single Frames only today, so the tester cannot receive segmented responses: 0x19 with several DTCs and OBD 0x09 (VIN) end in N_TIMEOUT_CR. All current DIDs fit in a Single Frame. If yes: a versioned defs change with a byte-exact FC.CTS (fixed BS/STmin, padding), sent only while a reception runs for an allowed request (a link-state check in rt-core, not in the stateless can_if guard), capped FF_DL, requests stay Single Frame; safety-reviewer before the tag (conditions in moto-rt-core `src/features/uds/README.md`) | **Deferred by the user (2026-09-29, D-037):** the Ç3 client works with Single Frame responses only; revisit when 0x19 / 0x09 are needed | D-020, D-021, moto-rt-core#2 |
