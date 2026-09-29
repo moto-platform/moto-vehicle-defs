@@ -53,7 +53,7 @@ Incremental rollout: a unit is not added until its function arrives (see hardwar
                                                             └──────────┘
 ```
 
-- **Vehicle bus:** OEM network reached through the diagnostic connector (DLC). CL250 data is **poll-based** (UDS `0x22`, 29-bit `0x18DA10F1` → `0x18DAF110`, D-019), so there must be exactly **one tester: rt-core** (D-021). Allowed services: `0x10` (0x01/0x03 only), `0x3E`, `0x22`, `0x19`, OBD `0x01/0x09`. Forbidden: `0x10 0x02`, `0x11`, `0x14`, `0x27`, `0x2E`, `0x2F`, `0x31`, `0x34`, `0x36`, `0x37` (D-020). No other node transmits here. The Raspi may tap it strictly listen-only for raw logging. No additional termination resistor is added to the vehicle bus.
+- **Vehicle bus:** OEM network reached through the diagnostic connector (DLC). CL250 data is **poll-based** (UDS `0x22`, 29-bit `0x18DA10F1` → `0x18DAF110`, D-019), so there must be exactly **one tester: rt-core** (D-021), and it has to transmit: listen-only cannot collect this data (D-037). It sends only the session and read requests listed in `uds/vehicle_cl250.yaml` → `tester_policy` (D-020, the single source; the generated gates enforce it), never anything that changes ECU state. No other node transmits here. The Raspi may tap it strictly listen-only for raw logging. No additional termination resistor is added to the vehicle bus.
 - **Platform bus:** the dedicated bus our own nodes talk on. No risk of ID collisions, confusing the OEM ECU, or added OEM bus load. Classic CAN was chosen because F103 and ESP32-S3 TWAI don't support FD (an FD frame produces an error frame on a classic node). Migration will be reconsidered once all nodes support FD.
 - **rt-core republishes vehicle signals** (speed, RPM, coolant, TPS, battery) on the platform bus (state range 0x100-0x3FF; vehicle speed is also consumed by safety-node, so its message is E2E-protected in the safety range). Everyone else, including safety-node and the Raspi's kuksa-can-provider (`platform.dbc`), reads them there (D-021). Consequence: safety-node depends on rt-core for vehicle speed, which makes Q-002 (behaviour on INVALID data) more important.
 - ~~The safety node also listens to the vehicle bus~~ and ~~rt-core does not forward vehicle signals~~ (D-009 bullets superseded by D-021).
@@ -160,4 +160,19 @@ Requirement–test traceability (Ç8): requirement IDs (`REQ-<DOMAIN>-NNN`) appe
 4. `moto-rt-core` (once H7 arrives)
 5. `moto-server` → 6. `moto-ml` → 7. `moto-safety-node` → 8. `moto-io-node` → 9. `moto-linux-node` + `moto-mcp` → 10. `moto-mobile`
 
-The thesis core (Ç1-Ç8) is covered by steps 1-4 above, plus HIL, in this order. Ç1's target is now H7 FDCAN (D-001).
+The thesis core (Ç1-Ç8) is covered by steps 1-4 above, plus HIL, in this order.
+
+**Thesis work packages** ("Ç" = *çekirdek*, the committed core scope of the thesis; the Turkish advisor document `archive/tr/bitirme-projesi-kapsam.md` §5 predates D-001, this table is current):
+
+| ID | Work package | Current target | Repo |
+|---|---|---|---|
+| Ç1 | CAN driver layer: error state machine, bus-off recovery | H7 FDCAN behind `hal/can_port` (D-001) | moto-rt-core |
+| Ç2 | ISO-TP transport (ISO 15765-2) | `features/uds/isotp_*` (done, v0.2.0) | moto-rt-core |
+| Ç3 | UDS (ISO 14229), two parts: **server** for our own nodes on the platform bus (0x10, 0x22, 0x19, 0x14, 0x27, 0x2E, 0x31 on *our* ECU), and the **vehicle client** (the poller) that only reads the CL250 (D-037) | `features/uds/` | moto-rt-core |
+| Ç4 | HIL bench hardware: STM32F4 restbus simulator, transceivers, termination, OBD2 connector, programmable supply | D-001, D-035 | moto-hil-bench |
+| Ç5 | HIL bench software: scenario engine, fault injection, automatic evaluation, report | log replay + live model (D-035) | moto-hil-bench |
+| Ç6 | Test automation: self-hosted runner, build + static analysis + on-hardware regression per commit | needs the H7 board (Q-019) | all firmware repos |
+| Ç7 | Data collection: signal logging, timestamps, metadata, storage schema | `phase0-data-collection-plan.md` | connectivity-node, mobile, server |
+| Ç8 | Process documentation: HARA, requirement–test traceability, FMEA (ISO 26262 approach) | location open (Q-006) | moto-vehicle-defs |
+
+Extended scope G1-G5 (bootloader, XCP, riding modes, voice, client-server) is in the same Turkish document §5.2.

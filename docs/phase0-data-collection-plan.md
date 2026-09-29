@@ -1,6 +1,6 @@
 # Phase 0 Implementation Plan — Data Collection Infrastructure and ML Readiness
 
-> Translated from the Turkish original (`tr/faz0-veri-toplama-plani.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
+> Translated from the Turkish original (`archive/tr/faz0-veri-toplama-plani.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
 **Project:** Motorcycle embedded diagnostics, telemetry, and driver assistance platform
 **Scope of this plan:** First priority — ML research, open-source review, and a working data collection system

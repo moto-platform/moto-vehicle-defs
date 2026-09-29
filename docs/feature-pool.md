@@ -1,6 +1,6 @@
 # Feature Pool, Hardware Architecture, and Open Source Reference
 
-> Translated from the Turkish original (`tr/ozellik-havuzu.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
+> Translated from the Turkish original (`archive/tr/ozellik-havuzu.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
 **Project:** Motorcycle embedded diagnostics, telemetry, and driver assistance platform
 **Purpose:** Long-term development pool (candidate items + prioritization), hardware architecture analysis, and open source/hardware reference — in a single file

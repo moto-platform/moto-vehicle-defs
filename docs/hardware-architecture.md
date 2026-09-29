@@ -4,7 +4,9 @@
 **Scope:** SDV-compatible vehicle hardware architecture, chip selections, HIL bench hardware, repository structure
 **Version:** 1.0 — September 2026
 
-> Translated from the Turkish original (`tr/donanim-mimarisi-ve-repo-yapisi.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
+> Translated from the Turkish original (`archive/tr/donanim-mimarisi-ve-repo-yapisi.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
+>
+> **Bus topology superseded (D-009, D-019, D-021, D-037).** This document predates the verified CL250 facts. The platform has **two classic 500 kbps CAN buses**: the vehicle bus (CL250 diagnostic connector), where rt-core is the single tester and reads ECU data by UDS polling with the requests allowed in `uds/vehicle_cl250.yaml` (`tester_policy`), and our own platform bus, where every other node talks. The topology is `ARCHITECTURE.md` §3. Use this document for subsystem rationale, not for the bus layout.
 
 ---
 
@@ -21,22 +23,21 @@ Modern SDV (software-defined vehicle) logic: a small number of powerful compute 
 ## 2. Target Hardware Architecture (5 units)
 
 ```
-                VEHICLE CAN-FD BUS
-        ═════╤═════════╤═════════╤═══════
-             │         │         │
-        ┌────┴───┐ ┌───┴───┐ ┌──┴────┐
-        │STM32H7 │ │STM32  │ │STM32  │
-        │DOMAIN  │ │G4/F3  │ │G0/F0  │
-        │(main)  │ │SAFETY │ │I/O    │
-        └──┬──┬──┘ └───────┘ └───┬───┘
-           │  │SPI               │
-      ┌────┴┐ └──┐          actuators
-      │ESP32│ ┌──┴───┐       (lights, heating,
-      │S3   │ │Raspi5│        immobilizer, power)
-      │BLE/ │ │LINUX │
-      │ML   │ │HPC   │
-      └─────┘ └──────┘
+ VEHICLE CAN (CL250 DLC, classic 500 kbps) ══╤════════════════════
+                                             │ rt-core = the single tester (UDS polling, D-021)
+                                        ┌────┴───┐
+                                        │STM32H7 │── SPI/UART ── ESP32-S3 (BLE/Wi-Fi, voice)
+                                        │DOMAIN  │
+                                        └────┬───┘
+ PLATFORM CAN (ours, classic 500 kbps) ══════╧═══════╤══════════╤══════════╤═══
+                                                ┌────┴───┐ ┌────┴───┐ ┌────┴───┐
+                                                │STM32G4 │ │STM32G0 │ │ Raspi5 │
+                                                │SAFETY  │ │I/O     │ │ LINUX  │
+                                                └────────┘ └───┬────┘ └────────┘
+                                                          actuators (lights, heating,
+                                                          immobilizer, power)
 ```
+Full diagram with interfaces: `ARCHITECTURE.md` §3.
 
 | Unit | Chip | SDV role | Task |
 |---|---|---|---|
@@ -64,9 +65,9 @@ Modern SDV (software-defined vehicle) logic: a small number of powerful compute 
 
 ## 4. CAN Connection Rules
 
-- Every MCU connects **directly, with its own transceiver**, to the CAN bus (not through an intermediary/bridge) → eliminates inter-module latency
+- Two buses (D-009): the **vehicle bus** (OEM, reached through the DLC) and our own **platform bus**. Every MCU connects **directly, with its own transceiver**, to the platform bus (not through an intermediary/bridge) → eliminates inter-module latency
 - CAN is a broadcast bus: every message is received by everyone simultaneously and deterministically (there is no such thing as "reception priority"; priority only applies to transmission arbitration)
-- **Only one unit writes** (the main MCU, for diagnostics), the others listen → avoids bus contention
+- **Vehicle bus: exactly one tester, rt-core** (D-021). The CL250 ECU does not broadcast its data; it answers UDS read requests (D-019), so the tester must transmit. It sends only the read and session requests in `uds/vehicle_cl250.yaml` `tester_policy` (D-020), never anything that changes ECU state. No other node transmits there; the Raspi may tap it listen-only for raw logs
 - **No extra termination resistor** is added in the vehicle (the vehicle is already terminated); on the bench, since its own bus is built there, termination is added there
 - The Raspi connects to CAN via an MCP2515+transceiver or a CAN HAT (SocketCAN)
 
@@ -212,7 +213,7 @@ Since it must work at reflex speed, deterministically, and independently, it is 
 [24GHz Radar left] ─┐
                    ├→ [STM32F103 rear node] → [Mirror LED left/right]
 [24GHz Radar right] ─┘         │ CAN (status broadcast)
-                       ══════╪══════ VEHICLE CAN BUS
+                       ══════╪══════ PLATFORM CAN BUS (D-009)
                              │
                     [Main unit]   [HMI/Nextion]
 ```
@@ -839,8 +840,8 @@ All items below are gathered into **a single "next stage" pool** — not split i
 ### 10.3 Other Open Notes
 
 - How the safety MCU will supervise the main MCU (watchdog/heartbeat) — to be designed once the safety MCU hardware is finalized
-- The HIL simulator's realism level (recorded-message replay vs. a live vehicle dynamic model) and the first target test function have not yet been selected
-- Whether the vehicle bus is classic CAN or CAN-FD needs to be verified (while mapping the signals)
+- ~~The HIL simulator's realism level~~ (both modes, D-035); the first target test function is still open (Q-009)
+- ~~Whether the vehicle bus is classic CAN or CAN-FD~~ classic 500 kbps, verified (D-019)
 - Suspension potentiometers — in Group 11 (hardware procurement list), the decision to add them is not yet final
 
 ### 10.4 Moved to the Core (no longer Phase 2 — reminder)

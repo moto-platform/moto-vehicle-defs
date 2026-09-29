@@ -1,6 +1,6 @@
 # On-Vehicle Work Plan — Honda CL250
 
-> Translated from the Turkish original (`tr/motor-uzeri-calisma-plani.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
+> Translated from the Turkish original (`archive/tr/motor-uzeri-calisma-plani.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
 **Project:** Embedded diagnostics and driver assistance unit / HIL validation infrastructure
 **Document scope:** All on-motorcycle hardware integration, parameter measurement, data collection, and field testing activities
@@ -118,7 +118,10 @@ This calculation will be used to independently check the accuracy of the speed s
 
 **Critical note:** No additional termination resistor will be added to the CAN line. On the bench, the simulator side is a separate line so termination is needed there; it is not needed on the vehicle.
 
-**Safety note:** The first connection will be made with the engine off and in listen-only mode only. No messages will be written to the bus. A write attempt will only be made after the bus traffic structure is fully understood, in a closed area, and with the engine idling.
+**Safety note (updated for D-019..D-021, D-037):** The CL250 ECU does not broadcast its data; it answers UDS read requests (D-019). So the tester has to transmit, and "listen-only" cannot collect the data. Rules on the bike:
+- The first connection is made with the engine off, first listen-only to answer Q-001 (is there any passive broadcast traffic?).
+- Then exactly one tester (rt-core; connectivity-node until then, D-023) polls, and it sends only the read and session requests in `uds/vehicle_cl250.yaml` `tester_policy` (D-020), enforced by the generated gate. Nothing that writes, resets, unlocks or reprograms the ECU is ever sent.
+- The first polling session is done in a closed area with the engine idling.
 
 ### 3.3 Power Supply
 
@@ -272,7 +275,7 @@ The rolling measurement from section 2.2. To be done with the rider on board and
 
 | Step | Action | Expected output |
 |---|---|---|
-| 1 | Ignition on, engine off, 5 min raw recording | Which IDs are on the bus, their periods |
+| 1 | Ignition on, engine off, 5 min listen-only raw recording (Q-001) | Which IDs are on the bus, their periods (if any passive traffic exists) |
 | 2 | 5 min recording at idle | Identification of bytes that vary with RPM |
 | 3 | Controlled throttle blip (stationary) | Isolation of RPM and TPS bytes |
 | 4 | Low-speed riding | Identification of the speed byte |
@@ -549,7 +552,7 @@ Example: If the front sprocket goes 14T→13T, the ratio change is 14/13 = 1.076
 
 | Activity | Status |
 |---|---|
-| Reading data from the diagnostic connector | No issue — passive listening |
+| Reading data from the diagnostic connector | No issue: read-only UDS/OBD requests (D-020), as any OBD scan tool does; no ECU write |
 | Installing an additional electronic unit (removable) | No issue |
 | Gear ratio change | Common practice; no issue expected at inspection, will still be logged |
 | ECU software change | **Will not be done** — may fall under unregistered modification |
@@ -616,7 +619,7 @@ The wide range is due to the dyno and track-day line items. If university facili
 
 | Week | Activity |
 |---|---|
-| 1 | CAN connection, passive listening, first raw recordings |
+| 1 | CAN connection, listen-only check (Q-001), first polling session and raw recordings |
 | 2 | Signal map extraction (section 5.5), OBD2 PID scan |
 | 3 | Temporary mounting (perforated bracket, cable ties), power circuit testing |
 | 4 | IMU alignment and calibration, T0 static tests |

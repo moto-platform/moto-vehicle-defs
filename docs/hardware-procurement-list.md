@@ -1,6 +1,6 @@
 # Hardware Procurement List — Moto Platform
 
-> Translated from the Turkish original (`tr/donanim-tedarik-listesi.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
+> Translated from the Turkish original (`archive/tr/donanim-tedarik-listesi.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
 **Purpose:** Complete parts list compiled from all subsystems, viewable in one place. Grouped by installation order — buy top to bottom.
 **Version:** 1.0 — September 2026
