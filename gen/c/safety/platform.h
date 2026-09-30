@@ -46,28 +46,24 @@ extern "C" {
 
 /* Frame ids. */
 #define PLATFORM_EKF_LEAN_FRAME_ID (0x20u)
-#define PLATFORM_VEHICLE_SPEED_FRAME_ID (0x21u)
 #define PLATFORM_EKF_FRICTION_MASS_FRAME_ID (0x22u)
 #define PLATFORM_HEARTBEAT_RT_CORE_FRAME_ID (0x81u)
 #define PLATFORM_HEARTBEAT_SAFETY_FRAME_ID (0x82u)
 
 /* Frame lengths in bytes. */
 #define PLATFORM_EKF_LEAN_LENGTH (8u)
-#define PLATFORM_VEHICLE_SPEED_LENGTH (8u)
 #define PLATFORM_EKF_FRICTION_MASS_LENGTH (8u)
 #define PLATFORM_HEARTBEAT_RT_CORE_LENGTH (8u)
 #define PLATFORM_HEARTBEAT_SAFETY_LENGTH (8u)
 
 /* Extended or standard frame types. */
 #define PLATFORM_EKF_LEAN_IS_EXTENDED (0)
-#define PLATFORM_VEHICLE_SPEED_IS_EXTENDED (0)
 #define PLATFORM_EKF_FRICTION_MASS_IS_EXTENDED (0)
 #define PLATFORM_HEARTBEAT_RT_CORE_IS_EXTENDED (0)
 #define PLATFORM_HEARTBEAT_SAFETY_IS_EXTENDED (0)
 
 /* Frame cycle times in milliseconds. */
 #define PLATFORM_EKF_LEAN_CYCLE_TIME_MS (20u)
-#define PLATFORM_VEHICLE_SPEED_CYCLE_TIME_MS (50u)
 #define PLATFORM_EKF_FRICTION_MASS_CYCLE_TIME_MS (100u)
 #define PLATFORM_HEARTBEAT_RT_CORE_CYCLE_TIME_MS (100u)
 #define PLATFORM_HEARTBEAT_SAFETY_CYCLE_TIME_MS (100u)
@@ -77,9 +73,6 @@ extern "C" {
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_CLAMPED_CHOICE (1u)
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_RESERVED_CHOICE (2u)
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_INVALID_CHOICE (3u)
-
-#define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_INVALID_CHOICE (0u)
-#define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_VALID_CHOICE (1u)
 
 #define PLATFORM_EKF_FRICTION_MASS_FRICTION_COEFF_STATE_ESTIMATED_CHOICE (0u)
 #define PLATFORM_EKF_FRICTION_MASS_FRICTION_COEFF_STATE_CLAMPED_CHOICE (1u)
@@ -107,7 +100,6 @@ extern "C" {
 
 /* Frame Names. */
 #define PLATFORM_EKF_LEAN_NAME "EkfLean"
-#define PLATFORM_VEHICLE_SPEED_NAME "VehicleSpeed"
 #define PLATFORM_EKF_FRICTION_MASS_NAME "EkfFrictionMass"
 #define PLATFORM_HEARTBEAT_RT_CORE_NAME "HeartbeatRtCore"
 #define PLATFORM_HEARTBEAT_SAFETY_NAME "HeartbeatSafety"
@@ -118,11 +110,6 @@ extern "C" {
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_STATE_NAME "LEAN_ANGLE_STATE"
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_NAME "LEAN_ANGLE"
 #define PLATFORM_EKF_LEAN_LEAN_ANGLE_QUALITY_NAME "LEAN_ANGLE_QUALITY"
-#define PLATFORM_VEHICLE_SPEED_E2_E_CRC_NAME "E2E_CRC"
-#define PLATFORM_VEHICLE_SPEED_E2_E_COUNTER_NAME "E2E_COUNTER"
-#define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_NAME "VEHICLE_SPEED_VALID"
-#define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_NAME "VEHICLE_SPEED"
-#define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_AGE_NAME "VEHICLE_SPEED_AGE"
 #define PLATFORM_EKF_FRICTION_MASS_E2_E_CRC_NAME "E2E_CRC"
 #define PLATFORM_EKF_FRICTION_MASS_E2_E_COUNTER_NAME "E2E_COUNTER"
 #define PLATFORM_EKF_FRICTION_MASS_FRICTION_COEFF_STATE_NAME "FRICTION_COEFF_STATE"
@@ -190,54 +177,6 @@ struct platform_ekf_lean_t {
      * Offset: 0
      */
     uint8_t lean_angle_quality;
-};
-
-/**
- * Signals in message VehicleSpeed.
- *
- * Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). Safety range because safety-node consumes it.
- *
- * All signal values are as on the CAN bus.
- */
-struct platform_vehicle_speed_t {
-    /**
-     * Range: 0..255 (0..255 -)
-     * Scale: 1
-     * Offset: 0
-     */
-    uint8_t e2_e_crc;
-
-    /**
-     * Range: 0..15 (0..15 -)
-     * Scale: 1
-     * Offset: 0
-     */
-    uint8_t e2_e_counter;
-
-    /**
-     * 1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; safety consumers must also bound VEHICLE_SPEED_AGE (vehicle_speed_max_age_ms in limits/platform_limits.yaml, D-029).
-     *
-     * Range: 0..1 (0..1 -)
-     * Scale: 1
-     * Offset: 0
-     */
-    uint8_t vehicle_speed_valid;
-
-    /**
-     * Range: 0..30000 (0..300 km/h)
-     * Scale: 0.01
-     * Offset: 0
-     */
-    uint16_t vehicle_speed;
-
-    /**
-     * Time since rt-core received the source sample; saturates at 2550 ms.
-     *
-     * Range: 0..255 (0..2550 ms)
-     * Scale: 10
-     * Offset: 0
-     */
-    uint8_t vehicle_speed_age;
 };
 
 /**
@@ -586,184 +525,6 @@ bool platform_ekf_lean_lean_angle_quality_is_in_range(uint8_t value);
  * @return true if in range, false otherwise.
  */
 bool platform_ekf_lean_lean_angle_quality_is_in_phys_range(float value);
-
-/**
- * Unpack message VehicleSpeed.
- *
- * @param[out] dst_p Object to unpack the message into.
- * @param[in] src_p Message to unpack.
- * @param[in] size Size of src_p.
- *
- * @return zero(0) or negative error code.
- */
-int platform_vehicle_speed_unpack(
-    struct platform_vehicle_speed_t *dst_p,
-    const uint8_t *src_p,
-    size_t size);
-
-/**
- * Init message fields to default values from VehicleSpeed.
- *
- * @param[in] msg_p Message to init.
- *
- * @return zero(0) on success or (-1) in case of nullptr argument.
- */
-int platform_vehicle_speed_init(struct platform_vehicle_speed_t *msg_p);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-float platform_vehicle_speed_e2_e_crc_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_e2_e_crc_is_in_range(uint8_t value);
-
-/**
- * Check that given physical value is in allowed range before encoding.
- *
- * Use this BEFORE calling _encode() to avoid silent integer overflow:
- *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
- *   is_in_phys_range(-1.0) correctly returns false.
- *
- * @param[in] value Physical signal value to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_e2_e_crc_is_in_phys_range(float value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-float platform_vehicle_speed_e2_e_counter_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_e2_e_counter_is_in_range(uint8_t value);
-
-/**
- * Check that given physical value is in allowed range before encoding.
- *
- * Use this BEFORE calling _encode() to avoid silent integer overflow:
- *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
- *   is_in_phys_range(-1.0) correctly returns false.
- *
- * @param[in] value Physical signal value to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_e2_e_counter_is_in_phys_range(float value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-float platform_vehicle_speed_vehicle_speed_valid_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_vehicle_speed_valid_is_in_range(uint8_t value);
-
-/**
- * Check that given physical value is in allowed range before encoding.
- *
- * Use this BEFORE calling _encode() to avoid silent integer overflow:
- *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
- *   is_in_phys_range(-1.0) correctly returns false.
- *
- * @param[in] value Physical signal value to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_vehicle_speed_valid_is_in_phys_range(float value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-float platform_vehicle_speed_vehicle_speed_decode(uint16_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_vehicle_speed_is_in_range(uint16_t value);
-
-/**
- * Check that given physical value is in allowed range before encoding.
- *
- * Use this BEFORE calling _encode() to avoid silent integer overflow:
- *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
- *   is_in_phys_range(-1.0) correctly returns false.
- *
- * @param[in] value Physical signal value to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_vehicle_speed_is_in_phys_range(float value);
-
-/**
- * Decode given signal by applying scaling and offset.
- *
- * @param[in] value Signal to decode.
- *
- * @return Decoded signal.
- */
-float platform_vehicle_speed_vehicle_speed_age_decode(uint8_t value);
-
-/**
- * Check that given signal is in allowed range.
- *
- * @param[in] value Signal to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_vehicle_speed_age_is_in_range(uint8_t value);
-
-/**
- * Check that given physical value is in allowed range before encoding.
- *
- * Use this BEFORE calling _encode() to avoid silent integer overflow:
- *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
- *   is_in_phys_range(-1.0) correctly returns false.
- *
- * @param[in] value Physical signal value to check.
- *
- * @return true if in range, false otherwise.
- */
-bool platform_vehicle_speed_vehicle_speed_age_is_in_phys_range(float value);
 
 /**
  * Unpack message EkfFrictionMass.

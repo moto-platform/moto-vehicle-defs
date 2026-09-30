@@ -8,6 +8,14 @@ LIMITS = {
     "friction_coeff_clamp_max": (1.2, "provisional"),
     "lean_angle_default": (None, "provisional"),
     "total_mass_default_kg": (252, "provisional"),
-    "vehicle_speed_max_age_ms": (400, "provisional"),
+    "k_yellow": (0.6, "provisional"),
+    "k_red": (0.8, "provisional"),
+    "vehicle_speed_max_age_ms": (300, "provisional"),
     "vehicle_speed_accel_margin_mps2": (5.0, "provisional"),
+}
+
+# section -> nodes whose platform_limits.h has it (D-041: speed is rt-core's)
+SCOPE = {
+    "cornering": ("RT_CORE", "SAFETY", "HIL_SIM",),
+    "vehicle_speed": ("RT_CORE", "HIL_SIM",),
 }

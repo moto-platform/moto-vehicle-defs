@@ -11,11 +11,11 @@ const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[VEHICLE_CL250_FUNC
 };
 
 const vehicle_cl250_did_t vehicle_cl250_dids[VEHICLE_CL250_DID_COUNT] = {
-    { VEHICLE_CL250_DID_ENGINE_SPEED, 2u, 50u, 150u, 1, 4, 0, 0.0f, 16383.75f, true },
-    { VEHICLE_CL250_DID_VEHICLE_SPEED, 1u, 100u, 300u, 1, 1, 0, 0.0f, 255.0f, true },
-    { VEHICLE_CL250_DID_THROTTLE_POS, 1u, 200u, 600u, 100, 255, 0, 0.0f, 100.0f, true },
-    { VEHICLE_CL250_DID_COOLANT_TEMP, 1u, 800u, 2400u, 1, 1, -40, -40.0f, 215.0f, true },
-    { VEHICLE_CL250_DID_BATTERY_VOLTAGE, 2u, 800u, 2400u, 1, 1000, 0, 0.0f, 65.535f, true },
+    { VEHICLE_CL250_DID_ENGINE_SPEED, 2u, VEHICLE_CL250_PRIORITY_NORMAL, 50u, 150u, 1, 4, 0, 0.0f, 16383.75f, true },
+    { VEHICLE_CL250_DID_VEHICLE_SPEED, 1u, VEHICLE_CL250_PRIORITY_HIGH, 100u, 300u, 1, 1, 0, 0.0f, 255.0f, true },
+    { VEHICLE_CL250_DID_THROTTLE_POS, 1u, VEHICLE_CL250_PRIORITY_NORMAL, 200u, 600u, 100, 255, 0, 0.0f, 100.0f, true },
+    { VEHICLE_CL250_DID_COOLANT_TEMP, 1u, VEHICLE_CL250_PRIORITY_NORMAL, 800u, 2400u, 1, 1, -40, -40.0f, 215.0f, true },
+    { VEHICLE_CL250_DID_BATTERY_VOLTAGE, 2u, VEHICLE_CL250_PRIORITY_NORMAL, 800u, 2400u, 1, 1000, 0, 0.0f, 65.535f, true },
 };
 
 const vehicle_cl250_did_t *vehicle_cl250_find(uint16_t did)

@@ -25,13 +25,15 @@ REQUESTS_IN_FLIGHT = 1
 RESPONSE_TIMEOUT_BASE_MS = 100
 RESPONSE_TIMEOUT_MAX_MS = 2000
 
-# name -> (did, length, factor_num, factor_den, offset, unit, min, max, poll_ms)
+# name -> (did, length, factor_num, factor_den, offset, unit, min, max, poll_ms,
+#          priority); priority is the D-043 class, most urgent first in PRIORITIES
+PRIORITIES = ("high", "normal",)
 DIDS = {
-    "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 50),
-    "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 100),
-    "THROTTLE_POS": (0xF411, 1, 100, 255, 0, "%", 0, 100, 200),
-    "COOLANT_TEMP": (0xF405, 1, 1, 1, -40, "degC", -40, 215, 800),
-    "BATTERY_VOLTAGE": (0xF442, 2, 1, 1000, 0, "V", 0, 65.535, 800),
+    "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 50, "normal"),
+    "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 100, "high"),
+    "THROTTLE_POS": (0xF411, 1, 100, 255, 0, "%", 0, 100, 200, "normal"),
+    "COOLANT_TEMP": (0xF405, 1, 1, 1, -40, "degC", -40, 215, 800, "normal"),
+    "BATTERY_VOLTAGE": (0xF442, 2, 1, 1000, 0, "V", 0, 65.535, 800, "normal"),
 }
 
 # D-020: sid -> allowed sub-functions (None = any)

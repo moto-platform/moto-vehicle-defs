@@ -181,6 +181,31 @@ def test_did_decode_rejects_short_and_unknown(lib):
     assert lib.vehicle_cl250_find(0x1234) is None
 
 
+def test_did_priorities_match_yaml(vehicle, tmp_path):
+    """D-043: the C table carries each DID's class; lower value = more urgent."""
+    from moto_codegen.yaml_checks import DID_PRIORITIES
+
+    src = tmp_path / "t.c"
+    src.write_text(
+        '#include "vehicle_cl250.h"\n#include <stdio.h>\n'
+        "int main(void){size_t i;for(i=0u;i<VEHICLE_CL250_DID_COUNT;i++)"
+        '{(void)printf("%04X %u\\n",(unsigned)vehicle_cl250_dids[i].did,'
+        "(unsigned)vehicle_cl250_dids[i].priority);}return 0;}\n"
+    )
+    exe = tmp_path / "t"
+    d = C_DIR / "rt_core"
+    subprocess.run([CC, *FLAGS, "-I", str(d), str(src), str(d / "vehicle_cl250.c"), "-o", str(exe)],
+                   check=True)  # fmt: skip
+    out = subprocess.run([str(exe)], check=True, capture_output=True, text=True).stdout
+    expected = "".join(
+        f"{v['did']:04X} {DID_PRIORITIES.index(v['priority'])}\n" for v in vehicle["dids"]
+    )
+    assert out == expected
+    header = (d / "vehicle_cl250.h").read_text()
+    assert "#define VEHICLE_CL250_PRIORITY_HIGH (0u)" in header
+    assert "#define VEHICLE_CL250_PRIORITY_NORMAL (1u)" in header
+
+
 def test_request_allow_list_is_exactly_d020(lib):
     """Golden test, independent of the YAML: what C allows is D-020, nothing more."""
     for sid in range(256):

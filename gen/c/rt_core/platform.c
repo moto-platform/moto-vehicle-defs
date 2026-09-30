@@ -275,12 +275,12 @@ uint16_t platform_vehicle_speed_vehicle_speed_encode(float value)
 
 bool platform_vehicle_speed_vehicle_speed_is_in_range(uint16_t value)
 {
-    return (value <= 30000u);
+    return (value <= 25500u);
 }
 
 bool platform_vehicle_speed_vehicle_speed_is_in_phys_range(float value)
 {
-    return ((value >= 0.0f) && (value <= 300.0f));
+    return ((value >= 0.0f) && (value <= 255.0f));
 }
 
 uint8_t platform_vehicle_speed_vehicle_speed_age_encode(float value)

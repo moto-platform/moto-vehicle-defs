@@ -23,6 +23,17 @@ def test_safety_range_requires_e2e(platform_text):
     assert any("E2E_DataID set but" in e for e in errs)
 
 
+def test_safety_node_never_receives_vehicle_speed(platform_text):
+    # D-041: re-adding SAFETY to 0x021 would regenerate speed code into safety-node.
+    text = platform_text.replace('"km/h" CONN,LINUX', '"km/h" SAFETY,CONN,LINUX')
+    assert any("VehicleSpeed" in e and "SAFETY may not receive" in e for e in errors_for(text))
+
+
+def test_safety_node_receives_only_the_allow_list(platform_db):
+    got = {m.name for m in platform_db.messages if "SAFETY" in m.receivers}
+    assert got == {"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"}
+
+
 def test_missing_data_id_is_rejected(platform_text):
     text = platform_text.replace('BA_ "E2E_DataID" BO_ 34 4130;\n', "")
     assert any("E2E_DataID missing" in e for e in errors_for(text))

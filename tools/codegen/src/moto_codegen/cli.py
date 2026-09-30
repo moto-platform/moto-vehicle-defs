@@ -51,7 +51,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
         if target.vehicle_dids:
             parts.update(gen_c.generate_vehicle_c(vehicle))
         if target.limits:
-            parts.update(gen_c.generate_limits_c(limits))
+            parts.update(gen_c.generate_limits_c(limits, target.node))
         if target.uds_iso is not None:
             parts.update(gen_uds.generate_iso_c(iso, client_only=target.uds_iso == "client"))
         if target.node in servers:

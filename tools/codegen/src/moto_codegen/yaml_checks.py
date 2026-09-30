@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +23,10 @@ VEHICLE_REQUIRED_TIMING = (
 )
 DID_REQUIRED = (
     "did", "name", "length", "factor_num", "factor_den", "offset", "unit",
-    "min", "max", "poll_period_ms", "stale_after_ms", "verified", "evidence",
+    "min", "max", "poll_period_ms", "stale_after_ms", "priority", "verified", "evidence",
 )  # fmt: skip
+# D-043: poll priority classes, most urgent first. Order only, never content.
+DID_PRIORITIES = ("high", "normal")
 
 
 def load_yaml(path: Path | str) -> dict[str, Any]:
@@ -186,6 +189,8 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
             item.get("legacy_poll_period_ms"), int
         ):
             errors.append(f"{label}: provisional poll period needs legacy_poll_period_ms")
+        if item["priority"] not in DID_PRIORITIES:
+            errors.append(f"{label}: priority must be one of {DID_PRIORITIES} (D-043)")
         if item["verified"] and not _evidence_ok(item):
             errors.append(f"{label}: verified without file:line evidence")
         ref = item.get("platform_signal")
@@ -205,9 +210,44 @@ LIMIT_KEYS = {
         "friction_coeff_clamp_max",
         "lean_angle_default",
         "total_mass_default_kg",
+        "k_yellow",
+        "k_red",
     ),
     "vehicle_speed": ("vehicle_speed_max_age_ms", "vehicle_speed_accel_margin_mps2"),
 }
+
+
+# Sections whose values safety-node must never get (D-041 item 4: speed is rt-core's).
+LIMIT_SECTIONS_NOT_FOR_SAFETY = ("vehicle_speed",)
+# D-041 item 3: until Q-022 (combined braking in a curve) k_red leaves a longitudinal
+# reserve of sqrt(1 - k_red^2) of mu, i.e. at least 0.6 mu.
+K_RED_MAX_UNTIL_Q022 = 0.8
+
+
+def limit_scope(data: dict[str, Any], node: str) -> tuple[str, ...]:
+    """Sections of platform_limits.yaml generated for `node` (a DBC node name)."""
+    return tuple(s for s in LIMIT_KEYS if node in (data.get("scope") or {}).get(s, ()))
+
+
+def _check_scope(data: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+    scope = data.get("scope")
+    if not isinstance(scope, dict) or set(scope) != set(LIMIT_KEYS):
+        return [f"limits: scope must list exactly the sections {sorted(LIMIT_KEYS)}"]
+    limit_nodes = {t.node for t in config.C_TARGETS if t.limits}
+    for section, nodes in scope.items():
+        if not isinstance(nodes, list) or not nodes:
+            errors.append(f"limits: scope.{section} must be a non-empty list of nodes")
+            continue
+        unknown = set(nodes) - limit_nodes
+        if unknown:
+            errors.append(f"limits: scope.{section} names {sorted(unknown)}, not nodes with limits")
+        if section in LIMIT_SECTIONS_NOT_FOR_SAFETY and "SAFETY" in nodes:
+            errors.append(f"limits: scope.{section} must not include SAFETY (D-041)")
+    for node in sorted(limit_nodes):
+        if not any(node in (nodes or ()) for nodes in scope.values()):
+            errors.append(f"limits: node {node} gets platform_limits.h but no section")
+    return errors
 
 
 def limit_values(data: dict[str, Any]) -> dict[str, Any]:
@@ -240,12 +280,12 @@ def check_limits(data: dict[str, Any], vehicle: dict[str, Any], platform_db: Dat
         extra = set(entries) - set(keys)
         if extra:
             errors.append(f"limits: unknown keys {sorted(extra)} in {section}")
+    errors += _check_scope(data)
     if errors:
         return errors
     v = limit_values(data)
     mu = _signal(platform_db, "EkfFrictionMass", "FRICTION_COEFF")
     mass = _signal(platform_db, "EkfFrictionMass", "TOTAL_MASS")
-    age_sig = _signal(platform_db, "VehicleSpeed", "VEHICLE_SPEED_AGE")
     lo, hi, default = (
         v["friction_coeff_clamp_min"],
         v["friction_coeff_clamp_max"],
@@ -262,15 +302,35 @@ def check_limits(data: dict[str, Any], vehicle: dict[str, Any], platform_db: Dat
         errors.append("limits: total_mass_default_kg not representable in TOTAL_MASS")
     if v["lean_angle_default"] is not None:
         errors.append("limits: lean_angle_default must be null (no safe default lean, D-029)")
+    k_yellow, k_red = v["k_yellow"], v["k_red"]
+    if not all(_is_real(k) for k in (k_yellow, k_red)) or not 0 < k_yellow < k_red < 1:
+        errors.append("limits: need 0 < k_yellow < k_red < 1 (D-041)")
+    elif k_red > K_RED_MAX_UNTIL_Q022:
+        errors.append(
+            f"limits: k_red must be <= {K_RED_MAX_UNTIL_Q022} until Q-022 "
+            "(longitudinal reserve, D-041 item 3)"
+        )
     speed = next((d for d in vehicle.get("dids", []) if d.get("name") == "VEHICLE_SPEED"), None)
     age = v["vehicle_speed_max_age_ms"]
+    rtt = vehicle.get("timing", {}).get("assumed_round_trip_ms", 0)
     if speed is None:
         errors.append("limits: vehicle_cl250.yaml has no VEHICLE_SPEED DID")
-    elif not speed["stale_after_ms"] < age <= age_sig.maximum:
+    elif (
+        not isinstance(age, int)
+        or isinstance(age, bool)
+        or not speed["poll_period_ms"] + rtt < age <= speed["stale_after_ms"]
+    ):
         errors.append(
-            "limits: vehicle_speed_max_age_ms must exceed stale_after_ms of VEHICLE_SPEED "
-            "(else it adds nothing) and fit VEHICLE_SPEED_AGE"
+            "limits: vehicle_speed_max_age_ms must be an integer with poll_period_ms + "
+            "assumed_round_trip_ms < value <= stale_after_ms of VEHICLE_SPEED (one late "
+            "response must not drop the lean; rt-core cannot use an older sample anyway)"
         )
-    if not 0 < v["vehicle_speed_accel_margin_mps2"] <= 20:
+    margin = v["vehicle_speed_accel_margin_mps2"]
+    if not _is_real(margin) or not 0 < margin <= 20:
         errors.append("limits: vehicle_speed_accel_margin_mps2 must be in (0, 20]")
     return errors
+
+
+def _is_real(value: Any) -> bool:
+    """A finite int/float that is not a bool (YAML `true` would pass as 1)."""
+    return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)

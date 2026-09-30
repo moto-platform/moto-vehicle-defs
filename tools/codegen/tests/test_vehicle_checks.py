@@ -34,6 +34,34 @@ def test_platform_signal_must_exist(vehicle, platform_db):
     assert any("not found in platform.dbc" in e for e in check_vehicle(vehicle, platform_db))
 
 
+@pytest.mark.parametrize("prio", ["safety", "HIGH", 1, None])
+def test_priority_must_be_a_known_class(vehicle, platform_db, prio):
+    vehicle["dids"][0]["priority"] = prio
+    assert any("priority must be one of" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_priority_is_required(vehicle, platform_db):
+    del vehicle["dids"][0]["priority"]
+    assert any("missing ['priority']" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_vehicle_speed_is_the_only_high_priority_did(vehicle):
+    # D-043 item 2: 0xF40D feeds the rt-core EKF lean estimate.
+    high = [d["did"] for d in vehicle["dids"] if d["priority"] == "high"]
+    assert high == [0xF40D]
+
+
+def test_python_vehicle_module_decodes(vehicle):
+    ns: dict = {}
+    exec((config.GEN_DIR / "python" / "moto_defs" / "vehicle_cl250.py").read_text(), ns)  # noqa: S102
+    assert ns["decode"]("VEHICLE_SPEED", b"\x3c") == 60.0
+    assert ns["decode"]("ENGINE_SPEED", b"\x1a\xf8") == 1726.0
+    assert ns["PRIORITIES"] == ("high", "normal")
+    assert {n: t[9] for n, t in ns["DIDS"].items()} == {
+        d["name"]: d["priority"] for d in vehicle["dids"]
+    }
+
+
 def test_duplicate_did(vehicle, platform_db):
     vehicle["dids"][1]["did"] = vehicle["dids"][0]["did"]
     assert any("duplicate" in e for e in check_vehicle(vehicle, platform_db))

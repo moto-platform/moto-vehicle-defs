@@ -16,8 +16,8 @@
 #define PLATFORM_LIMIT_FRICTION_COEFF_CLAMP_MAX (1.2f) /* provisional */
 /* lean_angle_default: none by design (provisional), see the YAML rule. */
 #define PLATFORM_LIMIT_TOTAL_MASS_DEFAULT_KG (252.0f) /* provisional */
-#define PLATFORM_LIMIT_VEHICLE_SPEED_MAX_AGE_MS (400u) /* provisional */
-#define PLATFORM_LIMIT_VEHICLE_SPEED_ACCEL_MARGIN_MPS2 (5.0f) /* provisional */
+#define PLATFORM_LIMIT_K_YELLOW (0.6f) /* provisional */
+#define PLATFORM_LIMIT_K_RED (0.8f) /* provisional */
 
 /* EKF estimate states (*_STATE): only ESTIMATED (0) and CLAMPED (1) are usable.
  * DEFAULT (2) follows the per-value rule; INVALID (3), RESERVED and any unknown

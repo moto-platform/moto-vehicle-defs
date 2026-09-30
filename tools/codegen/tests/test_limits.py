@@ -30,9 +30,63 @@ def test_friction_default_inside_clamp_range(limits, vehicle, platform_db):
     assert any("outside the clamp range" in e for e in check_limits(limits, vehicle, platform_db))
 
 
-def test_speed_age_consistent_with_poll_period(limits, vehicle, platform_db):
-    limits["vehicle_speed"]["vehicle_speed_max_age_ms"]["value"] = 300  # == stale_after_ms
+@pytest.mark.parametrize("age", [100, 120, 301, 400, 300.0, True])  # poll 100 + rtt 20, stale 300
+def test_speed_age_within_poll_period_and_stale(limits, vehicle, platform_db, age):
+    limits["vehicle_speed"]["vehicle_speed_max_age_ms"]["value"] = age
     assert any("vehicle_speed_max_age_ms" in e for e in check_limits(limits, vehicle, platform_db))
+
+
+def test_speed_age_equals_stale_after(limits, vehicle):
+    # D-041 item 4 re-scope: rt-core cannot use a sample older than stale_after_ms anyway.
+    speed = next(d for d in vehicle["dids"] if d["name"] == "VEHICLE_SPEED")
+    assert limit_values(limits)["vehicle_speed_max_age_ms"] == speed["stale_after_ms"]
+
+
+@pytest.mark.parametrize(
+    ("k_yellow", "k_red"),
+    [(0.8, 0.6), (0.6, 0.6), (0.0, 0.8), (0.6, 1.0), (0.6, 1.2), (-0.1, 0.8),
+     (float("nan"), 0.8), (0.6, float("inf")), (True, 0.8), ("0.6", 0.8), (None, 0.8)],
+)  # fmt: skip
+def test_k_thresholds_ordered_inside_unit_interval(limits, vehicle, platform_db, k_yellow, k_red):
+    limits["cornering"]["k_yellow"]["value"] = k_yellow
+    limits["cornering"]["k_red"]["value"] = k_red
+    assert any("0 < k_yellow < k_red < 1" in e for e in check_limits(limits, vehicle, platform_db))
+
+
+def test_k_red_leaves_the_d041_longitudinal_reserve(limits, vehicle, platform_db):
+    # D-041 item 3: until Q-022, sqrt(1 - k_red^2) of mu stays for braking (0.6 at 0.8).
+    limits["cornering"]["k_red"]["value"] = 0.81
+    assert any("until Q-022" in e for e in check_limits(limits, vehicle, platform_db))
+
+
+def test_speed_rules_never_reach_safety(limits, vehicle, platform_db):
+    limits["scope"]["vehicle_speed"].append("SAFETY")
+    assert any("must not include SAFETY" in e for e in check_limits(limits, vehicle, platform_db))
+
+
+@pytest.mark.parametrize(
+    ("mutate", "needle"),
+    [
+        (lambda s: s.pop("vehicle_speed"), "scope must list exactly"),
+        (lambda s: s.update(extra=["RT_CORE"]), "scope must list exactly"),
+        (lambda s: s["cornering"].append("IO"), "not nodes with limits"),
+        (lambda s: s.update(cornering=[]), "non-empty list"),
+        (lambda s: s["cornering"].remove("SAFETY"), "node SAFETY gets platform_limits.h"),
+    ],
+)
+def test_scope_rejects(limits, vehicle, platform_db, mutate, needle):
+    mutate(limits["scope"])
+    assert any(needle in e for e in check_limits(limits, vehicle, platform_db))
+
+
+@pytest.mark.parametrize(
+    ("directory", "has_speed"), [("rt_core", True), ("safety", False), ("hil_sim", True)]
+)
+def test_limits_header_follows_scope(directory, has_speed):
+    text = (config.GEN_DIR / "c" / directory / "platform_limits.h").read_text()
+    assert "#define PLATFORM_LIMIT_K_YELLOW (0.6f)" in text
+    assert "#define PLATFORM_LIMIT_K_RED (0.8f)" in text
+    assert ("PLATFORM_LIMIT_VEHICLE_SPEED" in text) is has_speed
 
 
 def test_every_limit_needs_a_rule_and_status(limits, vehicle, platform_db):
