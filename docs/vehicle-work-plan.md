@@ -96,7 +96,7 @@ This calculation will be used to independently check the accuracy of the speed s
 
 | Feature | Decision |
 |---|---|
-| Processor | ESP32-S3 |
+| Processor | STM32H7 (rt-core, the DUT, D-001) |
 | Enclosure | ABS or aluminum box, minimum IP54 |
 | Mounting location | Under-seat or inside the side panel (preferred: under-seat) |
 | Vibration isolation | Silicone mount or double-sided vibration-damping tape |
@@ -163,18 +163,18 @@ This calculation will be used to independently check the accuracy of the speed s
 
 **Note:** Must not be placed inside a metal enclosure. GPS ground speed data will be used as a second independent reference for validating the CAN speed signal.
 
-### 3.6 Voice Command Hardware (for the G4 module)
+### 3.6 Voice Command Hardware (for the ESP32-S3 voice node)
 
 | Item | Detail |
 |---|---|
 | Microphone | Noise-canceling electret or an off-the-shelf intercom microphone |
-| Placement | Inside the helmet, at mouth level |
+| Placement | Inside the helmet, at mouth level (helmet microphone on moto-connectivity-node for ESP-SR; the engine sound uses a separate engine-facing microphone on linux-node, D-044) |
 | Connection | Wired (preferred) or via existing intercom over BT |
-| Trigger | Handlebar-mounted push-to-talk button |
+| Trigger | Handlebar-mounted push-to-talk button (primary); ESP-SR wake word optional (D-047) |
 | Button placement | Left handlebar, in a position operable with gloves |
 | Feedback | In-helmet speaker or intercom speaker |
 
-**Rationale:** Choosing push-to-talk instead of a wake word entirely eliminates false triggering caused by wind noise, and reduces processor load.
+**Rationale:** Push-to-talk as the primary trigger eliminates false triggering caused by wind noise and reduces processor load. The wake word is an optional second trigger for hands-free use (D-047; default and conditions open, Q-024).
 
 ### 3.7 Optional — Suspension Instrumentation
 

@@ -42,12 +42,12 @@ Full diagram with interfaces: `ARCHITECTURE.md` §3.
 | Unit | Chip | SDV role | Task |
 |---|---|---|---|
 | Main MCU | **STM32H7** (H743/H723) | Domain controller | CAN, telemetry, logging, fusion, maintenance tracking, coordination |
-| Connectivity+ML | **ESP32-S3** | Auxiliary node | Wi-Fi/BLE, voice command (TinyML), server/phone sync |
+| Connectivity+voice | **ESP32-S3** | Auxiliary node | Wi-Fi/BLE, voice command (ESP-SR, D-044), server/phone sync |
 | Safety | **STM32 G4/F3** (with FPU) | Safety monitor | Cornering safety warning, independent monitoring — isolated |
 | I/O | **STM32 G0/F0** | Zone/edge | Actuators (lights, heating), immobilizer, power management |
 | Linux | **Raspi 5** | HPC | Camera, image processing, heavy ML inference, HMI, maps |
 
-**Decision (final):** The main MCU is **STM32H7**. The ESP32-S3 is not the main MCU — it is only the connectivity+ML auxiliary node. The work running on the main MCU (telemetry, logging, fusion, UDS/ISO-TP/bootloader, XCP, cornering EKF estimation, context classification, virtual dynamometer computation, anomaly inference) runs on **STM32H7**; the ESP32-S3 only handles Wi-Fi/BLE sync and voice command (TinyML — the vector accelerator lives here).
+**Decision (final):** The main MCU is **STM32H7**. The ESP32-S3 is not the main MCU — it is only the connectivity+voice auxiliary node. The work running on the main MCU (telemetry, logging, fusion, UDS/ISO-TP/bootloader, XCP, cornering EKF estimation, context classification (rt-core `context/`, D-008), virtual dynamometer computation, anomaly safety net) runs on **STM32H7**; the ESP32-S3 only handles Wi-Fi/BLE sync and voice command (ESP-SR wake word + fixed commands, D-044).
 
 ---
 
@@ -58,7 +58,7 @@ Full diagram with interfaces: `ARCHITECTURE.md` §3.
 | Domain (main) | STM32H7 (Cortex-M7, 480 MHz, FPU, DSP, CAN-FD) | Learnable equivalent of the automotive domain-controller class |
 | Safety | STM32G4/F3 (FPU, deterministic) | Easy to learn; the real equivalent is AURIX/S32K (ASIL) → Phase 2 |
 | I/O/edge | STM32G0/F0 (cheap, has CAN) | Edge node should be simple, not powerful |
-| Connectivity+ML | ESP32-S3 (Wi-Fi/BLE, vector accelerator) | RF + TinyML on one chip, data isn't split |
+| Connectivity+voice | ESP32-S3 (Wi-Fi/BLE, vector accelerator) | RF + offline voice (ESP-SR) on one chip; context classification is not here (D-008) |
 | HPC | Raspi 5 | Real equivalent is an automotive SoC (S32G, NVIDIA); a learnable version |
 
 ---
@@ -116,14 +116,14 @@ Latency comes from the physical channel, not from repo/code partitioning.
 
 | Context | Input | Method | Weight | Where |
 |---|---|---|---|---|
-| Road type (urban/rural/highway) | CAN (speed, throttle, gear) + statistics | Classic ML / threshold | Light (~85%) | ESP32-S3 |
-| Road surface (smooth/rough/cobblestone/dirt) | IMU vibration | 1D-CNN (TinyML) | Medium (~93%) | ESP32-S3 |
-| Driving event (acceleration/braking/cornering) | IMU | Classic ML / 1D-CNN | Light | ESP32-S3 |
-| Day/night | Light sensor / camera | Threshold / lightweight model | Very light | ESP32 |
-| Weather (dry/wet) | Surface vibration + temperature | Lightweight model | Light | ESP32 |
-| Traffic density | Speed variability + stop-and-go | Statistics | Very light | ESP32 |
+| Road type (urban/rural/highway) | CAN (speed, throttle, gear) + statistics | Classic ML / threshold | Light (~85%) | rt-core `context/` (H7) |
+| Road surface (smooth/rough/cobblestone/dirt) | IMU vibration | 1D-CNN (TinyML) | Medium (~93%) | rt-core `context/` (H7) |
+| Driving event (acceleration/braking/cornering) | IMU | Classic ML / 1D-CNN | Light | rt-core `context/` (H7) |
+| Day/night | Light sensor / camera | Threshold / lightweight model | Very light | rt-core `context/` (H7) |
+| Weather (dry/wet) | Surface vibration + temperature | Lightweight model | Light | rt-core `context/` (H7) |
+| Traffic density | Speed variability + stop-and-go | Statistics | Very light | rt-core `context/` (H7) |
 
-**Hardware:** Mostly achievable with existing hardware (IMU + CAN + GPS); Raspi is not required — the ESP32-S3 vector accelerator is enough. An optional light sensor for day/night (small addition).
+**Hardware:** Mostly achievable with existing hardware (IMU + CAN + GPS); Raspi is not required — inference runs in rt-core `context/` on the H7 (D-008). An optional light sensor for day/night (small addition).
 
 **Labeling advantage:** Saying "I'm on the highway now / on a rough road" while riding is an easy and honest label — none of the dead-ends found in fault data. This is another reason it is the first ML model to be built.
 
@@ -248,9 +248,11 @@ A motorcycle-specific, safety-critical function. **The layers sit on different c
 
 ```
 Layer 1 — Deterministic decision (moto-safety-node, STM32 G4/F3, ISOLATED)
-   Closed-form physics: v_max = √(µ·g·R), tan(θ) = v²/(g·R)
-   → Warning and LED triggering happen HERE. Works independently even if the main MCU/Raspi crashes/lags.
-   → Its inputs (lean angle, µ, mass) are received from Layer 2 over CAN.
+   Closed-form physics: in a steady turn tan(θ) = v²/(g·R) = F_y/N, so "no sliding" is tan θ ≤ µ (D-041).
+   Speed and mass cancel; v_max = √(µ·g·R) is only a predictive (Layer 2/3) feature, not Layer 1.
+   → Warning and LED triggering happen HERE. Works without the Raspi, phone, Wi-Fi, VSS and ML; without rt-core only in degraded mode (own-IMU fallback, D-042).
+   → Its inputs are lean angle θ and µ_eff only, received from Layer 2 over CAN (D-041). Mass and vehicle speed are NOT safety-node inputs; the speed-age rules moved to rt-core.
+   → Lateral only (Q-022): combined braking/acceleration in a curve is not checked yet.
 
 Layer 2 — EKF estimation (moto-rt-core, STM32H7 — part of the context bus)
    µ (friction), mass, center-of-gravity height, lean angle — CLAMPED to physical ranges
@@ -262,21 +264,23 @@ Layer 3 — ML adaptation (moto-rt-core, together with the context model, option
    → Can NEVER loosen the safety CEILING, only fine-tunes on the conservative side
 ```
 
-**Open decision (to be resolved once the hardware is finalized):** What should `moto-safety-node` do if the CAN data from H7 (lean angle, µ) is delayed/cut off? Options: (a) let it run fully independently with its own minimal IMU, (b) switch to a low-confidence/conservative warning state when data is cut. Not decided yet — to be resolved once `moto-safety-node` hardware is finalized (Group 7).
+**Decision function (D-041).** Inputs: θ = `LEAN_ANGLE` (usable only with E2E status OK, `LEAN_ANGLE_STATE` ESTIMATED or CLAMPED, θ finite, |θ| ≤ 90°) and µ_eff = `FRICTION_COEFF` resolved by the D-029 rule (always finite, within [0.1, 1.2]). Two dimensionless thresholds k_yellow < k_red come from `limits/platform_limits.yaml`. The friction utilisation is u = tan|θ| / µ_eff: GREEN if u < k_yellow, YELLOW if k_yellow ≤ u < k_red, RED if u ≥ k_red, with level hysteresis/debounce. The implementation is division-free: GREEN only if sin|θ| < k_yellow·µ_eff·cos|θ|, YELLOW only if sin|θ| < k_red·µ_eff·cos|θ|, otherwise RED; any non-finite intermediate (NaN) gives RED. Threshold values are in the limits file, not in this document.
+
+**Fallback IMU (D-042, resolves Q-002).** safety-node has its own minimal IMU (SPI). It uses its own speed-free lean estimate only when rt-core's lean is not usable (E2E status other than OK, state other than ESTIMATED/CLAMPED, or the rt-core heartbeat not OK / `NODE_MODE` ≠ NORMAL). In fallback, µ_eff = min(D-029 result, `friction_coeff_default`), the LED ring shows a distinct DEGRADED pattern and safety-node reports `NODE_MODE` = DEGRADED. If neither lean source is usable (boot, own-IMU fault) the ring shows UNAVAILABLE, never GREEN. Open details (cross-check against rt-core, whether the fallback may show GREEN before validation, IMU part, switching hysteresis, calibration): Q-023.
 
 **Why closed-form + EKF, not PINN/heavy ML:** The cornering limit is solved in closed form (it has an analytical solution); training a neural network is unnecessary and **unexplainable** — "the network said so" is not defensible for a safety function. The grey box (parameter estimation with EKF) is both explainable and testable: when µ=0.62 comes out, it has physical meaning; a neural-network weight does not.
 
 **Input data (Layer 2, in moto-rt-core):** IMU (lean angle, angular velocity), GPS (turn radius, speed), CAN (speed, acceleration). Lean angle is the EKF output, shared via the context bus (5b.0c) with the display LED ring (5b.4), lane-tracking correction (5b.5), and the safety-node alike.
 
 **Output — two channels:**
-- **Round LED ring** (either side of the gauge, defined in 5b.4, driven by `moto-safety-node` or the I/O node): green→yellow→red, instantaneous lean state
+- **Round LED ring** (either side of the gauge, defined in 5b.4, driven by `moto-safety-node` or the I/O node — the owner is open, Q-026; never by rt-core, D-042): green→yellow→red, instantaneous lean state; DEGRADED / UNAVAILABLE patterns per D-042
 - **Audio/HMI warning** (if the threshold is exceeded): on the main-screen profile (visible in the "sport" profile) + if needed, a fixed warning phrase from the voice command system (5b.6)
 
 **Calibration and field testing:** T4-class tests from the vehicle work plan (section 7) — closed area, gradual speed increase, **aimed not at approaching the limit but at validating the model's consistency.** The actual tip-over/slide limit is never reached.
 
 **HIL validation:** Tested on `moto-hil-bench` with fixed-radius+variable-speed scenarios — the expected warning point is computed and compared against the actual trigger point (see the vehicle work plan, section 8 test scenarios).
 
-**Hardware:** No additional hardware needed — existing IMU/GPS/CAN infrastructure and the `moto-safety-node` chip (already listed in Group 7) are sufficient. This module's cost is not in hardware but in software (60-100 hours, already in the scope list).
+**Hardware:** `moto-safety-node` gets its own small IMU (SPI) as the fallback source (D-042; the part is chosen with the Group 7 hardware, Q-023). The rt-core IMU/GPS/CAN infrastructure feeds Layer 2 as before. _The earlier "no additional hardware" statement is outdated (D-042)._ Software effort: 60-100 hours, already in the scope list.
 
 ---
 
@@ -451,10 +455,10 @@ Note: Lean angle is read from the context bus (5b.0c) — sharing the same sourc
 
 | Component | Technology | Note |
 |---|---|---|
-| Trigger | Push-to-talk (handlebar button) | Not wake word — eliminates false triggering in wind noise from the outset |
+| Trigger | Push-to-talk (handlebar button), primary; ESP-SR wake word optional and configurable (D-047) | Push-to-talk eliminates false triggering in wind noise; the wake word's default and enabling conditions are open (Q-024) |
 | Command recognition | **ESP-SR MultiNet** | Up to 300 words, **requires no retraining**, ready-made |
 | Audio preprocessing | ESP-SR Audio Front-end (AEC, VAD, noise suppression) | First line of defense against wind/engine noise |
-| Hardware | I2S microphone (in-helmet/intercom) | — |
+| Hardware | Helmet/intercom I2S microphone on `moto-connectivity-node` (D-044) | The engine sound uses a separate engine-facing microphone on linux-node (D-044, see 5b.9). After the trigger (button or wake word, D-047), speech for the LLM path goes to the Raspi; transport open, Q-024 (also whether the ESP32-S3 module has the PSRAM ESP-SR expects) |
 | Location | **ESP32-S3** (`moto-connectivity-node`) | Vector accelerator lives here; moving it to the Raspi adds unnecessary bridge latency |
 | Reference | ESP-SR (espressif/esp-sr, GitHub) — WakeNet (~80ms, <2% false positive), MultiNet | Official Espressif framework |
 
@@ -470,7 +474,7 @@ Note: Lean angle is read from the context bus (5b.0c) — sharing the same sourc
 
 ```
 WHILE RIDING (connectivity AVAILABLE)
-  Microphone → Raspi 5 (VAD) → ~internet (phone hotspot)
+  Helmet microphone (connectivity-node, ESP-SR) → speech after the trigger (D-047) → Raspi 5 (VAD; transport open, Q-024, D-044) → ~internet (phone hotspot)
       → Cloud Realtime API (streaming STT+LLM+TTS) → ~2 s → helmet speaker
   While generating the answer, the LLM calls moto-mcp tools (tool call)
 
@@ -575,33 +579,33 @@ AT HOME/AFTERWARDS (demo, bonus)
 
 ---
 
-### 5b.9 Anomaly Detection Model — Unified Model Architecture (Raspi) + ESP Safety Net
+### 5b.9 Anomaly Detection Model — Unified Model Architecture (Raspi) + rt-core Safety Net
 
 **Data schema:**
 
 | Modality | Signal | Sampling | Captures |
 |---|---|---|---|
 | CAN | RPM, TPS, engine temperature, MAP, fuel trim, battery voltage, wheel speed (if available) | 1-20 Hz | Slow faults (filter, leak, sensor drift) |
-| IMU (vibration) | 3-axis acceleration, high frequency | 1000+ Hz | Mechanical: imbalance, looseness, misfire |
-| Acoustic | Microphone → MFCC/spectral features | Per audio frame | General engine health, combustion quality |
+| Engine-block accelerometer (vibration) | 3-axis acceleration on rt-core (SPI + DMA), high frequency; features → platform CAN at ≤ 10 Hz → Raspi / VSS; raw → rt-core log only (D-044; feature set, part and rate: Q-025) | 1000+ Hz | Mechanical: imbalance, looseness, misfire |
+| Acoustic | Engine-facing microphone on linux-node (separate from the helmet microphone) → MFCC/spectral features, local (D-044) | Per audio frame | General engine health, combustion quality |
 | Thermal | Engine temperature, EGT, ambient | 0.1-1 Hz | Combustion quality, overheating |
 | Context (conditioning) | From the context bus: load, weather, riding mode | Event-based | "What's normal under this condition" |
 
-**Fusion decision — one unified model (on Raspi) + a rule-based safety net on ESP:**
+**Fusion decision — one unified model (on Raspi) + a rule-based safety net on rt-core (H7, D-008):**
 
-**Decision changed (result of discussion):** Our first decision was late fusion (separate scores, in separate places). After discussion, we moved to **early fusion** — rationale: the Kuksa Databroker already carries CAN+IMU data to the Raspi (VSS bridge), so evaluating this data in one unified model while it's already there can capture **cross-modality correlation** (cases where "two signals together are meaningful but neither alone crosses the threshold," which separate scores could miss), and it is also simpler from a development/synchronization standpoint.
+**Decision changed (result of discussion):** Our first decision was late fusion (separate scores, in separate places). After discussion, we moved to **early fusion** — rationale: Kuksa/VSS carries CAN signals, lean and vibration/acoustic features to the Raspi, not raw high-rate data (D-044 item 2), so evaluating this data in one unified model while it's already there can capture **cross-modality correlation** (cases where "two signals together are meaningful but neither alone crosses the threshold," which separate scores could miss), and it is also simpler from a development/synchronization standpoint.
 
 ```
 Raspi 5 (single unified anomaly model):
    [CAN + Vibration + Acoustic + Thermal + Context] → unified model (early fusion)
    → single anomaly score/classification
 
-ESP32-S3 (H7) — minimal safety net, NOT ML, a handful of fixed rules:
+rt-core (STM32H7) — minimal safety net, NOT ML, a handful of fixed rules (D-008):
    Engine-temperature threshold, illogical RPM jump, battery-voltage threshold, etc.
    → minimum control that never drops to ZERO even if the Raspi crashes/reboots
 ```
 
-This gives both "ease of development in one model + correlation capture" (Raspi) and "never going completely silent" (ESP rule-based fallback, not a separate ML model — no extra development load).
+This gives both "ease of development in one model + correlation capture" (Raspi) and "never going completely silent" (rt-core rule-based fallback, not a separate ML model — no extra development load).
 
 **Labeling:** During the fault-injection sessions in the vehicle work plan (spark plug, air filter, chain, tire pressure), CAN+IMU+audio are recorded simultaneously — three modalities labeled in a single session, no extra recording pass needed.
 
@@ -691,9 +695,9 @@ Repo boundary = runtime boundary (things running in a different place/language/h
 | 4 | `moto-io-node` | STM32 G0/F0 (blind spot+immobilizer+power) | C/C++ |
 | 5 | `moto-linux-node` | Raspi 5 (lane tracking, camera, HMI) | Python/C++ |
 | 6 | `moto-hil-bench` | Simulator MCU (STM32F4) + host PC | C/C++ + Python |
-| 7 | `moto-server` | Server | Python/Go |
+| 7 | `moto-server` | Server | Python (FastAPI, D-010) |
 | 8 | `moto-ml` | Offline training | Python |
-| 9 | `moto-mobile` | Phone | Flutter/RN |
+| 9 | `moto-mobile` | Phone | Flutter (D-022) |
 | 10 | `moto-vehicle-defs` | Shared definitions | DBC/YAML/VSS |
 | 11 | **`moto-mcp`** | Raspi 5 (same runtime, **separate repo — independent open-source project**) | Python |
 
@@ -703,9 +707,9 @@ Repo boundary = runtime boundary (things running in a different place/language/h
 
 **moto-vehicle-defs cornerstone:** Signal definitions, CAN message map, VSS model. The other ten repos take it as their source (submodule/package). Single source of truth → the "two units know the same signal differently" problem never occurs.
 
-**Modules within a repo (NOT separate repos):** UDS/ISO-TP/bootloader, XCP, cornering EKF estimation, context classification, virtual dynamometer, anomaly inference → folders under `features/` inside `moto-rt-core` (H7). Voice command (TinyML) → a module inside `moto-connectivity-node` (ESP32-S3).
+**Modules within a repo (NOT separate repos):** UDS/ISO-TP/bootloader, XCP, cornering EKF estimation, context classification, virtual dynamometer, anomaly safety net (D-008; the unified anomaly model runs on linux-node, §5b.9) → folders under `features/` inside `moto-rt-core` (H7). Voice command (ESP-SR, D-044) → a module inside `moto-connectivity-node` (ESP32-S3).
 
-**ML split:** Training (Python, offline) → `moto-ml`. Inference (the model running in the vehicle) → the `features/` folder of the relevant node (context/anomaly → rt-core, voice command → connectivity-node, lane tracking → linux-node).
+**ML split:** Training (Python, offline) → `moto-ml`. Inference (the model running in the vehicle) → the `features/` folder of the relevant node (context and the rule-based anomaly safety net → rt-core, the unified anomaly model → linux-node (§5b.9), voice command → connectivity-node, lane tracking → linux-node).
 
 **Dependency direction (one-way):**
 ```

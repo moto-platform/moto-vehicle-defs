@@ -2,6 +2,8 @@
 
 > Translated from the Turkish original (`archive/tr/faz0-veri-toplama-plani.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
+> **Superseded in part (D-032, D-045):** where this plan puts the microSD recording or the Wi-Fi sync on the ESP32 (WP-4, WP-7), it is superseded. The ESP32-S3 called "main unit" here is connectivity-node, the temporary sole tester and BLE bridge until rt-core exists (D-023); the main MCU is the STM32H7 (D-001). The data path is BLE → phone → upload (D-032); connectivity-node keeps no local copy and data lost while the phone is disconnected is accepted, with seq/tick gap accounting shown in moto-server's validation report (D-045). Persistent on-vehicle logging (microSD session files, buffered writes, safe shutdown) belongs to rt-core's logging function. The signal list and the WP structure stay valid.
+
 **Project:** Motorcycle embedded diagnostics, telemetry, and driver assistance platform
 **Scope of this plan:** First priority — ML research, open-source review, and a working data collection system
 **Version:** 1.0 — September 2026
@@ -139,6 +141,8 @@ Jumper wires are unreliable under vibration. Intermediate step: **solder onto pe
 
 ## 5. WP-4: Recording System
 
+_Superseded in part (D-045): microSD session files are rt-core's logging function, not the ESP32's._
+
 | Component | Task |
 |---|---|
 | microSD driver | SPI or SDMMC, high write speed |
@@ -183,6 +187,8 @@ Jumper wires are unreliable under vibration. Intermediate step: **solder onto pe
 ---
 
 ## 8. WP-7: Continuous Collection and Server Sync
+
+_Superseded in part (D-032, D-045): upload is BLE → phone → server, not Wi-Fi sync from the ESP32; no local copy on connectivity-node._
 
 | Component | Task |
 |---|---|
