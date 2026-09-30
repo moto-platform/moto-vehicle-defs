@@ -62,7 +62,7 @@ static inline uint16_t unpack_left_shift_u16(
     uint8_t shift,
     uint8_t mask)
 {
-    return (uint16_t)((uint16_t)(value & mask) << shift);
+    return (uint16_t)(((uint16_t)value & mask) << shift);
 }
 
 static inline uint8_t unpack_right_shift_u8(
@@ -78,7 +78,7 @@ static inline uint16_t unpack_right_shift_u16(
     uint8_t shift,
     uint8_t mask)
 {
-    return (uint16_t)((uint16_t)(value & mask) >> shift);
+    return (uint16_t)(((uint16_t)value & mask) >> shift);
 }
 
 int platform_vehicle_speed_unpack(
@@ -102,9 +102,11 @@ int platform_vehicle_speed_unpack(
 
 int platform_vehicle_speed_init(struct platform_vehicle_speed_t *msg_p)
 {
-    if (msg_p == NULL) return -1;
+    if (msg_p == NULL) {
+        return -1;
+    }
 
-    memset(msg_p, 0, sizeof(struct platform_vehicle_speed_t));
+    (void)memset(msg_p, 0, sizeof(struct platform_vehicle_speed_t));
 
     return 0;
 }
@@ -209,9 +211,11 @@ int platform_heartbeat_rt_core_unpack(
 
 int platform_heartbeat_rt_core_init(struct platform_heartbeat_rt_core_t *msg_p)
 {
-    if (msg_p == NULL) return -1;
+    if (msg_p == NULL) {
+        return -1;
+    }
 
-    memset(msg_p, 0, sizeof(struct platform_heartbeat_rt_core_t));
+    (void)memset(msg_p, 0, sizeof(struct platform_heartbeat_rt_core_t));
 
     return 0;
 }
@@ -306,7 +310,7 @@ int platform_heartbeat_conn_pack(
         return (-EINVAL);
     }
 
-    memset(&dst_p[0], 0, 8);
+    (void)memset(&dst_p[0], 0, 8);
 
     dst_p[0] |= pack_left_shift_u8(src_p->e2_e_crc, 0u, 0xffu);
     dst_p[1] |= pack_left_shift_u8(src_p->e2_e_counter, 0u, 0x0fu);
@@ -320,9 +324,11 @@ int platform_heartbeat_conn_pack(
 
 int platform_heartbeat_conn_init(struct platform_heartbeat_conn_t *msg_p)
 {
-    if (msg_p == NULL) return -1;
+    if (msg_p == NULL) {
+        return -1;
+    }
 
-    memset(msg_p, 0, sizeof(struct platform_heartbeat_conn_t));
+    (void)memset(msg_p, 0, sizeof(struct platform_heartbeat_conn_t));
 
     return 0;
 }
@@ -434,9 +440,11 @@ int platform_vehicle_engine_unpack(
 
 int platform_vehicle_engine_init(struct platform_vehicle_engine_t *msg_p)
 {
-    if (msg_p == NULL) return -1;
+    if (msg_p == NULL) {
+        return -1;
+    }
 
-    memset(msg_p, 0, sizeof(struct platform_vehicle_engine_t));
+    (void)memset(msg_p, 0, sizeof(struct platform_vehicle_engine_t));
 
     return 0;
 }

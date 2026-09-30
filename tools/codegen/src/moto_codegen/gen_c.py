@@ -25,6 +25,27 @@ def _strip_date(text: str) -> str:
     return _CANTOOLS_DATE_RE.sub(r"\1.", text)
 
 
+# cantools has no MISRA mode, so its platform.c is rewritten where it breaks a required
+# MISRA C:2012 rule (D-046 item 2). Every rewrite keeps the behaviour.
+_MISRA_FIXUPS: tuple[tuple[re.Pattern[str], str], ...] = (
+    # 17.7: the pointer returned by memset() is not used
+    (re.compile(r"^([ \t]*)memset\(", re.MULTILINE), r"\1(void)memset("),
+    # 15.6: the NULL guard in *_init() gets a compound statement
+    (
+        re.compile(r"^([ \t]*)if \((.+)\) return (.+);$", re.MULTILINE),
+        r"\1if (\2) {\n\1    return \3;\n\1}",
+    ),
+    # 10.8: widen the 8-bit operand before masking instead of casting the composite
+    (re.compile(r"\((uint(?:16|32|64)_t)\)\(value & mask\)"), r"((\1)value & mask)"),
+)
+
+
+def _misra_fixups(source: str) -> str:
+    for pattern, replacement in _MISRA_FIXUPS:
+        source = pattern.sub(replacement, source)
+    return source
+
+
 def _sends(target: config.CTarget, msg: Message) -> bool:
     return target.all_messages or target.node in msg.senders
 
@@ -45,7 +66,7 @@ def generate_platform_c(db: Database, target: config.CTarget) -> dict[str, str]:
         use_float=True,  # single-precision FPU (H7/G4/ESP32-S3); no double math on MCUs
         node_name=None if target.all_messages else target.node,
     )
-    return {"platform.h": _strip_date(header), "platform.c": _strip_date(source)}
+    return {"platform.h": _strip_date(header), "platform.c": _misra_fixups(_strip_date(source))}
 
 
 # --------------------------------------------------------------------------- E2E wrappers
