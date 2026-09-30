@@ -8,7 +8,8 @@ Single source of truth for signals in [moto-platform](https://github.com/moto-pl
 | `dbc/platform.dbc` | Platform CAN bus between our nodes (ID plan, E2E attributes) |
 | `dbc/cl250.dbc` | CL250 passive broadcast frames (skeleton, Q-001) |
 | `vss/overlay.vspec` | COVESA VSS 6.0 overlay + `dbc2vss` mappings for kuksa-can-provider |
-| `uds/dids.yaml` | DIDs/DTCs/routines of our platform nodes (skeleton) |
+| `uds/dids.yaml` | UDS servers of our platform nodes: addressing, timing, services, DIDs, DTCs (RT_CORE so far, D-040) |
+| `uds/iso14229.yaml` | Generic ISO 14229-1 codes, generated as `uds_iso14229.h` (D-040) |
 | `limits/platform_limits.yaml` | Shared cornering/speed limits and fallback values (provisional, D-029) |
 | `tools/codegen/` | Generator and checks (Python, uv) |
 | `gen/` | Generated output, committed — never edit by hand |

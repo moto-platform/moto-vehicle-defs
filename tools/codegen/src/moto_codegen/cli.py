@@ -7,9 +7,9 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import config, gen_c, gen_python, gen_vss
+from . import config, gen_c, gen_python, gen_uds, gen_vss
 from .dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
-from .yaml_checks import check_dids, check_limits, check_vehicle, load_yaml
+from .yaml_checks import check_limits, check_vehicle, load_yaml
 
 
 def run_checks(with_vss: bool = True) -> list[str]:
@@ -18,7 +18,13 @@ def run_checks(with_vss: bool = True) -> list[str]:
     errors += check_platform_dbc(platform_db)
     errors += check_cl250_dbc(load_dbc(config.CL250_DBC))
     errors += check_vehicle(load_yaml(config.VEHICLE_YAML), platform_db)
-    errors += check_dids(load_yaml(config.DIDS_YAML))
+    iso = load_yaml(config.ISO14229_YAML)
+    iso_errors = gen_uds.check_iso(iso)
+    errors += iso_errors
+    if not iso_errors:
+        errors += gen_uds.check_dids(
+            load_yaml(config.DIDS_YAML), iso, load_yaml(config.VEHICLE_YAML)
+        )
     errors += check_limits(
         load_yaml(config.LIMITS_YAML), load_yaml(config.VEHICLE_YAML), platform_db
     )
@@ -35,6 +41,9 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     db = load_dbc(config.PLATFORM_DBC)
     vehicle = load_yaml(config.VEHICLE_YAML)
     limits = load_yaml(config.LIMITS_YAML)
+    iso = load_yaml(config.ISO14229_YAML)
+    dids = load_yaml(config.DIDS_YAML)
+    servers = gen_uds.servers(dids)
     files: dict[Path, str] = {}
     for target in config.C_TARGETS:
         out = Path("c") / target.directory
@@ -43,6 +52,12 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
             parts.update(gen_c.generate_vehicle_c(vehicle))
         if target.limits:
             parts.update(gen_c.generate_limits_c(limits))
+        if target.uds_iso is not None:
+            parts.update(gen_uds.generate_iso_c(iso, client_only=target.uds_iso == "client"))
+        if target.node in servers:
+            parts.update(
+                gen_uds.generate_server_c(target.node, servers[target.node], dids, iso, vehicle)
+            )
         for name, text in parts.items():
             files[out / name] = text
     py = Path("python") / "moto_defs"
@@ -51,6 +66,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     files[py / "vehicle_cl250.py"] = gen_python.generate_vehicle_py(vehicle)
     files[py / "e2e.py"] = gen_python.generate_e2e_py()
     files[py / "limits.py"] = gen_python.generate_limits_py(limits)
+    files[py / "uds.py"] = gen_uds.generate_uds_py(iso, dids, vehicle)
     if with_vss:
         files[Path("vss") / "vss_dbc.json"] = gen_vss.export_json(gen_vss.fetch_base())
     return files

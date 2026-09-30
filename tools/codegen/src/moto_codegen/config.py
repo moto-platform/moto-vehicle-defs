@@ -14,6 +14,7 @@ PLATFORM_DBC = REPO_ROOT / "dbc" / "platform.dbc"
 CL250_DBC = REPO_ROOT / "dbc" / "cl250.dbc"
 VEHICLE_YAML = REPO_ROOT / "uds" / "vehicle_cl250.yaml"
 DIDS_YAML = REPO_ROOT / "uds" / "dids.yaml"
+ISO14229_YAML = REPO_ROOT / "uds" / "iso14229.yaml"
 LIMITS_YAML = REPO_ROOT / "limits" / "platform_limits.yaml"
 OVERLAY_VSPEC = REPO_ROOT / "vss" / "overlay.vspec"
 GEN_DIR = REPO_ROOT / "gen"
@@ -39,17 +40,22 @@ class CTarget:
     all_messages: bool = False  # restbus simulator: every message, both directions
     vehicle_dids: bool = False  # gets the CL250 DID table (vehicle-bus tester or simulator)
     limits: bool = False  # gets platform_limits.h (producer/consumer of cornering values)
+    # uds_iso14229.h: "full" (UDS server and/or client) or "client" (vehicle-bus tester
+    # only: nothing outside the D-020 allow-list is named, D-040). None: no UDS.
+    uds_iso: str | None = None
 
 
 # LINUX and TESTER parse the DBC/VSS at runtime (Python), so they get no C code.
 C_TARGETS: tuple[CTarget, ...] = (
-    CTarget("RT_CORE", "rt_core", vehicle_dids=True, limits=True),
+    CTarget("RT_CORE", "rt_core", vehicle_dids=True, limits=True, uds_iso="full"),
     CTarget("SAFETY", "safety", limits=True),
     CTarget("IO", "io"),
     # Temporary sole vehicle-bus tester until rt-core polls (D-023).
-    CTarget("CONN", "conn", vehicle_dids=True),
+    CTarget("CONN", "conn", vehicle_dids=True, uds_iso="client"),
     # Simulates the CL250 ECU and impersonates platform nodes on the HIL bench.
-    CTarget("HIL_SIM", "hil_sim", all_messages=True, vehicle_dids=True, limits=True),
+    CTarget(
+        "HIL_SIM", "hil_sim", all_messages=True, vehicle_dids=True, limits=True, uds_iso="full"
+    ),
 )
 
 

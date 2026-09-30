@@ -1,6 +1,6 @@
 [project]
 name = "moto-codegen"
-version = "0.1.0"
+version = "0.2.0"
 description = "Code generator and consistency checks for moto-vehicle-defs"
 requires-python = ">=3.11"
 dependencies = [
@@ -38,4 +38,5 @@ testpaths = ["tests"]
 [tool.ruff.lint.per-file-ignores]
 # Embedded C templates keep C formatting.
 "src/moto_codegen/gen_c.py" = ["E501"]
+"src/moto_codegen/gen_uds.py" = ["E501"]
 "src/moto_codegen/c_e2e_templates.py" = ["E501"]

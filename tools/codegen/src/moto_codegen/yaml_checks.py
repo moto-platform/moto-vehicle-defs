@@ -1,4 +1,4 @@
-"""Loaders and checks for uds/vehicle_cl250.yaml and uds/dids.yaml."""
+"""Loaders and checks for uds/vehicle_cl250.yaml and limits (uds/dids.yaml: gen_uds)."""
 
 from __future__ import annotations
 
@@ -57,6 +57,37 @@ def request_allowed(policy: dict[str, Any], payload: list[int] | bytes) -> bool:
 def _evidence_ok(item: dict[str, Any]) -> bool:
     ev = item.get("evidence")
     return isinstance(ev, list) and len(ev) > 0 and all(":" in str(e) for e in ev)
+
+
+def _check_functional_watch(addressing: dict[str, Any]) -> list[str]:
+    """Q-021/D-040: OBD functional request IDs the tester watches and never sends."""
+    watch = addressing.get("functional_watch")
+    if not isinstance(watch, dict):
+        return ["vehicle: addressing.functional_watch missing (D-040)"]
+    if watch.get("watch_only") is not True:
+        return ["vehicle: addressing.functional_watch must be watch_only: true (D-020)"]
+    errors: list[str] = []
+    used = {
+        (a[k], a.get("id_type") == "extended_29bit")
+        for n, a in addressing.items()
+        if n != "functional_watch"
+        for k in ("request_id", "response_id")
+    }
+    seen: set[tuple[int, bool]] = set()
+    for item in watch.get("ids") or []:
+        ext = item.get("id_type") == "extended_29bit"
+        ident = item.get("id")
+        limit = 0x1FFFFFFF if ext else 0x7FF
+        if item.get("id_type") not in ("standard_11bit", "extended_29bit") or not (
+            isinstance(ident, int) and 0 <= ident <= limit
+        ):
+            errors.append(f"vehicle: functional_watch id {ident} invalid for its id_type")
+        elif (ident, ext) in used or (ident, ext) in seen:
+            errors.append(f"vehicle: functional_watch id 0x{ident:X} duplicates another ID")
+        seen.add((ident, ext))
+    if not seen:
+        errors.append("vehicle: functional_watch.ids is empty")
+    return errors
 
 
 def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[str]:
@@ -123,6 +154,7 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
     for name, addr in data["addressing"].items():
         if addr.get("verified") and not _evidence_ok(addr):
             errors.append(f"vehicle: addressing.{name} verified without evidence")
+    errors += _check_functional_watch(data["addressing"])
 
     seen_dids: set[int] = set()
     seen_names: set[str] = set()
@@ -163,29 +195,6 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
                 platform_db.get_message_by_name(msg_name).get_signal_by_name(sig_name)
             except KeyError:
                 errors.append(f"{label}: platform_signal {ref} not found in platform.dbc")
-    return errors
-
-
-def check_dids(data: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
-    nodes = data.get("nodes")
-    if not isinstance(nodes, dict):
-        return ["dids: 'nodes' mapping missing"]
-    for node, content in nodes.items():
-        if node not in config.NODE_IDS:
-            errors.append(f"dids: unknown node {node}")
-            continue
-        seen: set[int] = set()
-        for item in (content or {}).get("dids", []) or []:
-            did = item.get("did")
-            if not isinstance(did, int) or not (0xF100 <= did <= 0xF1FF or 0xFD00 <= did <= 0xFDFF):
-                errors.append(f"dids: {node} DID {did} outside 0xF1xx/0xFDxx")
-            elif did in seen:
-                errors.append(f"dids: {node} duplicate DID 0x{did:04X}")
-            else:
-                seen.add(did)
-            if item.get("access", "read") != "read":
-                errors.append(f"dids: {node} DID {did}: only read access without user approval")
     return errors
 
 

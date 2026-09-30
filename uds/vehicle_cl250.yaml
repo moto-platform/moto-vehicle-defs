@@ -48,6 +48,17 @@ addressing:
       - src/HondaCANModule.cpp:8-9
       - src/HondaCANModule.h:22
       - src/HondaCANModule.cpp:99-103
+  # Q-021 -> D-040: OBD functional request IDs (ISO 15765-4), WATCH-ONLY. The tester
+  # never sends on them (the can_if guard passes request_id only). A frame seen on one
+  # of them means a second tester such as a generic OBD dongle (D-021), and rt-core's
+  # client latches fail-closed (D-039). Standard values, not taken from the legacy code.
+  functional_watch:
+    watch_only: true
+    ids:
+      - {id_type: standard_11bit, id: 0x7DF}
+      - {id_type: extended_29bit, id: 0x18DB33F1}
+    verified: false
+    reference: ISO 15765-4 functional addressing
 
 transport:
   protocol: iso15765_2

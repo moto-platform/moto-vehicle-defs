@@ -55,6 +55,13 @@ def generate_vehicle_py(vehicle: dict[str, Any]) -> str:
     lines.append(f"FALLBACK_RESPONSE_ID = 0x{addr['fallback']['response_id']:03X}")
     lines.append(f"FALLBACK_VERIFIED = {bool(addr['fallback']['verified'])}")
     lines.append(f"PADDING_BYTE = 0x{vehicle['transport']['padding_byte']:02X}")
+    watch = addr["functional_watch"]["ids"]
+    lines.append("# Q-021/D-040: watch-only functional request IDs (id, extended); never sent")
+    lines.append(
+        "FUNCTIONAL_WATCH_IDS = ("
+        + ", ".join(f"(0x{w['id']:X}, {w['id_type'] == 'extended_29bit'})" for w in watch)
+        + ",)"
+    )
     start = vehicle["session"]["start"]
     tp = vehicle["session"]["tester_present"]
     lines.append(f"SESSION_REQUEST = {_py_bytes(start['request'])}")
@@ -122,7 +129,7 @@ def generate_init_py() -> str:
     return (
         BANNER.format(source="moto-vehicle-defs")
         + "\n# Modules: platform (platform.dbc constants), vehicle_cl250 (CL250 DIDs),\n"
-        "# e2e (reference E2E protect/check).\n"
+        "# e2e (reference E2E protect/check), uds (ISO 14229 codes, platform servers).\n"
     )
 
 

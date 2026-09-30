@@ -1,0 +1,84 @@
+# Generic ISO 14229-1:2020 (UDS) protocol codes used by our UDS clients and servers
+# (D-039). These are names for numbers defined by the standard, nothing more: no IDs,
+# DIDs, timings or vehicle facts. Those live in uds/vehicle_cl250.yaml and uds/dids.yaml.
+#
+# Having a name here never allows a node to send it. What the vehicle-bus tester may
+# send is decided only by vehicle_cl250.yaml -> tester_policy and the golden D-020 copy
+# in tools/codegen (D-020, D-027). A node that is a vehicle-bus tester only (CONN) gets
+# the client subset: services and sessions outside the D-020 allow-list are not
+# emitted for it at all.
+
+schema_version: 1
+standard: ISO 14229-1:2020
+
+# Request SIDs. Positive response SID = request SID + positive_response_offset.
+services:
+  - {sid: 0x10, name: DIAGNOSTIC_SESSION_CONTROL, clause: "10.2"}
+  - {sid: 0x14, name: CLEAR_DIAGNOSTIC_INFORMATION, clause: "12.2"}
+  - {sid: 0x19, name: READ_DTC_INFORMATION, clause: "12.3"}
+  - {sid: 0x22, name: READ_DATA_BY_IDENTIFIER, clause: "11.2"}
+  - {sid: 0x3E, name: TESTER_PRESENT, clause: "10.6"}
+
+positive_response_offset: 0x40
+negative_response_sid: 0x7F        # [0x7F][request SID][NRC], clause 8.7.2
+negative_response_length: 3
+suppress_pos_rsp_bit: 0x80         # bit 7 of a sub-function byte, clause 8.2.2
+
+# DiagnosticSessionControl sub-functions (clause 10.2, Table 25).
+sessions:
+  - {id: 0x01, name: DEFAULT}
+  - {id: 0x02, name: PROGRAMMING}
+  - {id: 0x03, name: EXTENDED}
+
+# TesterPresent sub-function (clause 10.6).
+tester_present_subfunctions:
+  - {id: 0x00, name: ZERO_SUBFUNCTION}
+
+# ReadDTCInformation sub-functions (clause 12.3).
+read_dtc_subfunctions:
+  - {id: 0x01, name: REPORT_NUMBER_OF_DTC_BY_STATUS_MASK}
+  - {id: 0x02, name: REPORT_DTC_BY_STATUS_MASK}
+  - {id: 0x0A, name: REPORT_SUPPORTED_DTC}
+
+# DTCFormatIdentifier in the 0x19 0x01 response (clause 12.3):
+# 0x01 = ISO_14229-1_DTCFormat, a 3-byte DTC as defined in Annex D.
+dtc_format_identifier: {id: 0x01, name: ISO_14229_1}
+
+# groupOfDTC for "all groups" in ClearDiagnosticInformation (Annex D.1).
+group_of_dtc_all: 0xFFFFFF
+
+# DTCStatusMask bits (Annex D.2).
+dtc_status_bits:
+  - {mask: 0x01, name: TEST_FAILED}
+  - {mask: 0x02, name: TEST_FAILED_THIS_OPERATION_CYCLE}
+  - {mask: 0x04, name: PENDING_DTC}
+  - {mask: 0x08, name: CONFIRMED_DTC}
+  - {mask: 0x10, name: TEST_NOT_COMPLETED_SINCE_LAST_CLEAR}
+  - {mask: 0x20, name: TEST_FAILED_SINCE_LAST_CLEAR}
+  - {mask: 0x40, name: TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE}
+  - {mask: 0x80, name: WARNING_INDICATOR_REQUESTED}
+
+# Negative response codes (Annex A.1). `client: true` = a client acts on it, so the
+# tester-only subset keeps it.
+nrcs:
+  - {nrc: 0x10, name: GENERAL_REJECT}
+  - {nrc: 0x11, name: SERVICE_NOT_SUPPORTED}
+  - {nrc: 0x12, name: SUBFUNCTION_NOT_SUPPORTED}
+  - {nrc: 0x13, name: INCORRECT_MESSAGE_LENGTH_OR_INVALID_FORMAT}
+  - {nrc: 0x14, name: RESPONSE_TOO_LONG}
+  - {nrc: 0x21, name: BUSY_REPEAT_REQUEST}
+  - {nrc: 0x22, name: CONDITIONS_NOT_CORRECT}
+  - {nrc: 0x24, name: REQUEST_SEQUENCE_ERROR}
+  - {nrc: 0x31, name: REQUEST_OUT_OF_RANGE}
+  - {nrc: 0x78, name: RESPONSE_PENDING, client: true}
+  - {nrc: 0x7E, name: SUBFUNCTION_NOT_SUPPORTED_IN_ACTIVE_SESSION, client: true}
+  - {nrc: 0x7F, name: SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION, client: true}
+
+# NRCs a server never sends for a functionally addressed request (clause 7.5,
+# Table 5); it stays silent instead.
+functional_suppressed_nrcs: [0x11, 0x12, 0x31, 0x7E, 0x7F]
+
+# sessionParameterRecord of the 0x50 response (clause 10.2.2): P2Server_max in 1 ms,
+# P2*Server_max in 10 ms units, both 2 bytes big-endian.
+p2_resolution_ms: 1
+p2_star_resolution_ms: 10

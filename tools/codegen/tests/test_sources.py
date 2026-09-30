@@ -2,7 +2,8 @@
 
 from moto_codegen import config, gen_vss
 from moto_codegen.dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
-from moto_codegen.yaml_checks import check_dids, check_vehicle, load_yaml
+from moto_codegen.gen_uds import check_dids, check_iso
+from moto_codegen.yaml_checks import check_vehicle, load_yaml
 
 
 def test_platform_dbc_is_consistent(platform_db):
@@ -23,8 +24,10 @@ def test_every_vehicle_did_is_verified(vehicle):
     assert all(d["verified"] for d in vehicle["dids"])
 
 
-def test_dids_yaml_skeleton():
-    assert check_dids(load_yaml(config.DIDS_YAML)) == []
+def test_uds_sources_are_consistent(vehicle):
+    iso = load_yaml(config.ISO14229_YAML)
+    assert check_iso(iso) == []
+    assert check_dids(load_yaml(config.DIDS_YAML), iso, vehicle) == []
 
 
 def test_overlay_maps_existing_signals_only(platform_db):

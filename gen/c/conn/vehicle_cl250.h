@@ -22,6 +22,16 @@ extern "C" {
 #define VEHICLE_CL250_RESPONSE_ID (0x18DAF110u) /* 29-bit */
 #define VEHICLE_CL250_FALLBACK_REQUEST_ID (0x7E0u) /* 11-bit fallback, UNVERIFIED */
 #define VEHICLE_CL250_FALLBACK_RESPONSE_ID (0x7E8u) /* 11-bit fallback, UNVERIFIED */
+
+/* Q-021/D-040: OBD functional request IDs (ISO 15765-4), WATCH-ONLY. The tester
+ * never sends on them; a frame seen there means a second tester (D-021). */
+#define VEHICLE_CL250_FUNCTIONAL_WATCH_COUNT (2u)
+typedef struct {
+    uint32_t id;
+    bool extended; /* 29-bit */
+} vehicle_cl250_watch_id_t;
+extern const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[VEHICLE_CL250_FUNCTIONAL_WATCH_COUNT];
+
 #define VEHICLE_CL250_FRAME_DLC (8u)
 #define VEHICLE_CL250_PADDING_BYTE (0xAAu)
 

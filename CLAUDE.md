@@ -18,7 +18,8 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /dbc/cl250.dbc        → vehicle-bus broadcast frames, only if passive traffic is found (Q-001); skeleton
 /dbc/platform.dbc     → platform bus (our nodes; ID plan in ARCHITECTURE §4; E2E attributes)
 /vss/overlay.vspec    → Vehicle.Motorcycle.* extensions + dbc2vss mappings (kuksa-can-provider format)
-/uds/dids.yaml        → per-node DID/DTC/routine definitions
+/uds/dids.yaml        → per-node UDS servers: IDs, timing, services, DIDs, DTCs
+/uds/iso14229.yaml    → generic ISO 14229-1 codes (names for numbers only)
 /limits/platform_limits.yaml → shared cornering/speed limits + fallback values (provisional, D-029)
 /tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, VSS JSON
 /gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging)
