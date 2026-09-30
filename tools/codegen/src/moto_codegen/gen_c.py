@@ -157,6 +157,19 @@ def generate_vehicle_c(vehicle: dict[str, Any]) -> dict[str, str]:
     )
     h.append(define("FALLBACK_REQUEST_ID", _hex(addr["fallback"]["request_id"], 3), fb_note))
     h.append(define("FALLBACK_RESPONSE_ID", _hex(addr["fallback"]["response_id"], 3), fb_note))
+    watch = addr["functional_watch"]["ids"]
+    h += [
+        "",
+        "/* Q-021/D-040: OBD functional request IDs (ISO 15765-4), WATCH-ONLY. The tester",
+        " * never sends on them; a frame seen there means a second tester (D-021). */",
+        define("FUNCTIONAL_WATCH_COUNT", f"{len(watch)}u"),
+        "typedef struct {",
+        "    uint32_t id;",
+        "    bool extended; /* 29-bit */",
+        "} vehicle_cl250_watch_id_t;",
+        f"extern const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[{p}_FUNCTIONAL_WATCH_COUNT];",
+        "",
+    ]
     h.append(define("FRAME_DLC", f"{vehicle['transport']['frame_dlc']}u"))
     h.append(define("PADDING_BYTE", _hex(vehicle["transport"]["padding_byte"], 2)))
     h.append("")
@@ -237,6 +250,13 @@ def generate_vehicle_c(vehicle: dict[str, Any]) -> dict[str, str]:
     ]
 
     c = [BANNER.format(source=src), '#include "vehicle_cl250.h"', ""]
+    c.append(
+        f"const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[{p}_FUNCTIONAL_WATCH_COUNT] = {{"
+    )
+    for w in watch:
+        ext = w["id_type"] == "extended_29bit"
+        c.append(f"    {{ {_hex(w['id'], 8 if ext else 3)}, {'true' if ext else 'false'} }},")
+    c += ["};", ""]
     c.append(f"const vehicle_cl250_did_t vehicle_cl250_dids[{p}_DID_COUNT] = {{")
     for d in dids:
         c.append(

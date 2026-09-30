@@ -1,21 +1,119 @@
-# UDS DIDs, DTCs and routines served by OUR platform nodes (UDS on the platform
-# bus, 0x700-0x7FF: physical 0x7N0/0x7N8, functional 0x7DF; ARCHITECTURE section 4).
-# The vehicle ECU is defined in uds/vehicle_cl250.yaml and is never written to.
+# UDS servers of OUR platform nodes: addressing, timing, services, DIDs and DTCs
+# (UDS on the platform bus, 0x700-0x7FF: physical 0x7N0 / 0x7N8 with N = NodeId,
+# functional 0x7DF; ARCHITECTURE section 4). Protocol codes come from uds/iso14229.yaml.
+# The vehicle ECU is defined in uds/vehicle_cl250.yaml and is never written to; nothing
+# here is ever sent on the vehicle bus (D-020, D-037).
 #
-# SKELETON: no DIDs are defined yet. Entry format (add via /signal-change):
-#   - did: 0xF189            # 0xF1xx identification, 0xFDxx platform-specific
-#     name: SW_VERSION
-#     length: 16             # bytes
-#     encoding: ascii        # ascii | uint | int | bytes
-#     access: read           # read-only unless the user approves otherwise
-#     description: Application software version.
+# A node without a `server` section has no UDS server yet. Entry formats:
+#   dids:  - did: 0xF189       # 0xF1xx ISO identification, 0xFDxx platform-specific
+#            name: SW_VERSION
+#            length: 12         # bytes of the data record (fixed)
+#            encoding: ascii    # ascii | uint | bitfield | vehicle_sample
+#            access: read       # read-only unless the user approves otherwise
+#            description: ...
+#   dtcs:  - dtc: 0xC10000      # 3-byte DTC (ISO 14229-1 Annex D), J2012 code in `code`
+#            name: ...
+#            code: U0100-00
+#            description: ...   # when the test fails
+#
+# UDS frames are not DBC messages: these IDs never appear in dbc/platform.dbc
+# (codegen ID plan, range 0x700-0x7FF allowed_in_dbc = false).
 
 schema_version: 1
 
+# Platform-bus ISO-TP (ISO 15765-2) parameters shared by every platform UDS link.
+# Platform choices (D-040), not measured vehicle facts.
+transport:
+  frame_dlc: 8
+  padding_byte: 0xAA              # same padding as the vehicle link
+  block_size: 0                   # BS we advertise: no further FC after the first
+  st_min_ms: 0                    # STmin we advertise
+  n_bs_ms: 1000                   # ISO 15765-2 defaults
+  n_cr_ms: 1000
+  functional_request_id: 0x7DF    # every platform server listens here (Single Frame only)
+
 nodes:
   RT_CORE:
-    dids: []
-    dtcs: []
+    server:
+      physical_request_id: 0x710  # 0x700 + NodeId 1 * 0x10
+      physical_response_id: 0x718 # request + 8
+      # ISO 14229-2 default server timing (D-040). Reported in the 0x50 response.
+      p2_server_max_ms: 50        # first response (or NRC 0x78) after a request
+      p2_star_server_max_ms: 5000 # after each NRC 0x78
+      s3_server_ms: 5000          # non-default session falls back without a request
+      max_read_dids: 4            # DIDs per 0x22 request; more -> NRC 0x13
+      rx_buffer: 64               # longest request accepted; longer -> ISO-TP FC.OVFLW
+      # Sessions served by 0x10. PROGRAMMING gets NRC 0x12 until the bootloader (Ç5).
+      sessions: [DEFAULT, EXTENDED]
+      # Services and the sessions they run in. Anything else: NRC 0x11 (0x7F if the
+      # service is listed but not in the active session).
+      services:
+        - {service: DIAGNOSTIC_SESSION_CONTROL, sessions: [DEFAULT, EXTENDED]}
+        - {service: TESTER_PRESENT, sessions: [DEFAULT, EXTENDED], subfunctions: [ZERO_SUBFUNCTION]}
+        - {service: READ_DATA_BY_IDENTIFIER, sessions: [DEFAULT, EXTENDED]}
+        - service: READ_DTC_INFORMATION
+          sessions: [DEFAULT, EXTENDED]
+          subfunctions: [REPORT_NUMBER_OF_DTC_BY_STATUS_MASK, REPORT_DTC_BY_STATUS_MASK, REPORT_SUPPORTED_DTC]
+        # Clears rt-core's own DTC records only (never the vehicle ECU, never the UDS
+        # client latch). Extended session only: there is no 0x27 yet (D-040).
+        - {service: CLEAR_DIAGNOSTIC_INFORMATION, sessions: [EXTENDED]}
+      # DTC memory is RAM only until the H7 flash driver exists (lost on reset, D-040).
+      dtc_status_availability_mask: 0x09   # TEST_FAILED | CONFIRMED_DTC
+    dids:
+      - did: 0xF186
+        name: ACTIVE_DIAGNOSTIC_SESSION
+        length: 1
+        encoding: uint
+        access: read
+        description: Active diagnostic session (ISO 14229-1 C.1), 0x01 default or 0x03 extended.
+      - did: 0xF189
+        name: SW_VERSION
+        length: 12
+        encoding: ascii
+        access: read
+        description: Application software version "MAJOR.MINOR.PATCH" from the build (CMake project VERSION), NUL-padded.
+      - did: 0xFD00
+        name: VEHICLE_TESTER_STATUS
+        length: 2
+        encoding: bitfield
+        access: read
+        description: State of rt-core's vehicle-bus UDS client (the single tester, D-021).
+        fields:
+          - {byte: 0, mask: 0x01, name: ECU_PRESENT, description: The CL250 ECU answered within ecu_absent_timeout_ms.}
+          - {byte: 0, mask: 0x02, name: SESSION_UP, description: The extended session with the ECU is established.}
+          - {byte: 0, mask: 0x04, name: LATCHED, description: The client latched fail-closed and sends nothing (D-039).}
+          - {byte: 1, mask: 0xFF, name: FAULT, description: Latch reason, see values.}
+        values:
+          FAULT: {NONE: 0, GATE: 1, GUARD: 2, FOREIGN_TESTER: 3}
+      - did: 0xFD01
+        name: UPTIME
+        length: 4
+        encoding: uint
+        unit: s
+        access: read
+        description: Seconds since boot, unsigned big-endian.
+      # Samples of the CL250 DIDs in services/vehicle_signals. Layout:
+      # [state][age_ms hi][age_ms lo][raw, `length` of the vehicle DID, big-endian].
+      # state 0 NONE / 1 VALID / 2 STALE; age saturates at 0xFFFF and is 0xFFFF for NONE.
+      - {did: 0xFD10, name: VEHICLE_ENGINE_SPEED, encoding: vehicle_sample, vehicle_did: ENGINE_SPEED,
+         access: read, description: Last CL250 engine speed sample.}
+      - {did: 0xFD11, name: VEHICLE_VEHICLE_SPEED, encoding: vehicle_sample, vehicle_did: VEHICLE_SPEED,
+         access: read, description: Last CL250 vehicle speed sample.}
+      - {did: 0xFD12, name: VEHICLE_THROTTLE_POS, encoding: vehicle_sample, vehicle_did: THROTTLE_POS,
+         access: read, description: Last CL250 throttle position sample.}
+      - {did: 0xFD13, name: VEHICLE_COOLANT_TEMP, encoding: vehicle_sample, vehicle_did: COOLANT_TEMP,
+         access: read, description: Last CL250 coolant temperature sample.}
+      - {did: 0xFD14, name: VEHICLE_BATTERY_VOLTAGE, encoding: vehicle_sample, vehicle_did: BATTERY_VOLTAGE,
+         access: read, description: Last CL250 control module voltage sample.}
+    dtcs:
+      - dtc: 0xC10000
+        name: VEHICLE_ECU_COMM_LOST
+        code: U0100-00
+        description: The CL250 engine ECU gave no answer within ecu_absent_timeout_ms.
+      - dtc: 0xF00000
+        name: VEHICLE_TESTER_LATCHED
+        code: U3000-00
+        description: The vehicle UDS client latched fail-closed (gate, guard or foreign tester, D-039). Clearing the DTC does not release the latch.
     routines: []
   SAFETY:
     dids: []

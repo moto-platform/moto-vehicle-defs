@@ -91,7 +91,8 @@ moto-vehicle-defs/
   dbc/cl250.dbc         vehicle-bus broadcast frames — only if passive traffic is ever found (Q-001); skeleton for now
   dbc/platform.dbc      platform bus (ours; GenMsgCycleTime, E2E_DataID, E2E_Protected attributes), incl. rt-core's republished vehicle signals
   vss/overlay.vspec     motorcycle extensions (Vehicle.Motorcycle.*) + dbc2vss mappings (from platform.dbc)
-  uds/dids.yaml         our platform nodes' own DID/DTC/routine definitions
+  uds/dids.yaml         our platform nodes' UDS servers (IDs, timing, DIDs, DTCs)
+  uds/iso14229.yaml     generic ISO 14229-1 codes
   tools/codegen/        python: cantools + vss-tools wrapper
         │ make gen  (run before tagging, output is committed)
         ▼
