@@ -301,3 +301,17 @@ def test_python_module_matches(dids, vehicle):
     assert rt["dids"]["VEHICLE_ENGINE_SPEED"] == (0xFD10, 5, "vehicle_sample")
     assert rt["dtcs"]["VEHICLE_ECU_COMM_LOST"] == (0xC10000, "U0100-00")
     assert ns["SID_CLEAR_DIAGNOSTIC_INFORMATION"] == 0x14
+
+
+def test_did_length_and_max_age_macros(dids, vehicle):
+    text = (C_DIR / "rt_core" / "platform_uds.h").read_text()
+    for item in _rt(dids)["dids"]:
+        length = gen_uds.did_length(item, vehicle)
+        assert f"#define PLATFORM_UDS_DID_{item['name']}_LENGTH ({length}u)" in text
+    assert "#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_MAX_AGE_MS (500u)" in text
+    assert "#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_NOT_RUNNING (4u)" in text
+
+
+def test_max_age_rejected_when_invalid(dids, iso, vehicle):
+    _rt(dids)["dids"][2]["max_age_ms"] = 0
+    assert any("max_age_ms" in e for e in _errors(dids, iso, vehicle))

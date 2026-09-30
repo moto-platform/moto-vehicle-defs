@@ -41,14 +41,23 @@ extern "C" {
 
 #define PLATFORM_UDS_DID_COUNT (9u)
 #define PLATFORM_UDS_DID_ACTIVE_DIAGNOSTIC_SESSION (0xF186u) /* uint */
+#define PLATFORM_UDS_DID_ACTIVE_DIAGNOSTIC_SESSION_LENGTH (1u) /* data record bytes */
 #define PLATFORM_UDS_DID_SW_VERSION (0xF189u) /* ascii */
+#define PLATFORM_UDS_DID_SW_VERSION_LENGTH (12u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_TESTER_STATUS (0xFD00u) /* bitfield */
+#define PLATFORM_UDS_DID_VEHICLE_TESTER_STATUS_LENGTH (2u) /* data record bytes */
 #define PLATFORM_UDS_DID_UPTIME (0xFD01u) /* uint */
+#define PLATFORM_UDS_DID_UPTIME_LENGTH (4u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_ENGINE_SPEED (0xFD10u) /* vehicle_sample */
+#define PLATFORM_UDS_DID_VEHICLE_ENGINE_SPEED_LENGTH (5u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_VEHICLE_SPEED (0xFD11u) /* vehicle_sample */
+#define PLATFORM_UDS_DID_VEHICLE_VEHICLE_SPEED_LENGTH (4u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_THROTTLE_POS (0xFD12u) /* vehicle_sample */
+#define PLATFORM_UDS_DID_VEHICLE_THROTTLE_POS_LENGTH (4u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_COOLANT_TEMP (0xFD13u) /* vehicle_sample */
+#define PLATFORM_UDS_DID_VEHICLE_COOLANT_TEMP_LENGTH (4u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_BATTERY_VOLTAGE (0xFD14u) /* vehicle_sample */
+#define PLATFORM_UDS_DID_VEHICLE_BATTERY_VOLTAGE_LENGTH (5u) /* data record bytes */
 
 /* Index into platform_uds_dids[]. */
 typedef enum {
@@ -81,6 +90,7 @@ typedef struct {
 
 extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 
+#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_MAX_AGE_MS (500u) /* older reads as not running */
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_ECU_PRESENT_BYTE (0u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_ECU_PRESENT_MASK (0x01u) /* The CL250 ECU answered within ecu_absent_timeout_ms */
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_SESSION_UP_BYTE (0u)
@@ -93,6 +103,7 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_GATE (1u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_GUARD (2u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_FOREIGN_TESTER (3u)
+#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_NOT_RUNNING (4u)
 
 #define PLATFORM_UDS_VEHICLE_SAMPLE_HEADER_LEN (3u)
 #define PLATFORM_UDS_VEHICLE_SAMPLE_STATE_NONE (0u)

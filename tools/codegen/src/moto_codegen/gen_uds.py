@@ -242,6 +242,9 @@ def _check_did(node: str, item: dict[str, Any], vehicle: dict[str, Any], has_veh
     length = item.get("length")
     if not isinstance(length, int) or not 1 <= length <= 255:
         return errors + [f"{label}: length must be 1..255"]
+    max_age = item.get("max_age_ms")
+    if max_age is not None and (not isinstance(max_age, int) or not 0 < max_age <= 0xFFFF):
+        errors.append(f"{label}: max_age_ms must be 1..65535")
     if enc == "uint" and length > 4:
         errors.append(f"{label}: uint length must be 1..4")
     if enc == "bitfield":
@@ -452,6 +455,9 @@ def generate_server_c(node: str, content: dict[str, Any], data: dict[str, Any],
     ]
     for d in dids:
         h.append(define(f"DID_{d['name']}", _hex(d["did"], 4), d["encoding"]))
+        h.append(
+            define(f"DID_{d['name']}_LENGTH", f"{did_length(d, vehicle)}u", "data record bytes")
+        )
     h += ["", "/* Index into platform_uds_dids[]. */", "typedef enum {"]
     h += [f"    {p}_IDX_{d['name']} = {i}," for i, d in enumerate(dids)]
     h += ["} platform_uds_did_index_t;", ""]
@@ -476,6 +482,12 @@ def generate_server_c(node: str, content: dict[str, Any], data: dict[str, Any],
         "",
     ]
     for d in dids:
+        if "max_age_ms" in d:
+            h.append(
+                define(
+                    f"{d['name']}_MAX_AGE_MS", f"{d['max_age_ms']}u", "older reads as not running"
+                )
+            )
         for f in d.get("fields") or []:
             base = f"{d['name']}_{f['name']}"
             h.append(define(f"{base}_BYTE", f"{f['byte']}u"))

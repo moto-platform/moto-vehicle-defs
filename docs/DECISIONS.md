@@ -213,6 +213,11 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 3. **DIDs:** 0xF186 active session, 0xF189 SW version, 0xFD00 vehicle-tester status (ECU present, session up, latched, latch reason), 0xFD01 uptime, and 0xFD10-0xFD14 samples of the five CL250 DIDs (state, age, raw).
 4. **DTCs:** U0100-00 (0xC10000) CL250 ECU communication lost, U3000-00 (0xF00000) vehicle UDS client latched. Status availability 0x09 (testFailed, confirmedDTC), reported level-triggered every pass. **0x14 runs in the extended session only** (there is no 0x27 yet), clears rt-core's own DTC records only, never the client latch, and never touches the vehicle bus. DTC memory is RAM only until the H7 flash driver exists.
 5. **Q-021 resolved:** `vehicle_cl250.yaml` → `addressing.functional_watch` lists the OBD functional request IDs 0x7DF and 0x18DB33F1 as **watch-only**. rt-core never sends on them. A frame seen there latches the client with `FOREIGN_TESTER` (D-039 item 4), like the physical request IDs.
+6. **Fail-safe status** (safety review of the Ç3 server, MAJOR-1): 0xFD00 carries `FAULT = NOT_RUNNING` (4). A status older than `max_age_ms` (500 ms), or none since boot, reads as not running, and U3000-00 fails. So a client that never opened or stopped looks faulty, never healthy.
+7. **Preconditions (safety review):**
+   - Before the DTC memory becomes flash-backed, 0x14 needs a rate limit or 0x27, because a platform node looping 0x14 would wear the flash.
+   - Before any of 0x10 02, 0x11, 0x2E, 0x31 or 0x34-0x37 is offered on the platform server, 0x27 or an equivalent is mandatory. The platform bus is reachable from connectivity-node (Wi-Fi/BLE) and counts as unauthenticated.
+   - The functional watch IDs are not verified on the CL250. Include 0x7DF and 0x18DB33F1 in the Q-001 listen-only probe before the first rt-core ride: OEM traffic on them would latch the client at boot.
 - Why: D-039 asked for the codes in gen/. The DID/DTC set lets a platform tester see the vehicle poller's health without a second vehicle tester. Generic OBD dongles use functional addressing, so the D-021 watch must cover it.
 
 ## Open questions (awaiting decision)

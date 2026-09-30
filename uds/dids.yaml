@@ -78,20 +78,23 @@ nodes:
         encoding: bitfield
         access: read
         description: State of rt-core's vehicle-bus UDS client (the single tester, D-021).
+        # Fail-safe (D-040): a status older than this, or none since boot, reads as
+        # FAULT = NOT_RUNNING with every bit clear, and VEHICLE_TESTER_LATCHED fails.
+        max_age_ms: 500
         fields:
           - {byte: 0, mask: 0x01, name: ECU_PRESENT, description: The CL250 ECU answered within ecu_absent_timeout_ms.}
           - {byte: 0, mask: 0x02, name: SESSION_UP, description: The extended session with the ECU is established.}
           - {byte: 0, mask: 0x04, name: LATCHED, description: The client latched fail-closed and sends nothing (D-039).}
           - {byte: 1, mask: 0xFF, name: FAULT, description: Latch reason, see values.}
         values:
-          FAULT: {NONE: 0, GATE: 1, GUARD: 2, FOREIGN_TESTER: 3}
+          FAULT: {NONE: 0, GATE: 1, GUARD: 2, FOREIGN_TESTER: 3, NOT_RUNNING: 4}
       - did: 0xFD01
         name: UPTIME
         length: 4
         encoding: uint
         unit: s
         access: read
-        description: Seconds since boot, unsigned big-endian.
+        description: Seconds since boot, unsigned big-endian (wraps after about 49.7 days).
       # Samples of the CL250 DIDs in services/vehicle_signals. Layout:
       # [state][age_ms hi][age_ms lo][raw, `length` of the vehicle DID, big-endian].
       # state 0 NONE / 1 VALID / 2 STALE; age saturates at 0xFFFF and is 0xFFFF for NONE.
@@ -113,7 +116,7 @@ nodes:
       - dtc: 0xF00000
         name: VEHICLE_TESTER_LATCHED
         code: U3000-00
-        description: The vehicle UDS client latched fail-closed (gate, guard or foreign tester, D-039). Clearing the DTC does not release the latch.
+        description: The vehicle UDS client latched fail-closed (gate, guard or foreign tester, D-039), or it is not running (no status within max_age_ms of 0xFD00). Clearing the DTC does not release the latch.
     routines: []
   SAFETY:
     dids: []
