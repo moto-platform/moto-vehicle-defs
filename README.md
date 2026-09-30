@@ -4,19 +4,19 @@ Single source of truth for signals in [moto-platform](https://github.com/moto-pl
 
 | Path | Content |
 |---|---|
-| `uds/vehicle_cl250.yaml` | Honda CL250 ECU DIDs polled over UDS (addressing, formulas, poll rates, timing; verified, D-019) |
+| `uds/vehicle_cl250.yaml` | Honda CL250 ECU DIDs polled over UDS (addressing, formulas, poll rates and `high`/`normal` poll priority, timing; verified, D-019, D-043) |
 | `dbc/platform.dbc` | Platform CAN bus between our nodes (ID plan, E2E attributes) |
 | `dbc/cl250.dbc` | CL250 passive broadcast frames (skeleton, Q-001) |
 | `vss/overlay.vspec` | COVESA VSS 6.0 overlay + `dbc2vss` mappings for kuksa-can-provider |
 | `uds/dids.yaml` | UDS servers of our platform nodes: addressing, timing, services, DIDs, DTCs (RT_CORE so far, D-040) |
 | `uds/iso14229.yaml` | Generic ISO 14229-1 codes, generated as `uds_iso14229.h` (D-040) |
-| `limits/platform_limits.yaml` | Shared cornering/speed limits and fallback values (provisional, D-029) |
+| `limits/platform_limits.yaml` | Layer 1 thresholds `k_yellow`/`k_red` (D-041), µ/mass fallback values, rt-core's speed-age rules, and a per-node `scope` (provisional, D-029, D-048) |
 | `tools/codegen/` | Generator and checks (Python, uv) |
 | `gen/` | Generated output, committed — never edit by hand |
 
 ## Generated output
 
-- `gen/c/<node>/` for `rt_core`, `safety`, `io`, `conn`, `hil_sim`: `platform.{h,c}` (cantools pack/unpack of only the node's messages), `moto_e2e.{h,c}` + `platform_e2e.{h,c}` (E2E, [`docs/e2e-profile.md`](docs/e2e-profile.md)), for rt_core/safety/hil_sim `platform_limits.h`, and for vehicle-bus nodes `vehicle_cl250.{h,c}` (DID table, response parser, D-020 request/frame allow-list that every vehicle-bus transmission must pass). C99, no heap. A firmware includes only its own node directory.
+- `gen/c/<node>/` for `rt_core`, `safety`, `io`, `conn`, `hil_sim`: `platform.{h,c}` (cantools pack/unpack of only the node's messages), `moto_e2e.{h,c}` + `platform_e2e.{h,c}` (E2E, [`docs/e2e-profile.md`](docs/e2e-profile.md)), for rt_core/safety/hil_sim `platform_limits.h` (only the sections in the node's `scope`: safety gets no speed rules), and for vehicle-bus nodes `vehicle_cl250.{h,c}` (DID table with poll priority, response parser, D-020 request/frame allow-list that every vehicle-bus transmission must pass). C99, no heap. A firmware includes only its own node directory.
 - `gen/python/moto_defs/`: IDs, cycle times, DataIDs, CL250 constants, E2E reference.
 - `gen/vss/vss_dbc.json`: VSS JSON with `dbc2vss` for Kuksa / kuksa-can-provider.
 
