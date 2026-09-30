@@ -9,7 +9,7 @@
   - It fails if the addon does not report 10.8, 15.6 and 17.7 on `canary.c`, so a missing or broken addon cannot pass as clean.
   - It models the 32-bit targets (`--platform=unix32`).
   - It also analyses each node's header-only files (`platform_limits.h`, `uds_iso14229.h`), which a directory scan would skip.
-  - CI pins its runner (Ubuntu 24.04), so the apt cppcheck only changes on purpose.
+  - CI builds cppcheck 2.22.0 from source once, caches it, and pins the runner (Ubuntu 24.04), so the checker only changes on purpose. Ubuntu's apt cppcheck 2.13 misses findings that 2.22 reports: on `canary.c` it did not report 15.6.
 
 | ID | Rule (category) | Scope | Reason | Compensating measure |
 |---|---|---|---|---|

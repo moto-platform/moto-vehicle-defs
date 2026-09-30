@@ -6,7 +6,7 @@ on:
 
 jobs:
   check:
-    # Pinned: the blocking MISRA step uses the image's apt cppcheck (misra/README.md).
+    # Pinned, like the cppcheck cache key below (misra/README.md).
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -31,12 +31,33 @@ jobs:
       - name: Generated code is up to date
         run: make drift
 
-      - name: Install cppcheck
-        timeout-minutes: 10
+      # The MISRA gate needs a fixed cppcheck: Ubuntu's apt cppcheck (2.13) misses findings
+      # that 2.22 reports (15.6 on misra/canary.c), so 2.22.0 is built once and cached.
+      - name: Restore cppcheck 2.22.0
+        id: cppcheck
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/cppcheck
+          key: cppcheck-2.22.0-ubuntu-24.04
+
+      - name: Build cppcheck 2.22.0
+        if: steps.cppcheck.outputs.cache-hit != 'true'
+        timeout-minutes: 30
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends cppcheck
-          cppcheck --version
+          git clone --quiet --depth 1 --branch 2.22.0 https://github.com/danmar/cppcheck.git "$RUNNER_TEMP/cppcheck-src"
+          cmake -S "$RUNNER_TEMP/cppcheck-src" -B "$RUNNER_TEMP/cppcheck-build" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/cppcheck-build" -j "$(nproc)"
+          cp -r "$RUNNER_TEMP/cppcheck-build/bin" ~/cppcheck
+
+      - name: Save cppcheck 2.22.0
+        if: steps.cppcheck.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/cppcheck
+          key: cppcheck-2.22.0-ubuntu-24.04
+
+      - name: Use cppcheck 2.22.0
+        run: echo "$HOME/cppcheck" >> "$GITHUB_PATH"
 
       # D-046 item 2: blocking, because gen/c carries the D-020 gates and safety-node
       # links it. Fixes go into the codegen, never into gen/ by hand; deviations are
