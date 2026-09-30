@@ -1,5 +1,5 @@
-# Platform limits and fallback values shared by rt-core (producer) and
-# safety-node (consumer) so both use the SAME numbers (D-029).
+# Platform limits and fallback values shared by rt-core (producer), safety-node
+# (consumer) and the HIL simulator so all of them use the SAME numbers (D-029).
 #
 # status: provisional = a starting value chosen before the measurement system
 # exists; it will be revisited with measured data. Changing a value is a
@@ -7,14 +7,27 @@
 # (safety-reviewer). Rule for every value: when in doubt, the conservative side
 # (earlier warning), never the permissive one (hardware-architecture 5b.2).
 #
+# Layer 1 cornering decision (safety-node, D-041): u = tan|theta| / mu_eff, with
+# mu_eff from the friction rule below. GREEN if u < k_yellow, YELLOW if
+# k_yellow <= u < k_red, RED if u >= k_red; any non-finite value gives RED.
+# Vehicle speed and mass are NOT Layer 1 inputs (D-041).
+#
 # Estimate states (EkfLean / EkfFrictionMass *_STATE): only ESTIMATED (0) and
 # CLAMPED (1) are usable (platform_estimate_state_usable()). DEFAULT (2) is usable
 # only as described per value below. INVALID (3), RESERVED and any unknown value
-# mean "no usable received value". What safety-node does when a value, or the
-# whole frame (E2E), is not usable stays open in Q-002; if it keeps computing,
-# it uses the defaults below and never the received number.
+# mean "no usable received value". When rt-core's lean is not usable, safety-node
+# uses its own fallback lean estimate with mu_eff <= friction_coeff_default and
+# shows DEGRADED; with no usable lean at all it shows UNAVAILABLE, never GREEN
+# (D-042, which resolved Q-002).
 
 schema_version: 1
+
+# Which generated nodes get each section in platform_limits.h (DBC node names).
+# The speed rules belong to rt-core's lean estimate (D-041 item 4), so safety-node
+# does not get them; codegen refuses SAFETY in that scope.
+scope:
+  cornering: [RT_CORE, SAFETY, HIL_SIM]
+  vehicle_speed: [RT_CORE, HIL_SIM]
 
 cornering:
   friction_coeff_default:
@@ -23,9 +36,10 @@ cornering:
     rule: >-
       rt-core sends it with FRICTION_COEFF_STATE=DEFAULT when mu is not observable.
       safety-node: DEFAULT -> max(clamp_min, min(received, default)); INVALID, RESERVED or
-      unknown -> ignore the received value and use the default (see header, Q-002);
+      unknown -> ignore the received value and use the default;
       ESTIMATED/CLAMPED -> clamp the received value to [clamp_min, clamp_max] itself.
-      The result is always finite and within [clamp_min, clamp_max].
+      The result is always finite and within [clamp_min, clamp_max]. In the D-042
+      fallback (own lean estimate) safety-node uses min(that result, this default).
     rationale: Low, wet-asphalt-like value (typical literature range, not measured).
   friction_coeff_clamp_min:
     value: 0.1
@@ -52,19 +66,53 @@ cornering:
       (braking, dyno, energy) treat the heavier value as the conservative side.
     rationale: CL250 wet mass 172 kg (vehicle-work-plan section 2) + 80 kg single rider, no luggage.
 
-vehicle_speed:
-  vehicle_speed_max_age_ms:
-    value: 400
+  k_yellow:
+    value: 0.6
     status: provisional
     rule: >-
-      safety-node uses VEHICLE_SPEED only if VEHICLE_SPEED_VALID=1, the E2E check is OK,
-      and effective age = VEHICLE_SPEED_AGE + time since the 0x021 frame arrived is at
-      most this. rt-core rounds VEHICLE_SPEED_AGE up to its 10 ms resolution.
-    rationale: rt-core VALID cutoff (stale_after_ms 300) + one 0x021 cycle (50 ms) + margin.
+      Friction utilisation u = tan|theta| / mu_eff at which the ring leaves GREEN (D-041).
+      Division-free form: GREEN only if sin|theta| < k_yellow * mu_eff * cos|theta|.
+      Codegen checks 0 < k_yellow < k_red < 1. ML may lower it, never raise it.
+    rationale: >-
+      Leaves 40 % of mu unused at the first warning. About 16.7 deg at mu 0.5 (default
+      and fallback), 31.0 deg at mu 1.0 (not measured).
+  k_red:
+    value: 0.8
+    status: provisional
+    rule: >-
+      Friction utilisation at which the ring shows RED (D-041). RED only if
+      sin|theta| >= k_red * mu_eff * cos|theta| or any value is non-finite. Until Q-022
+      (combined braking in a curve) is resolved it must leave a longitudinal reserve:
+      sqrt(1 - k_red^2) of mu stays available for braking, so codegen refuses k_red > 0.8.
+      ML may lower it, never raise it.
+    rationale: >-
+      D-041 item 3: k_red 0.8 leaves 0.6 mu for braking. About 21.8 deg at mu 0.5,
+      38.7 deg at mu 1.0 (not measured).
+
+vehicle_speed:
+  # Scope rt-core (D-041 item 4): safety-node does not consume vehicle speed. The
+  # rules protect rt-core's EKF lean estimate (Layer 2), which feeds Layer 1.
+  vehicle_speed_max_age_ms:
+    value: 300
+    status: provisional
+    rule: >-
+      rt-core uses a VEHICLE_SPEED sample (DID 0xF40D) for the lean estimate only if it
+      is at most this old. Age = time since rt-core sent the request that the ECU
+      answered (so the request-to-response time counts). A lean computed from an older
+      sample, or with no speed at all, is not sent as ESTIMATED/CLAMPED, so safety-node
+      sees it as an unusable lean (D-042 fallback). Codegen checks
+      poll_period_ms + assumed_round_trip_ms < value <= stale_after_ms of VEHICLE_SPEED.
+    rationale: >-
+      Equal to stale_after_ms of VEHICLE_SPEED (3 x 100 ms poll, D-025/D-029): a sample
+      older than that is already not usable, so a larger value would add nothing.
   vehicle_speed_accel_margin_mps2:
     value: 5.0
     status: provisional
     rule: >-
-      A stale speed reads low while accelerating. safety-node adds effective age x this
-      acceleration to VEHICLE_SPEED before the cornering check (about 7 km/h at 400 ms).
+      A stale speed reads low while accelerating, which makes a speed-based lean read
+      low (not conservative). rt-core adds sample age x this acceleration to
+      VEHICLE_SPEED before using it in the lean estimate (about 5.4 km/h at 300 ms): a
+      higher speed gives a larger lean and an earlier warning. The margin is used ONLY
+      there: never in the friction estimate (0x022), where a higher speed could raise mu,
+      and never in the republished 0x021 value.
     rationale: About 0.5 g, above typical CL250 acceleration (not measured).

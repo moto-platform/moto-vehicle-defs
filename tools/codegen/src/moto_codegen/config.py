@@ -87,6 +87,11 @@ HEARTBEAT_CYCLE_MS = 100
 E2E_TIMEOUT_CYCLES = 3  # receiver timeout = 3 x cycle (ARCHITECTURE section 4)
 E2E_MAX_DELTA_COUNTER = 1  # conservative: any lost frame is reported as WRONG_SEQUENCE
 
+# D-041/D-042: the only platform messages safety-node may receive (lean, mu and the
+# rt-core heartbeat for the fallback). Vehicle speed in particular is not a
+# safety-node input; widening this list is a safety decision (safety-reviewer).
+SAFETY_RX_ALLOWED = frozenset({"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"})
+
 # D-020 forbidden vehicle-bus services, repeated here as a second line of defence:
 # the checker rejects vehicle_cl250.yaml if its policy ever allows one of them.
 FORBIDDEN_VEHICLE_SERVICES = frozenset({0x11, 0x14, 0x27, 0x2E, 0x2F, 0x31, 0x34, 0x36, 0x37})

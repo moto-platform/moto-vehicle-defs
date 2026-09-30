@@ -4,6 +4,28 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+Layer 1 thresholds, rt-core speed rules and DID poll priority (ISSUES E-1, B-8 DBC part). Decisions D-041, D-043, D-048 (user, 2026-09-30). The 0x021 bit layout and scale are unchanged, but generated APIs change (see Breaking), so this is released as v0.3.0 (0.x: breaking changes bump the minor version).
+
+### Added
+- `limits/platform_limits.yaml`: `k_yellow` 0.6 and `k_red` 0.8 (provisional), the friction-utilisation thresholds of the Layer 1 cornering decision (D-041), generated as `PLATFORM_LIMIT_K_YELLOW` / `PLATFORM_LIMIT_K_RED` and in `moto_defs/limits.py`. codegen checks 0 < k_yellow < k_red < 1.
+- `limits/platform_limits.yaml` → `scope`: which nodes' `platform_limits.h` carries each section (`SCOPE` in Python). codegen refuses SAFETY for the speed rules.
+- `uds/vehicle_cl250.yaml`: `priority` per DID (`high` | `normal`, D-043); 0xF40D is `high`. Generated as `VEHICLE_CL250_PRIORITY_HIGH` (0u) / `_NORMAL` (1u) and `vehicle_cl250_did_t.priority` (C), and as `PRIORITIES` plus a 10th `DIDS` tuple field (Python). `tester_policy` and the D-020 gates are unchanged.
+- codegen: `SAFETY_RX_ALLOWED` (EkfLean, EkfFrictionMass, HeartbeatRtCore): the DBC check refuses any other message with SAFETY as a receiver (D-041/D-042). `k_red` ≤ 0.8 until Q-022 (D-041 item 3).
+
+### Breaking
+- `dbc/platform.dbc` 0x021: `VEHICLE_SPEED` maximum 300 → 255 km/h, so the generated range check (`platform_vehicle_speed_vehicle_speed_is_in_range`) now refuses 255-300 km/h for every node. SAFETY is no longer a receiver, so `gen/c/safety` loses the VehicleSpeed pack/unpack and E2E functions.
+- `gen/c/safety/platform_limits.h` no longer defines `PLATFORM_LIMIT_VEHICLE_SPEED_*`; `PLATFORM_LIMIT_VEHICLE_SPEED_MAX_AGE_MS` is 300 (was 400) for rt_core and hil_sim.
+- `vehicle_cl250_did_t` gains `priority` after `length` (positional initialisers of the struct break; field access by name does not). Python `DIDS` tuples gain a 10th field.
+- safety-node has no code yet; rt-core and conn read the table by field name only.
+
+### Changed
+- Speed rules re-scoped to rt-core (D-041 item 4): `vehicle_speed_max_age_ms` 400 → 300 ms (= `stale_after_ms` of 0xF40D; codegen checks poll period + assumed round trip < value ≤ `stale_after_ms`). The accel margin is now applied by rt-core to the speed in its lean estimate. The limits header text is rewritten: Q-002 was resolved by D-042.
+- `dbc/platform.dbc` 0x021 `VehicleSpeed`: `VEHICLE_SPEED` range 0-300 → 0-255 km/h (the DID 0xF40D range; ID, layout, 0.01 scale and E2E unchanged), the 1 km/h source resolution is documented, and SAFETY is no longer a receiver (D-041). As a result `gen/c/safety` no longer contains the VehicleSpeed pack/unpack/E2E code or the speed limits; safety-node has no code that used them.
+- `uds/vehicle_cl250.yaml`: the "Order = poll priority" comment is replaced by the D-043 priority rule; the C index comment now says "table order".
+
+### Fixed
+- `moto_defs.vehicle_cl250.decode()` raised `ValueError` on every call (it unpacked 10 fields from a 9-field tuple); now covered by a test.
+
 ## [0.2.0] — 2026-09-30
 
 Ç3 UDS server contract and generated ISO 14229 codes. Decision D-040 (user, 2026-09-30); Q-021 resolved.

@@ -96,6 +96,8 @@ def check_platform_dbc(db: Database) -> list[str]:
                 errors.append(f"{where}: unknown node {node}")
         if not msg.receivers:
             errors.append(f"{where}: no receivers")
+        if "SAFETY" in msg.receivers and msg.name not in config.SAFETY_RX_ALLOWED:
+            errors.append(f"{where}: SAFETY may not receive it (D-041, SAFETY_RX_ALLOWED)")
         if cycle_time_ms(msg) <= 0:
             errors.append(f"{where}: GenMsgCycleTime must be > 0")
 

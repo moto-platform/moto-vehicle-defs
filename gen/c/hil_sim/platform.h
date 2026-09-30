@@ -275,7 +275,7 @@ struct platform_ekf_lean_t {
 /**
  * Signals in message VehicleSpeed.
  *
- * Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). Safety range because safety-node consumes it.
+ * Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). Not a safety-node input (D-041): the Layer 1 cornering decision needs no speed. It keeps its safety-range ID and E2E protection for its other consumers; no safety decision may be based on it.
  *
  * All signal values are as on the CAN bus.
  */
@@ -295,7 +295,7 @@ struct platform_vehicle_speed_t {
     uint8_t e2_e_counter;
 
     /**
-     * 1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; safety consumers must also bound VEHICLE_SPEED_AGE (vehicle_speed_max_age_ms in limits/platform_limits.yaml, D-029).
+     * 1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; consumers that care about freshness also bound VEHICLE_SPEED_AGE.
      *
      * Range: 0..1 (0..1 -)
      * Scale: 1
@@ -304,7 +304,9 @@ struct platform_vehicle_speed_t {
     uint8_t vehicle_speed_valid;
 
     /**
-     * Range: 0..30000 (0..300 km/h)
+     * Range 0-255 km/h = the range of DID 0xF40D (one byte, formula A). The source resolution is 1 km/h; the 0.01 scale does not add precision today and leaves room for a finer fused speed later (Q-015).
+     *
+     * Range: 0..25500 (0..255 km/h)
      * Scale: 0.01
      * Offset: 0
      */

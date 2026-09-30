@@ -128,7 +128,12 @@ timing:
 
 # Response layout (Single Frame): [PCI=0x0N][0x62][DID_hi][DID_lo][A][B]...
 # raw = data bytes as unsigned big-endian; physical = raw * factor_num / factor_den + offset.
-# Order = poll priority (index 0 is checked first every cycle).
+# priority (D-043): high | normal. Among the DIDs that are due, the tester serves
+# every `high` one before any `normal` one; list order is only the tie-break
+# inside a class and the index of the generated table. Priority changes the order
+# only, never the content: tester_policy and the D-020 gates are unchanged, and
+# every due DID is still served within its stale_after_ms (no starvation; the
+# polling budget below stays <= 0.8).
 # poll_period_verified: false = provisional platform value (D-029) that differs from
 # the verified legacy period (legacy_poll_period_ms); to be confirmed by the
 # measurement system. The DID itself and its formula stay verified.
@@ -150,6 +155,7 @@ dids:
     max: 16383.75
     poll_period_ms: 50
     stale_after_ms: 150
+    priority: normal
     platform_signal: VehicleEngine.ENGINE_SPEED
     verified: true
     evidence:
@@ -172,6 +178,9 @@ dids:
     poll_period_verified: false
     legacy_poll_period_ms: 800
     stale_after_ms: 300
+    # high: feeds rt-core's EKF lean estimate (Layer 2), which is a Layer 1
+    # input. A quality measure, not a safety claim: not a safety-node input (D-041).
+    priority: high
     platform_signal: VehicleSpeed.VEHICLE_SPEED
     verified: true
     evidence:
@@ -194,6 +203,7 @@ dids:
     poll_period_verified: false
     legacy_poll_period_ms: 800
     stale_after_ms: 600
+    priority: normal
     platform_signal: VehicleEngine.THROTTLE_POS
     verified: true
     evidence:
@@ -214,6 +224,7 @@ dids:
     max: 215
     poll_period_ms: 800
     stale_after_ms: 2400
+    priority: normal
     platform_signal: VehicleEngine.COOLANT_TEMP
     verified: true
     evidence:
@@ -234,6 +245,7 @@ dids:
     max: 65.535
     poll_period_ms: 800
     stale_after_ms: 2400
+    priority: normal
     platform_signal: VehicleEngine.BATTERY_VOLTAGE
     verified: true
     # The legacy decoder also has an A/10 heuristic for short/small responses;

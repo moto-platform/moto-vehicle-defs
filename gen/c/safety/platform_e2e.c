@@ -15,16 +15,6 @@ moto_e2e_status_t platform_ekf_lean_e2e_check_timeout(moto_e2e_rx_state_t *state
     return moto_e2e_check_timeout(state, PLATFORM_EKF_LEAN_E2E_TIMEOUT_MS, now_ms);
 }
 
-moto_e2e_status_t platform_vehicle_speed_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
-{
-    return moto_e2e_check(PLATFORM_VEHICLE_SPEED_E2E_DATA_ID, PLATFORM_VEHICLE_SPEED_E2E_MAX_DELTA_COUNTER, PLATFORM_VEHICLE_SPEED_E2E_TIMEOUT_MS, data, size, state, now_ms);
-}
-
-moto_e2e_status_t platform_vehicle_speed_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms)
-{
-    return moto_e2e_check_timeout(state, PLATFORM_VEHICLE_SPEED_E2E_TIMEOUT_MS, now_ms);
-}
-
 moto_e2e_status_t platform_ekf_friction_mass_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
 {
     return moto_e2e_check(PLATFORM_EKF_FRICTION_MASS_E2E_DATA_ID, PLATFORM_EKF_FRICTION_MASS_E2E_MAX_DELTA_COUNTER, PLATFORM_EKF_FRICTION_MASS_E2E_TIMEOUT_MS, data, size, state, now_ms);

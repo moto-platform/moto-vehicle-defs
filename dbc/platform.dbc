@@ -26,11 +26,11 @@ BO_ 32 EkfLean: 8 RT_CORE
  SG_ LEAN_ANGLE_QUALITY : 32|8@1+ (1,0) [0|100] "%" SAFETY,LINUX
 
 BO_ 33 VehicleSpeed: 8 RT_CORE
- SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,CONN,LINUX
- SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,CONN,LINUX
- SG_ VEHICLE_SPEED_VALID : 12|1@1+ (1,0) [0|1] "" SAFETY,CONN,LINUX
- SG_ VEHICLE_SPEED : 16|16@1+ (0.01,0) [0|300] "km/h" SAFETY,CONN,LINUX
- SG_ VEHICLE_SPEED_AGE : 32|8@1+ (10,0) [0|2550] "ms" SAFETY,CONN,LINUX
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" CONN,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" CONN,LINUX
+ SG_ VEHICLE_SPEED_VALID : 12|1@1+ (1,0) [0|1] "" CONN,LINUX
+ SG_ VEHICLE_SPEED : 16|16@1+ (0.01,0) [0|255] "km/h" CONN,LINUX
+ SG_ VEHICLE_SPEED_AGE : 32|8@1+ (10,0) [0|2550] "ms" CONN,LINUX
 
 BO_ 34 EkfFrictionMass: 8 RT_CORE
  SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,LINUX
@@ -101,8 +101,9 @@ CM_ BO_ 32 "rt-core EKF lean (roll) angle estimate for the cornering decision (h
 CM_ SG_ 32 LEAN_ANGLE_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, or INVALID. There is no safe default lean angle: rt-core sends INVALID instead (D-029); 2 is reserved and must be treated as INVALID.";
 CM_ SG_ 32 LEAN_ANGLE "Roll angle; positive = leaning right.";
 CM_ SG_ 32 LEAN_ANGLE_QUALITY "Estimator confidence; 0 = no confidence.";
-CM_ BO_ 33 "Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). Safety range because safety-node consumes it.";
-CM_ SG_ 33 VEHICLE_SPEED_VALID "1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; safety consumers must also bound VEHICLE_SPEED_AGE (vehicle_speed_max_age_ms in limits/platform_limits.yaml, D-029).";
+CM_ BO_ 33 "Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). Not a safety-node input (D-041): the Layer 1 cornering decision needs no speed. It keeps its safety-range ID and E2E protection for its other consumers; no safety decision may be based on it.";
+CM_ SG_ 33 VEHICLE_SPEED_VALID "1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; consumers that care about freshness also bound VEHICLE_SPEED_AGE.";
+CM_ SG_ 33 VEHICLE_SPEED "Range 0-255 km/h = the range of DID 0xF40D (one byte, formula A). The source resolution is 1 km/h; the 0.01 scale does not add precision today and leaves room for a finer fused speed later (Q-015).";
 CM_ SG_ 33 VEHICLE_SPEED_AGE "Time since rt-core received the source sample; saturates at 2550 ms.";
 CM_ BO_ 34 "rt-core EKF road friction and total mass estimates for the cornering decision (hardware-architecture 5b.2 Layer 2). Until the EKF has converged after a restart, rt-core sends *_STATE=INVALID and QUALITY=0.";
 CM_ SG_ 34 FRICTION_COEFF_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).";

@@ -60,7 +60,14 @@ extern const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[VEHICLE_CL2
 #define VEHICLE_CL250_DID_COOLANT_TEMP (0xF405u) /* A-40 */
 #define VEHICLE_CL250_DID_BATTERY_VOLTAGE (0xF442u) /* (A*256+B)/1000 */
 
-/* Index into vehicle_cl250_dids[] (poll priority order). */
+/* D-043 poll priority classes (vehicle_cl250_did_t.priority). A due DID of a
+ * lower value is served first; within a class, table order. Priority changes
+ * the order only: every due DID is still served within its stale_after_ms.
+ * Plain constants, not an enum: the field is uint8_t (no unused type, MISRA 2.3). */
+#define VEHICLE_CL250_PRIORITY_HIGH (0u)
+#define VEHICLE_CL250_PRIORITY_NORMAL (1u)
+
+/* Index into vehicle_cl250_dids[] (table order, not the poll priority). */
 typedef enum {
     VEHICLE_CL250_IDX_ENGINE_SPEED = 0,
     VEHICLE_CL250_IDX_VEHICLE_SPEED = 1,
@@ -74,6 +81,7 @@ typedef enum {
 typedef struct {
     uint16_t did;
     uint8_t length;
+    uint8_t priority; /* VEHICLE_CL250_PRIORITY_* (D-043) */
     uint16_t poll_period_ms;
     uint16_t stale_after_ms; /* value older than this must not be used/republished */
     int32_t factor_num;
