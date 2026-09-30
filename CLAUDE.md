@@ -23,6 +23,7 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /limits/platform_limits.yaml → k_yellow/k_red, µ/mass fallbacks, rt-core speed rules, per-node scope (provisional, D-029, D-048)
 /tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, VSS JSON
 /gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging)
+/misra/               → MISRA C:2012 deviation register for gen/c + cppcheck suppressions (D-046)
 /docs/                → all platform documentation (index: docs/README.md)
 /CHANGELOG.md         → what changed in each release
 ```
@@ -47,7 +48,10 @@ Tooling is a uv project in `tools/codegen` (Python 3.11+, cantools, vss-tools 6.
 make check   # strict DBC parse + moto-codegen check + ruff + pytest (needs gcc for C tests)
 make gen     # regenerate gen/ (first run downloads the pinned COVESA VSS 6.0 release)
 make drift   # make gen, then fail if gen/ changed — CI runs this
+make misra   # cppcheck style + MISRA C:2012 on every gen/c node, blocking in CI (D-046)
 ```
+
+MISRA findings in `gen/c` are fixed in the codegen, never in `gen/`; a deviation needs a `DEV-xxx` row in `misra/README.md` and a line in `misra/suppressions.txt`.
 
 C targets and the ID plan: `tools/codegen/src/moto_codegen/config.py`. E2E spec: `docs/e2e-profile.md`. Approved `Vehicle.Motorcycle.*` paths go into `APPROVED_EXTENSIONS` in `gen_vss.py` (only after the user says yes).
 

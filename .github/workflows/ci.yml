@@ -6,7 +6,8 @@ on:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    # Pinned: the blocking MISRA step uses the image's apt cppcheck (misra/README.md).
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -29,3 +30,16 @@ jobs:
 
       - name: Generated code is up to date
         run: make drift
+
+      - name: Install cppcheck
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cppcheck
+          cppcheck --version
+
+      # D-046 item 2: blocking, because gen/c carries the D-020 gates and safety-node
+      # links it. Fixes go into the codegen, never into gen/ by hand; deviations are
+      # recorded in misra/README.md and listed in misra/suppressions.txt.
+      - name: Static analysis on gen/c (cppcheck style + MISRA C:2012, blocking)
+        run: make misra

@@ -28,6 +28,7 @@ Requires [uv](https://docs.astral.sh/uv/) and a C compiler (for the C tests).
 make check   # strict DBC parse + consistency checks + ruff + pytest
 make gen     # regenerate gen/ (downloads the pinned COVESA VSS release once)
 make drift   # regenerate and fail if gen/ changed (CI)
+make misra   # cppcheck style + MISRA C:2012 on gen/c (CI, blocking); deviations in misra/README.md
 ```
 
 Changing a signal: follow the `/signal-change` skill, add a `CHANGELOG.md` line, `make gen`, commit. Tags are cut deliberately; consumers bump their submodule deliberately.
