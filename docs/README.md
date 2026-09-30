@@ -10,33 +10,33 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `DECISIONS.md` | **Authoritative** | Decisions (ADR D-xxx) + open questions (Q-xxx) |
 | `hardware-architecture.md` | Detail (rationale); **bus topology superseded** by ARCHITECTURE §3 | Subsystem rationale, references, Phase 2 list |
 | `vehicle-work-plan.md` | On-vehicle plan (bus access per D-037) | CL250 data, mounting, field test protocols T0-T4, virtual dyno |
-| `phase0-data-collection-plan.md` | Authoritative (data) | Recording format, metadata schema, work packages WP-1..WP-7 |
+| `phase0-data-collection-plan.md` | Authoritative (data), superseded in part (D-032, D-045) | Recording format, metadata schema, work packages WP-1..WP-7 |
 | `feature-pool.md` | Pool | All feature candidates (IDs F1.., K1.., ...), open-source references |
 | `hardware-procurement-list.md` | Current | Hardware groups 1-12, items on hand |
 | `e2e-profile.md` | **Authoritative (spec, short)** | E2E frame layout, CRC, counter, receiver statuses, timeouts (D-005, D-026) |
 | `legacy-telemetry-notes.md` | Reference (short) | Legacy HondaCl250_Telemetry facts per D-023: UDS state machine, NRC table, bus-off backoff, ISO-TP first-frame pitfall, ESP32-S3 pin map, discrepancies, accepted security risks, legacy test coverage |
 | `archive/tr/*` | Turkish originals + the two advisor documents (D-038) | **Not read by Claude.** Ç1-Ç8 are in `ARCHITECTURE.md` §9 |
 
-## hardware-architecture.md (855 lines)
+## hardware-architecture.md (859 lines)
 
 | Lines | Section |
 |---|---|
 | 13-95 | §1-5 philosophy, 5 units, chip choices, CAN rules, latency (bus topology: see ARCHITECTURE §3) |
 | 96-191 | §5b.0-0c context classification, conditioning factors, context bus |
 | 192-242 | §5b.1 blind spot monitoring (BSM) |
-| 243-282 | §5b.2 cornering safety (3 layers) |
-| 283-328 | §5b.3 io-node: immobilizer, park mode, power board |
-| 329-374 | §5b.4 display / LED ring / profile pages |
-| 375-447 | §5b.5 lane departure warning (LDW) |
-| 448-466 | §5b.6 voice commands (ESP-SR) |
-| 467-525 | §5b.7 moto-mcp, privacy |
-| 526-577 | §5b.8 linux-node SDV layer, Raspi power/thermal |
-| 578-625 | §5b.9 anomaly model + validation protocol |
-| 626-645 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |
-| 646-681 | §6-7 module vs chip, staged rollout |
-| 682-743 | §8-9 repo structure, dependency direction, setup order |
-| 744-813 | §9b HIL bench |
-| 814-855 | §10 Phase 2, eliminated items, open notes |
+| 243-286 | §5b.2 cornering safety (3 layers) |
+| 287-332 | §5b.3 io-node: immobilizer, park mode, power board |
+| 333-378 | §5b.4 display / LED ring / profile pages |
+| 379-451 | §5b.5 lane departure warning (LDW) |
+| 452-470 | §5b.6 voice commands (ESP-SR) |
+| 471-529 | §5b.7 moto-mcp, privacy |
+| 530-581 | §5b.8 linux-node SDV layer, Raspi power/thermal |
+| 582-629 | §5b.9 anomaly model + validation protocol |
+| 630-649 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |
+| 650-685 | §6-7 module vs chip, staged rollout |
+| 686-747 | §8-9 repo structure, dependency direction, setup order |
+| 748-817 | §9b HIL bench |
+| 818-859 | §10 Phase 2, eliminated items, open notes |
 
 ## vehicle-work-plan.md (672 lines)
 
@@ -53,9 +53,9 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | 549-587 | §12 legal/safety framework |
 | 588-672 | §13-16 BOM, schedule, risks, deliverables |
 
-## phase0-data-collection-plan.md (272 lines)
+## phase0-data-collection-plan.md (278 lines)
 
-§1 work packages 25-38 · §3 data schema 74-122 (format decision 109) · §4-8 WP-3..WP-7 123-200 · §9 hardware 201-246 · §10-11 effort, next 247-272
+Superseded-in-part note (D-032, D-045) at the top, line 5 · §1 work packages 27-40 · §3 data schema 76-124 (format decision 111) · §4-8 WP-3..WP-7 125-206 · §9 hardware 207-252 · §10-11 effort, next 253-278
 
 ## feature-pool.md (624 lines)
 
