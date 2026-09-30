@@ -194,6 +194,19 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 
 ---
 
+**D-039 — Ç3 vehicle UDS client: design choices** (2026-09-29, user; items 4-5 from the safety review of rt-core#5)
+1. **Temporary ISO codes.** gen/ lacks the generic ISO 14229 codes the client needs: the 0x22 request SID, the 0x7F negative response, and NRCs 0x78/0x7E/0x7F. Until a defs `/signal-change` generates them, they live in rt-core `src/features/uds/uds_iso14229.h`. That header holds no vehicle facts: IDs, DIDs, formulas and timings still come only from gen/. The positive 0x62 check stays in the generated `vehicle_cl250_parse_response()`.
+2. **Sample store.** The per-DID samples (raw, physical, receive time) live in rt-core `services/vehicle_signals`. The poller is the single writer. Readers, including the future platform-bus republisher, never include `features/`. VALID/STALE is derived from `stale_after_ms` when a sample is read, and STALE stays sticky until the next write.
+3. **NRC handling.** An NRC other than 0x78 ends the pending request, as the legacy code does. It is not a timeout, and it counts as proof that the ECU is present. NRC 0x7E or 0x7F means the session was lost, and it is re-established with 0x10 03 only.
+4. **Fail-closed latch.** The client latches, sends nothing more and reports the reason (`uds_client_fault()`) when:
+   - the link refuses a request
+   - the `can_if` guard refuses a frame
+   - any frame appears on `VEHICLE_CL250_REQUEST_ID` or `FALLBACK_REQUEST_ID`, which means a second tester (parity with connectivity-node's latch, D-030)
+
+   A full TX mailbox is not a fault: the client waits.
+5. **Out of scope.** N_As and bus-off handling come with the H7 FDCAN HAL (Ç1). The FDCAN acceptance filters must pass both request IDs.
+- Why: the user preferred not to block Ç3 on a defs release. The store has to be readable by other features. The NRC rule keeps the verified legacy behaviour. The latch enforces D-021 in code.
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
@@ -218,3 +231,4 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 | Q-018 | ~~Temporary tester hardening~~ done in moto-connectivity-node#3 (2026-09-28): persistent latch + bus-off budget (RTC no-init, CRC, fail-safe restore), ≥2 s listen-only window, RX drained before TX and the timeout check. Remaining: bench/scope checks on target (reset reasons, TX during boot and the mode switch, TXD pull-up) | before the next vehicle-bus session | D-030 |
 | Q-019 | Which H7 board: STM32H743 or H723 (flash/RAM, FDCAN count, package, price, Renode model)? Not decided (user, 2026-09-28) | before the CubeMX project, Renode L1 and Ç6 | D-001, D-034 |
 | Q-020 | Should the D-020 frame gate (`vehicle_cl250_frame_allowed()`) let rt-core send a Flow Control (FC.CTS) on the vehicle bus? It passes Single Frames only today, so the tester cannot receive segmented responses: 0x19 with several DTCs and OBD 0x09 (VIN) end in N_TIMEOUT_CR. All current DIDs fit in a Single Frame. If yes: a versioned defs change with a byte-exact FC.CTS (fixed BS/STmin, padding), sent only while a reception runs for an allowed request (a link-state check in rt-core, not in the stateless can_if guard), capped FF_DL, requests stay Single Frame; safety-reviewer before the tag (conditions in moto-rt-core `src/features/uds/README.md`) | **Deferred by the user (2026-09-29, D-037):** the Ç3 client works with Single Frame responses only; revisit when 0x19 / 0x09 are needed | D-020, D-021, moto-rt-core#2 |
+| Q-021 | Should `uds/vehicle_cl250.yaml` define the OBD functional request IDs (0x7DF, 0x18DB33F1)? rt-core's foreign-tester watch (D-039) could then also catch generic OBD dongles, which use functional addressing. Today it watches only the two physical request IDs. | before the first bike test | safety re-review of rt-core#5, MINOR-2 |
