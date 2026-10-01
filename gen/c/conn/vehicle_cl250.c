@@ -20,103 +20,129 @@ const vehicle_cl250_did_t vehicle_cl250_dids[VEHICLE_CL250_DID_COUNT] = {
 
 const vehicle_cl250_did_t *vehicle_cl250_find(uint16_t did)
 {
+    const vehicle_cl250_did_t *found = NULL;
     size_t i;
 
     for (i = 0u; i < VEHICLE_CL250_DID_COUNT; i++) {
-        if (vehicle_cl250_dids[i].did == did) {
-            return &vehicle_cl250_dids[i];
+        if ((found == NULL) && (vehicle_cl250_dids[i].did == did)) {
+            found = &vehicle_cl250_dids[i];
         }
     }
-    return NULL;
+    return found;
 }
 
 bool vehicle_cl250_decode(const vehicle_cl250_did_t *entry, const uint8_t *data,
                           size_t size, float *out)
 {
-    uint32_t raw = 0u;
-    float value;
-    size_t i;
+    bool ok = false; /* fail-closed default */
 
     if ((entry == NULL) || (data == NULL) || (out == NULL) || (size < entry->length) ||
         (entry->length == 0u) || (entry->length > 4u) || (entry->factor_den == 0)) {
-        return false;
+        ok = false;
+    } else {
+        uint32_t raw = 0u;
+        float value;
+        size_t i;
+
+        for (i = 0u; i < entry->length; i++) {
+            raw = (raw << 8u) | (uint32_t)data[i];
+        }
+        value = ((float)raw * (float)entry->factor_num) / (float)entry->factor_den;
+        value += (float)entry->offset;
+        if ((value < entry->min) || (value > entry->max)) {
+            ok = false;
+        } else {
+            *out = value;
+            ok = true;
+        }
     }
-    for (i = 0u; i < entry->length; i++) {
-        raw = (raw << 8u) | (uint32_t)data[i];
-    }
-    value = ((float)raw * (float)entry->factor_num) / (float)entry->factor_den;
-    value += (float)entry->offset;
-    if ((value < entry->min) || (value > entry->max)) {
-        return false;
-    }
-    *out = value;
-    return true;
+    return ok;
 }
 
 bool vehicle_cl250_request_allowed(const uint8_t *payload, size_t size)
 {
-    uint8_t sub;
+    bool ok = false; /* fail-closed default */
 
     if ((payload == NULL) || (size == 0u)) {
-        return false;
-    }
-    switch (payload[0]) {
-    case 0x10u: /* DiagnosticSessionControl */
-        if (size < 2u) {
-            return false;
+        ok = false;
+    } else {
+        switch (payload[0]) {
+        case 0x10u: /* DiagnosticSessionControl */
+            if (size < 2u) {
+                ok = false;
+            } else {
+                uint8_t sub = (uint8_t)(payload[1] & 0x7Fu); /* ignore suppressPosRsp bit */
+
+                ok = (sub == 0x01u) || (sub == 0x03u);
+            }
+            break;
+        case 0x3Eu: /* TesterPresent */
+            if (size < 2u) {
+                ok = false;
+            } else {
+                uint8_t sub = (uint8_t)(payload[1] & 0x7Fu); /* ignore suppressPosRsp bit */
+
+                ok = (sub == 0x00u);
+            }
+            break;
+        case 0x22u: /* ReadDataByIdentifier */
+            ok = true;
+            break;
+        case 0x19u: /* ReadDTCInformation */
+            ok = true;
+            break;
+        case 0x01u: /* OBD show current data */
+            ok = true;
+            break;
+        case 0x09u: /* OBD request vehicle information */
+            ok = true;
+            break;
+        default:
+            ok = false; /* includes every D-020 forbidden service */
+            break;
         }
-        sub = (uint8_t)(payload[1] & 0x7Fu); /* ignore suppressPosRsp bit */
-        return (sub == 0x01u) || (sub == 0x03u);
-    case 0x3Eu: /* TesterPresent */
-        if (size < 2u) {
-            return false;
-        }
-        sub = (uint8_t)(payload[1] & 0x7Fu); /* ignore suppressPosRsp bit */
-        return (sub == 0x00u);
-    case 0x22u: /* ReadDataByIdentifier */
-        return true;
-    case 0x19u: /* ReadDTCInformation */
-        return true;
-    case 0x01u: /* OBD show current data */
-        return true;
-    case 0x09u: /* OBD request vehicle information */
-        return true;
-    default:
-        return false; /* includes every D-020 forbidden service */
     }
+    return ok;
 }
 
 bool vehicle_cl250_frame_allowed(const uint8_t *frame, size_t size)
 {
-    size_t len;
+    bool ok = false; /* fail-closed default */
 
     if ((frame == NULL) || (size < 2u) || ((frame[0] & 0xF0u) != 0u)) {
-        return false; /* not a Single Frame */
+        ok = false; /* not a Single Frame */
+    } else {
+        size_t len = (size_t)(frame[0] & 0x0Fu);
+
+        if ((len == 0u) || (len > 7u) || ((len + 1u) > size)) {
+            ok = false;
+        } else {
+            ok = vehicle_cl250_request_allowed(&frame[1], len);
+        }
     }
-    len = (size_t)(frame[0] & 0x0Fu);
-    if ((len == 0u) || (len > 7u) || ((len + 1u) > size)) {
-        return false;
-    }
-    return vehicle_cl250_request_allowed(&frame[1], len);
+    return ok;
 }
 
 bool vehicle_cl250_parse_response(uint16_t expected_did, const uint8_t *frame,
                                   size_t size, float *out)
 {
     const vehicle_cl250_did_t *entry = vehicle_cl250_find(expected_did);
-    size_t len;
+    bool ok = false; /* fail-closed default */
 
     if ((entry == NULL) || (frame == NULL) || (out == NULL) || (size < 1u) ||
         ((frame[0] & 0xF0u) != 0u)) {
-        return false;
+        ok = false;
+    } else {
+        size_t len = (size_t)(frame[0] & 0x0Fu);
+
+        if ((len > 7u) || ((len + 1u) > size) || (len < (3u + (size_t)entry->length))) {
+            ok = false;
+        } else if ((frame[1] != 0x62u) || (frame[2] != (uint8_t)(expected_did >> 8u)) ||
+                   (frame[3] != (uint8_t)(expected_did & 0xFFu))) {
+            ok = false;
+        } else {
+            ok = vehicle_cl250_decode(entry, &frame[4], len - 3u, out);
+        }
     }
-    len = (size_t)(frame[0] & 0x0Fu);
-    if ((len > 7u) || ((len + 1u) > size) || (len < (3u + (size_t)entry->length))) {
-        return false;
-    }
-    if ((frame[1] != 0x62u) || (frame[2] != (uint8_t)(expected_did >> 8u)) ||
-        (frame[3] != (uint8_t)(expected_did & 0xFFu))) {
-        return false;
-    }
-    return vehicle_cl250_decode(entry, &frame[4], len - 3u, out);
+    return ok;
 }

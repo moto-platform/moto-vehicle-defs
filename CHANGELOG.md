@@ -4,9 +4,13 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Added
+- Runtime tests of the generated cantools C (ISSUES C-7, `tools/codegen/tests/test_cantools_c.py`): per node, pack/unpack/decode against cantools Python with boundary values and 10 000 random payloads per message, `*_init(NULL)`, every short size (rejected, nothing written), longer frames, `*_is_in_range()` at the raw limits, `*_encode()`, out-of-width members not leaking into neighbours, and pack/unpack scope = the DBC senders/receivers (safety-node's 0x020/0x022 decode included). A synthetic DBC test for `_MISRA_FIXUPS`. E2E BAD_ARGUMENT tests: NULL data/state, size < 2 and `max_delta` outside 1..14 leave the data and state untouched.
+
 ### Changed
-- MISRA C:2012 is a blocking CI gate on `gen/c` (D-046 item 2, ISSUES C-2): `make misra` (cppcheck 2.22.0, canary, header-only files, `unix32`), deviation register `misra/README.md` (DEV-001..DEV-005; DEV-004's gate part and DEV-005 are temporary until ISSUES C-6).
-- codegen: `platform.c` gets `(void)memset`, braced `*_init()` NULL guards and widen-before-mask in `unpack_*_shift_*` (17.7, 15.6, 10.8); `moto_e2e_crc()` declares its loop variable in the `for`. Source text only: the `-O2` object code of every node is byte-identical. No API, ID, signal, `tester_policy` or D-020 gate change.
+- MISRA C:2012 is a blocking CI gate on `gen/c` (D-046 item 2, ISSUES C-2): `make misra` (cppcheck 2.22.0, canary, header-only files, `unix32`), deviation register `misra/README.md` (DEV-001..DEV-004).
+- codegen: the D-020 gate in `vehicle_cl250.c` (`vehicle_cl250_find()`, `_decode()`, `_request_allowed()`, `_frame_allowed()`, `_parse_response()`) is single-exit, with `break`-terminated switch-clauses (ISSUES C-6). DEV-004 no longer covers `vehicle_cl250.c` and DEV-005 (16.1/16.3) is closed. Same behaviour: `tools/codegen/tests/test_gate_equivalence.py` compares it with the previous gate at `-O0` and `-O2` over every byte the request and frame gates read (all 2^24 frame prefixes × 12 sizes), every DID and every data value of the table's DIDs (synthetic 3/4-byte entries sampled). A test pins one `return` per gate function and the fail-closed `bool ok = false` default. A narrowed policy with `subfunctions: []` now emits `ok = false` only (it built with an unused variable before). Accepted and refused frames, `tester_policy` and the D-020 golden copy are unchanged; `find()` now always scans the whole 5-entry table and keeps the first match.
+- codegen: `platform.c` gets `(void)memset`, braced `*_init()` NULL guards and widen-before-mask in `unpack_*_shift_*` (17.7, 15.6, 10.8); `moto_e2e_crc()` declares its loop variable in the `for`. Source text only: the `-O2` object code of every node is byte-identical. No API, ID, signal or `tester_policy` change.
 
 ## [0.3.0] — 2026-09-30
 
