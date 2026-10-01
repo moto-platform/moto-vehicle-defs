@@ -20,6 +20,9 @@ VEHICLE_REQUIRED_TIMING = (
     "ecu_absent_timeout_ms",
     "bus_off_backoff_initial_ms",
     "bus_off_backoff_max_ms",
+    # The polling budget and the D-043 sample-gap bound need it; without it both would
+    # be skipped silently.
+    "assumed_round_trip_ms",
 )
 DID_REQUIRED = (
     "did", "name", "length", "factor_num", "factor_den", "offset", "unit",
@@ -93,6 +96,34 @@ def _check_functional_watch(addressing: dict[str, Any]) -> list[str]:
     return errors
 
 
+def did_sample_gap_bounds(dids: list[dict[str, Any]], rtt: int) -> dict[str, int | None]:
+    """Worst-case gap between two samples of each DID under the rt-core poller (D-043).
+
+    The poller is non-preemptive fixed-priority scheduling with one request in flight:
+    of the due DIDs, the lowest DID_PRIORITIES rank goes first, then table order, and a
+    DID is due poll_period_ms after its last request. Every request holds the slot for
+    the assumed round trip C. For DID i:
+      w_i = C + sum over higher-ordered j of (floor(w_i / P_j) + 1) * C
+    (one request already in flight, then every higher one released up to the start),
+    and the gap between its samples is at most P_i + w_i + C. None means w_i did not
+    converge below the DID's stale_after_ms. C must cover the ECU's answer plus the
+    poll step of the firmware loop.
+    """
+    order = sorted(range(len(dids)), key=lambda i: (DID_PRIORITIES.index(dids[i]["priority"]), i))
+    bounds: dict[str, int | None] = {}
+    for pos, i in enumerate(order):
+        higher = [dids[j]["poll_period_ms"] for j in order[:pos]]
+        limit = dids[i]["stale_after_ms"]
+        w = rtt
+        while True:
+            nxt = rtt + sum((w // p + 1) * rtt for p in higher)
+            if nxt == w or nxt > limit:
+                break
+            w = nxt
+        bounds[dids[i]["name"]] = dids[i]["poll_period_ms"] + w + rtt if nxt == w else None
+    return bounds
+
+
 def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[str]:
     errors: list[str] = []
     for key in ("schema_version", "source", "bus", "addressing", "transport",
@@ -150,6 +181,22 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
             )
     if data["timing"].get("requests_in_flight") != 1:
         errors.append("vehicle: requests_in_flight must be 1 (strict request/response)")
+    complete = all(
+        isinstance(d.get(k), int) and d[k] > 0
+        for d in data["dids"]
+        for k in ("poll_period_ms", "stale_after_ms")
+    ) and all(d.get("priority") in DID_PRIORITIES and "name" in d for d in data["dids"])
+    if isinstance(rtt, int) and rtt > 0 and complete:
+        # D-043: priority changes the order only; no DID may starve (safety-reviewer m3).
+        bounds = did_sample_gap_bounds(data["dids"], rtt)
+        for d in data["dids"]:
+            gap = bounds[d["name"]]
+            if gap is None or gap > d["stale_after_ms"]:
+                errors.append(
+                    f"vehicle: DID {d['name']}: worst-case sample gap "
+                    f"{'unbounded' if gap is None else f'{gap} ms'} > stale_after_ms "
+                    f"{d['stale_after_ms']} at assumed_round_trip_ms={rtt} (D-043 starvation)"
+                )
 
     for section in ("bus", "transport"):
         if data[section].get("verified") and not _evidence_ok(data[section]):

@@ -132,8 +132,9 @@ timing:
 # every `high` one before any `normal` one; list order is only the tie-break
 # inside a class and the index of the generated table. Priority changes the order
 # only, never the content: tester_policy and the D-020 gates are unchanged, and
-# every due DID is still served within its stale_after_ms (no starvation; the
-# polling budget below stays <= 0.8).
+# every due DID is still served within its stale_after_ms (no starvation: codegen
+# bounds each DID's worst-case sample gap for this order by its stale_after_ms, and
+# the polling budget below stays <= 0.8).
 # poll_period_verified: false = provisional platform value (D-029) that differs from
 # the verified legacy period (legacy_poll_period_ms); to be confirmed by the
 # measurement system. The DID itself and its formula stay verified.
