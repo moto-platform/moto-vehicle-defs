@@ -3,7 +3,12 @@
 import pytest
 
 from moto_codegen import config
-from moto_codegen.yaml_checks import check_vehicle, did_sample_gap_bounds, request_allowed
+from moto_codegen.yaml_checks import (
+    check_vehicle,
+    did_fault_gap_bounds,
+    did_sample_gap_bounds,
+    request_allowed,
+)
 
 
 def test_policy_allowing_a_forbidden_service_fails(vehicle, platform_db):
@@ -156,6 +161,71 @@ def test_an_overloaded_table_is_unbounded_and_fails(vehicle, platform_db):
     errs = check_vehicle(vehicle, platform_db)
     assert any("polling budget" in e for e in errs)
     assert any("worst-case sample gap unbounded" in e for e in errs)
+
+
+def _fault_bounds(vehicle):
+    t = vehicle["timing"]
+    return did_fault_gap_bounds(
+        vehicle["dids"],
+        t["assumed_round_trip_ms"],
+        t["response_timeout_base_ms"],
+        t["max_consecutive_timeouts"],
+    )
+
+
+def test_fault_gap_bounds_of_the_table_are_within_stale_after(vehicle):
+    # D-050/D-051, worked by hand for the v0.3 table, speed faulty (B = 100, C = 20, the
+    # speed reads 200 ms apart, at most 3 after the blocking one):
+    # RPM (first normal DID): w = B -> 50 + 100 = 150 = its stale_after_ms;
+    # throttle: w = 100 + 4 * 20 (RPM) = 180 -> 380;
+    # coolant: w = 100 + 17 * 20 (RPM) + 3 * 100 (speed) + 5 * 20 (throttle) = 840 -> 1640;
+    # battery: 920 -> 1720. Speed itself is the faulty DID.
+    t = vehicle["timing"]
+    assert (t["assumed_round_trip_ms"], t["response_timeout_base_ms"]) == (20, 100)
+    assert t["max_consecutive_timeouts"] == 5
+    assert _fault_bounds(vehicle) == {
+        "ENGINE_SPEED": 150,
+        "THROTTLE_POS": 380,
+        "COOLANT_TEMP": 1640,
+        "BATTERY_VOLTAGE": 1720,
+    }
+    assert not any("fault-mode" in e for e in check_vehicle(vehicle, None))
+
+
+def test_a_normal_did_ahead_of_rpm_breaks_the_fault_mode_bound(vehicle, platform_db):
+    # The 150 ms of D-050 relies on RPM being the first normal DID in table order.
+    dids = vehicle["dids"]
+    rpm = next(i for i, d in enumerate(dids) if d["name"] == "ENGINE_SPEED")
+    tps = next(i for i, d in enumerate(dids) if d["name"] == "THROTTLE_POS")
+    dids[rpm], dids[tps] = dids[tps], dids[rpm]
+    errs = check_vehicle(vehicle, platform_db)
+    assert not any("worst-case sample gap" in e for e in errs)  # the nominal bound holds
+    assert any(
+        "ENGINE_SPEED: fault-mode request gap 170 ms > stale_after_ms 150" in e for e in errs
+    )
+
+
+def test_the_rpm_fault_bound_is_period_plus_base_timeout(vehicle, platform_db):
+    vehicle["timing"]["response_timeout_base_ms"] = 101
+    errs = check_vehicle(vehicle, platform_db)
+    assert any(
+        "ENGINE_SPEED: fault-mode request gap 151 ms > stale_after_ms 150" in e for e in errs
+    )
+
+
+def test_without_the_skip_a_faulty_speed_starves_the_slow_dids(vehicle, platform_db):
+    # The skip after max_consecutive_timeouts caps the faulty reads; without it RPM,
+    # throttle and a 200 ms-period faulty speed fill the slot.
+    vehicle["timing"]["max_consecutive_timeouts"] = 100
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("COOLANT_TEMP: fault-mode request gap unbounded" in e for e in errs)
+
+
+def test_without_a_high_priority_did_there_is_no_fault_mode_case(vehicle, platform_db):
+    for d in vehicle["dids"]:
+        d["priority"] = "normal"
+    assert _fault_bounds(vehicle) == {}
+    assert not any("fault-mode" in e for e in check_vehicle(vehicle, platform_db))
 
 
 @pytest.mark.parametrize("value", [None, 0, -5, "20", True])
