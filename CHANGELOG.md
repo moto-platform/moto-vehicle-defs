@@ -4,6 +4,10 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.3.2] — 2026-10-01
+
+DID poller timing checks and the RPM poll period (ISSUES E-4, E-6 n3, E-7 (3), E-8; decisions D-043, D-050, D-051, D-052). Stricter codegen checks and one data change in the generated DID table: 0xF40C (ENGINE_SPEED) is polled every 100 ms instead of 50 ms and goes stale after 300 ms instead of 150 ms. No API, signal, ID, layout, scale, `tester_policy` or D-020 golden-copy change, so this is a PATCH release; consumers poll RPM at 10 Hz after the bump.
+
 ### Added
 - codegen: D-043 no-starvation check (ISSUES E-4, safety-reviewer m3 on defs#13). `yaml_checks.did_sample_gap_bounds()` models the rt-core poller as non-preemptive fixed-priority scheduling (priority, then table order; one request in flight, each holding the slot for `assumed_round_trip_ms`) and bounds every DID's worst-case sample gap: poll period + one blocking round trip + higher-priority interference + its own round trip. `make check` fails if a bound exceeds the DID's `stale_after_ms`. Today's table at 20 ms: 0xF40D 140/300, 0xF40C 110/150, 0xF411 300/600, 0xF405 960/2400, 0xF442 1000/2400 ms. `timing.assumed_round_trip_ms` is now required (without it the polling budget and this check were skipped silently). gen/ is unchanged.
 
