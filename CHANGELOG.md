@@ -4,6 +4,10 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.3.3] — 2026-10-02
+
+Poll period margin for the tester step (ISSUES E-9, decision D-053). One timing value and the matching generated constant are added, and two rows of the generated DID table change: 0xF40C (ENGINE_SPEED) and 0xF40D (VEHICLE_SPEED) are polled every 110 ms instead of 100 ms, and 0xF40C goes stale after 330 ms instead of 300 ms. No signal, ID, layout, scale, `tester_policy` or D-020 golden-copy change, so this is a PATCH release; consumers poll RPM and speed at about 9.1 Hz after the bump.
+
 ### Added
 - `uds/vehicle_cl250.yaml`: `timing.client_step_max_ms` = 10 (provisional, D-029, D-053): the longest time between two runs of the tester's step on the target, release jitter included. Required by codegen. gen/: `VEHICLE_CL250_CLIENT_STEP_MAX_MS` (rt_core, conn, hil_sim) and `CLIENT_STEP_MAX_MS` (Python).
 
