@@ -117,6 +117,14 @@ timing:
   # PROVISIONAL (D-029), not measured: round-trip time assumed for the polling
   # budget check; sum(assumed_round_trip_ms / poll_period_ms) must stay <= 0.8.
   assumed_round_trip_ms: 20
+  # PROVISIONAL (D-029, D-053), not measured: the largest difference between the
+  # timebase readings (ms ticks, rounded up) of two consecutive runs of the tester's
+  # step on the target, period + release jitter. The tester sees an answer, and a
+  # timeout, only at its next step, so every poll_period_ms must be at least
+  # response_timeout_base_ms + client_step_max_ms, and a faulty read holds the slot up
+  # to their sum (D-053, ISSUES E-9). Must stay below assumed_round_trip_ms, which
+  # includes one step. A runtime check of the real step gaps belongs to the tester.
+  client_step_max_ms: 10
   verified: true
   evidence:
     - src/HondaCANModule.h:34-41
@@ -137,13 +145,16 @@ timing:
 # the polling budget below stays <= 0.8). While a DID is faulty (D-050, D-051) it
 # competes as normal and holds the slot for up to response_timeout_base_ms per read;
 # codegen also bounds the others' request gaps with any one DID faulty (D-052).
-# poll_period_ms >= response_timeout_base_ms for every DID (D-052): a read answered
-# within the base timeout without NRC 0x78 ends before the DID is due again.
+# poll_period_ms >= response_timeout_base_ms + client_step_max_ms for every DID
+# (D-052, D-053): a read answered within the base timeout without NRC 0x78 is seen
+# by the tester, at most one step later, before the DID is due again, so the DIDs due
+# meanwhile go first; unless an earlier timed-out read stamps it, it is in time.
 # poll_period_verified: false = provisional platform value (D-029) that differs from
 # the verified legacy period (legacy_poll_period_ms); to be confirmed by the
 # measurement system. The DID itself and its formula stay verified.
 # stale_after_ms is a PLATFORM choice (3 x poll period, D-025), not a legacy value:
-# a sample older than this must not be used or republished as VALID. The legacy
+# a sample older than this must not be used or republished as VALID (exception:
+# VEHICLE_SPEED keeps the 300 ms speed age of D-048, D-053). The legacy
 # code used one 500 ms threshold for everything (src/SystemState.h:10).
 dids:
   - did: 0xF40C
@@ -158,12 +169,13 @@ dids:
     unit: rpm
     min: 0
     max: 16383.75
-    # 100 ms, not the legacy 50 ms (D-052): a period below the base timeout let a
-    # slow answer within it starve the later normal DIDs (ISSUES E-8).
-    poll_period_ms: 100
+    # 110 ms, not the legacy 50 ms: a period below the base timeout let a slow answer
+    # within it starve the later normal DIDs (D-052, ISSUES E-8), and one step more is
+    # needed for an answer the tester sees after the base timeout (D-053, ISSUES E-9).
+    poll_period_ms: 110
     poll_period_verified: false
     legacy_poll_period_ms: 50
-    stale_after_ms: 300
+    stale_after_ms: 330
     priority: normal
     platform_signal: VehicleEngine.ENGINE_SPEED
     verified: true
@@ -183,9 +195,12 @@ dids:
     unit: km/h
     min: 0
     max: 255
-    poll_period_ms: 100
+    # 110 ms = response_timeout_base_ms + client_step_max_ms (D-053, ISSUES E-9).
+    poll_period_ms: 110
     poll_period_verified: false
     legacy_poll_period_ms: 800
+    # 300 ms, not 3 x 110: the speed age of D-048 (platform_limits
+    # vehicle_speed_max_age_ms), kept by D-053.
     stale_after_ms: 300
     # high: feeds rt-core's EKF lean estimate (Layer 2), which is a Layer 1
     # input. A quality measure, not a safety claim: not a safety-node input (D-041).
