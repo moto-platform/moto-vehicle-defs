@@ -39,12 +39,11 @@ void moto_e2e_rx_init(moto_e2e_rx_state_t *state)
 uint8_t moto_e2e_crc(uint16_t data_id, const uint8_t *data, size_t size)
 {
     uint8_t crc = 0xFFu;
-    size_t i;
 
     crc = crc8_update(crc, (uint8_t)(data_id & 0xFFu));
     crc = crc8_update(crc, (uint8_t)((data_id >> 8u) & 0xFFu));
     if (data != NULL) {
-        for (i = 1u; i < size; i++) {
+        for (size_t i = 1u; i < size; i++) {
             crc = crc8_update(crc, data[i]);
         }
     }

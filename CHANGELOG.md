@@ -4,6 +4,10 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Changed
+- MISRA C:2012 is a blocking CI gate on `gen/c` (D-046 item 2, ISSUES C-2): `make misra` (cppcheck 2.22.0, canary, header-only files, `unix32`), deviation register `misra/README.md` (DEV-001..DEV-005; DEV-004's gate part and DEV-005 are temporary until ISSUES C-6).
+- codegen: `platform.c` gets `(void)memset`, braced `*_init()` NULL guards and widen-before-mask in `unpack_*_shift_*` (17.7, 15.6, 10.8); `moto_e2e_crc()` declares its loop variable in the `for`. Source text only: the `-O2` object code of every node is byte-identical. No API, ID, signal, `tester_policy` or D-020 gate change.
+
 ## [0.3.0] — 2026-09-30
 
 Layer 1 thresholds, rt-core speed rules and DID poll priority (ISSUES E-1, B-8 DBC part). Decisions D-041, D-043, D-048 (user, 2026-09-30). The 0x021 bit layout and scale are unchanged, but generated APIs change (see Breaking), so this is released as v0.3.0 (0.x: breaking changes bump the minor version).

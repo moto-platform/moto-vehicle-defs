@@ -1,0 +1,21 @@
+# cppcheck suppressions list for the MISRA C:2012 addon on gen/c (`make misra`, CI).
+# Every line is a deviation recorded in misra/README.md; add nothing here without a row there.
+# Scopes name today's files, so a new generated file needs a register update first.
+# DEV-001
+misra-c2012-8.7:*/platform.c
+misra-c2012-8.7:*/platform_e2e.c
+misra-c2012-8.7:*/moto_e2e.c
+misra-c2012-8.7:*/vehicle_cl250.c
+misra-c2012-8.7:*/platform_uds.c
+# DEV-002
+misra-c2012-2.5:*.h
+# DEV-003
+misra-c2012-2.3:*/vehicle_cl250.h
+misra-c2012-2.4:*/vehicle_cl250.h
+misra-c2012-2.3:*/platform_uds.h
+misra-c2012-2.4:*/platform_uds.h
+# DEV-004
+misra-c2012-15.5:*/platform.c
+misra-c2012-15.5:*/moto_e2e.c
+misra-c2012-15.5:*/platform_uds.c
+misra-c2012-15.5:*/vehicle_cl250.c
