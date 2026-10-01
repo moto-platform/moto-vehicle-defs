@@ -120,17 +120,17 @@ def _gap_bounds(vehicle):
 
 
 def test_sample_gap_bounds_of_the_table_are_within_stale_after(vehicle):
-    # D-043 no starvation, worked by hand for the v0.3 table at C = 20 ms:
-    # speed (high, P100): w = 20 -> 140; RPM (P50): w = 20 + 20 = 40 -> 110;
-    # throttle (P200): w = 80 -> 300; coolant (P800): w = 140 -> 960;
-    # battery (P800): w = 180 -> 1000.
+    # D-043 no starvation, worked by hand for the table at C = 20 ms (RPM at 100 ms, D-052):
+    # speed (high, P100): w = 20 -> 140; RPM (P100): w = 20 + 20 = 40 -> 160;
+    # throttle (P200): w = 60 -> 280; coolant (P800): w = 80 -> 900;
+    # battery (P800): w = 140 -> 960.
     assert vehicle["timing"]["assumed_round_trip_ms"] == 20
     assert _gap_bounds(vehicle) == {
         "VEHICLE_SPEED": 140,
-        "ENGINE_SPEED": 110,
-        "THROTTLE_POS": 300,
-        "COOLANT_TEMP": 960,
-        "BATTERY_VOLTAGE": 1000,
+        "ENGINE_SPEED": 160,
+        "THROTTLE_POS": 280,
+        "COOLANT_TEMP": 900,
+        "BATTERY_VOLTAGE": 960,
     }
     for d in vehicle["dids"]:
         assert _gap_bounds(vehicle)[d["name"]] <= d["stale_after_ms"]
@@ -138,10 +138,10 @@ def test_sample_gap_bounds_of_the_table_are_within_stale_after(vehicle):
 
 def test_a_stale_after_below_the_sample_gap_bound_fails(vehicle, platform_db):
     rpm = next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")
-    rpm["stale_after_ms"] = 109  # bound 110
+    rpm["stale_after_ms"] = 159  # bound 160
     errs = check_vehicle(vehicle, platform_db)
-    assert any("ENGINE_SPEED: worst-case sample gap 110 ms > stale_after_ms 109" in e for e in errs)
-    rpm["stale_after_ms"] = 110
+    assert any("ENGINE_SPEED: worst-case sample gap 160 ms > stale_after_ms 159" in e for e in errs)
+    rpm["stale_after_ms"] = 160
     assert not any("sample gap" in e for e in check_vehicle(vehicle, platform_db))
 
 
@@ -174,26 +174,51 @@ def _fault_bounds(vehicle):
 
 
 def test_fault_gap_bounds_of_the_table_are_within_stale_after(vehicle):
-    # D-050/D-051, worked by hand for the v0.3 table, speed faulty (B = 100, C = 20, the
-    # speed reads 200 ms apart, at most 3 after the blocking one):
-    # RPM (first normal DID): w = B -> 50 + 100 = 150 = its stale_after_ms;
-    # throttle: w = 100 + 4 * 20 (RPM) = 180 -> 380;
-    # coolant: w = 100 + 17 * 20 (RPM) + 3 * 100 (speed) + 5 * 20 (throttle) = 840 -> 1640;
-    # battery: 920 -> 1720. Speed itself is the faulty DID.
+    # D-050..D-052, worked by hand (B = 100, C = 20, any one DID faulty; its reads alternate
+    # P_f and P_f + B apart, at most 2 * 5 - 2 = 8 after the blocking one):
+    # RPM: throttle, coolant or battery faulty (normal DIDs, E-8 (2)): w = B + 2 * C
+    #   (speed) = 140 -> 240;
+    # speed: only the blocking read is ahead of it: w = 100 -> 200;
+    # throttle: RPM or speed faulty: w = B + 1 * B + 3 * C = 260 -> 460;
+    # coolant: RPM or speed faulty: w = B + 3 * B + 9 * C = 580 -> 1380;
+    # battery: RPM or speed faulty: w = B + 8 * B (the cap) + 23 * C = 1360 -> 2160.
     t = vehicle["timing"]
     assert (t["assumed_round_trip_ms"], t["response_timeout_base_ms"]) == (20, 100)
     assert t["max_consecutive_timeouts"] == 5
     assert _fault_bounds(vehicle) == {
-        "ENGINE_SPEED": 150,
-        "THROTTLE_POS": 380,
-        "COOLANT_TEMP": 1640,
-        "BATTERY_VOLTAGE": 1720,
+        "ENGINE_SPEED": 240,
+        "VEHICLE_SPEED": 200,
+        "THROTTLE_POS": 460,
+        "COOLANT_TEMP": 1380,
+        "BATTERY_VOLTAGE": 2160,
     }
     assert not any("fault-mode" in e for e in check_vehicle(vehicle, None))
 
 
+def test_a_poll_period_below_the_base_timeout_is_refused(vehicle, platform_db):
+    # D-052 (ISSUES E-8 (1)): with the legacy 50 ms, an RPM answer at 51-99 ms (no NRC 0x78)
+    # made RPM due again at once and starved the later normal DIDs.
+    rpm = next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")
+    rpm["poll_period_ms"], rpm["stale_after_ms"] = 50, 150
+    errs = check_vehicle(vehicle, platform_db)
+    assert any(
+        "ENGINE_SPEED: poll_period_ms 50 < response_timeout_base_ms 100 (D-052)" in e for e in errs
+    )
+    # The fault-mode model needs the rule, so it is not evaluated without it.
+    assert not any("fault-mode" in e for e in errs)
+
+
+def test_a_base_timeout_above_a_period_is_refused(vehicle, platform_db):
+    vehicle["timing"]["response_timeout_base_ms"] = 101
+    errs = check_vehicle(vehicle, platform_db)
+    for name in ("ENGINE_SPEED", "VEHICLE_SPEED"):
+        assert any(f"{name}: poll_period_ms 100 < response_timeout_base_ms 101" in e for e in errs)
+    vehicle["timing"]["response_timeout_base_ms"] = 100
+    assert not any("D-052" in e for e in check_vehicle(vehicle, platform_db))
+
+
 def test_a_normal_did_ahead_of_rpm_breaks_the_fault_mode_bound(vehicle, platform_db):
-    # The 150 ms of D-050 relies on RPM being the first normal DID in table order.
+    # RPM's 240 ms relies on no normal DID being ahead of it in table order.
     dids = vehicle["dids"]
     rpm = next(i for i, d in enumerate(dids) if d["name"] == "ENGINE_SPEED")
     tps = next(i for i, d in enumerate(dids) if d["name"] == "THROTTLE_POS")
@@ -201,30 +226,47 @@ def test_a_normal_did_ahead_of_rpm_breaks_the_fault_mode_bound(vehicle, platform
     errs = check_vehicle(vehicle, platform_db)
     assert not any("worst-case sample gap" in e for e in errs)  # the nominal bound holds
     assert any(
-        "ENGINE_SPEED: fault-mode request gap 170 ms > stale_after_ms 150" in e for e in errs
+        "ENGINE_SPEED: fault-mode request gap 340 ms > stale_after_ms 300" in e for e in errs
     )
 
 
-def test_the_rpm_fault_bound_is_period_plus_base_timeout(vehicle, platform_db):
-    vehicle["timing"]["response_timeout_base_ms"] = 101
+def test_a_faulty_normal_did_sets_the_rpm_fault_bound(vehicle, platform_db):
+    # ISSUES E-8 (2): the worst case for RPM is a faulty normal DID behind it (its read
+    # just started), which the D-051 check did not model: P + B + 2 * C (speed) = 240.
+    next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")["stale_after_ms"] = 239
     errs = check_vehicle(vehicle, platform_db)
     assert any(
-        "ENGINE_SPEED: fault-mode request gap 151 ms > stale_after_ms 150" in e for e in errs
+        "ENGINE_SPEED: fault-mode request gap 240 ms > stale_after_ms 239" in e for e in errs
     )
 
 
-def test_without_the_skip_a_faulty_speed_starves_the_slow_dids(vehicle, platform_db):
-    # The skip after max_consecutive_timeouts caps the faulty reads; without it RPM,
-    # throttle and a 200 ms-period faulty speed fill the slot.
+def test_slow_answers_between_timeouts_count_toward_the_faulty_reads(vehicle):
+    # D-052 (ISSUES E-8 (3)): a slow answer does not reset the skip count, so each
+    # timeout before the skip may come with one slow answer, and the first failing read
+    # may itself be a slow answer: 2 * max - 1 faulty reads after it, 2 * max - 2 after the
+    # blocking one (safety review MINOR-1). Battery's window reaches the cap: 4 at max 3,
+    # 8 at max 5.
+    dids, t = vehicle["dids"], vehicle["timing"]
+    rtt, base = t["assumed_round_trip_ms"], t["response_timeout_base_ms"]
+    assert did_fault_gap_bounds(dids, rtt, base, 3)["BATTERY_VOLTAGE"] == 1560
+    assert did_fault_gap_bounds(dids, rtt, base, 5)["BATTERY_VOLTAGE"] == 2160
+
+
+def test_without_the_skip_a_faulty_did_starves_the_slow_dids(vehicle, platform_db):
+    # The skip after max_consecutive_timeouts caps the faulty reads; without it a faulty
+    # RPM or speed, with the others, fills battery's window.
     vehicle["timing"]["max_consecutive_timeouts"] = 100
     errs = check_vehicle(vehicle, platform_db)
-    assert any("COOLANT_TEMP: fault-mode request gap unbounded" in e for e in errs)
+    assert any(
+        "BATTERY_VOLTAGE: fault-mode request gap 3180 ms > stale_after_ms 2400" in e for e in errs
+    )
 
 
-def test_without_a_high_priority_did_there_is_no_fault_mode_case(vehicle, platform_db):
+def test_without_a_high_priority_did_every_did_is_still_covered(vehicle, platform_db):
+    # Since D-052 any one DID may be faulty, not only a demoted high one.
     for d in vehicle["dids"]:
         d["priority"] = "normal"
-    assert _fault_bounds(vehicle) == {}
+    assert set(_fault_bounds(vehicle)) == {d["name"] for d in vehicle["dids"]}
     assert not any("fault-mode" in e for e in check_vehicle(vehicle, platform_db))
 
 
@@ -239,12 +281,12 @@ def test_assumed_round_trip_is_required_for_the_budget_and_gap_checks(vehicle, p
 
 
 def test_budget_within_0_8_but_gap_bound_failing_is_refused(vehicle, platform_db):
-    # Budget 0.0375 * 21 = 0.79 passes; RPM's bound at C = 21 is 50 + 42 + 21 = 113.
+    # Budget 0.0275 * 21 = 0.58 passes; RPM's bound at C = 21 is 100 + 42 + 21 = 163.
     vehicle["timing"]["assumed_round_trip_ms"] = 21
-    next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")["stale_after_ms"] = 112
+    next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")["stale_after_ms"] = 162
     errs = check_vehicle(vehicle, platform_db)
     assert not any("polling budget" in e for e in errs)
-    assert any("ENGINE_SPEED: worst-case sample gap 113 ms > stale_after_ms 112" in e for e in errs)
+    assert any("ENGINE_SPEED: worst-case sample gap 163 ms > stale_after_ms 162" in e for e in errs)
 
 
 @pytest.mark.parametrize("key", ["response_timeout_base_ms", "did_skip_cooldown_ms"])

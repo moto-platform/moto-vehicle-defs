@@ -134,9 +134,11 @@ timing:
 # only, never the content: tester_policy and the D-020 gates are unchanged, and
 # every due DID is still served within its stale_after_ms (no starvation: codegen
 # bounds each DID's worst-case sample gap for this order by its stale_after_ms, and
-# the polling budget below stays <= 0.8). While a high DID is faulty (D-050, D-051)
-# it competes as normal; codegen also bounds the others' request gaps for that case,
-# which keeps 0xF40C the first normal DID in list order.
+# the polling budget below stays <= 0.8). While a DID is faulty (D-050, D-051) it
+# competes as normal and holds the slot for up to response_timeout_base_ms per read;
+# codegen also bounds the others' request gaps with any one DID faulty (D-052).
+# poll_period_ms >= response_timeout_base_ms for every DID (D-052): a read answered
+# within the base timeout without NRC 0x78 ends before the DID is due again.
 # poll_period_verified: false = provisional platform value (D-029) that differs from
 # the verified legacy period (legacy_poll_period_ms); to be confirmed by the
 # measurement system. The DID itself and its formula stay verified.
@@ -156,8 +158,12 @@ dids:
     unit: rpm
     min: 0
     max: 16383.75
-    poll_period_ms: 50
-    stale_after_ms: 150
+    # 100 ms, not the legacy 50 ms (D-052): a period below the base timeout let a
+    # slow answer within it starve the later normal DIDs (ISSUES E-8).
+    poll_period_ms: 100
+    poll_period_verified: false
+    legacy_poll_period_ms: 50
+    stale_after_ms: 300
     priority: normal
     platform_signal: VehicleEngine.ENGINE_SPEED
     verified: true
