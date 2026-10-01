@@ -18,6 +18,7 @@ TESTER_PRESENT_PERIOD_MS = 1000
 ASSUMED_ROUND_TRIP_MS = 20
 BUS_OFF_BACKOFF_INITIAL_MS = 1000
 BUS_OFF_BACKOFF_MAX_MS = 30000
+CLIENT_STEP_MAX_MS = 10
 DID_SKIP_COOLDOWN_MS = 5000
 ECU_ABSENT_TIMEOUT_MS = 3000
 MAX_CONSECUTIVE_TIMEOUTS = 5
@@ -29,8 +30,8 @@ RESPONSE_TIMEOUT_MAX_MS = 2000
 #          priority); priority is the D-043 class, most urgent first in PRIORITIES
 PRIORITIES = ("high", "normal",)
 DIDS = {
-    "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 100, "normal"),
-    "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 100, "high"),
+    "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 110, "normal"),
+    "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 110, "high"),
     "THROTTLE_POS": (0xF411, 1, 100, 255, 0, "%", 0, 100, 200, "normal"),
     "COOLANT_TEMP": (0xF405, 1, 1, 1, -40, "degC", -40, 215, 800, "normal"),
     "BATTERY_VOLTAGE": (0xF442, 2, 1, 1000, 0, "V", 0, 65.535, 800, "normal"),

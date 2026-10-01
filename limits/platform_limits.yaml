@@ -103,7 +103,7 @@ vehicle_speed:
       sees it as an unusable lean (D-042 fallback). Codegen checks
       poll_period_ms + assumed_round_trip_ms < value <= stale_after_ms of VEHICLE_SPEED.
     rationale: >-
-      Equal to stale_after_ms of VEHICLE_SPEED (3 x 100 ms poll, D-025/D-029): a sample
+      Equal to stale_after_ms of VEHICLE_SPEED (300 ms, D-048; kept at a 110 ms poll, D-053): a sample
       older than that is already not usable, so a larger value would add nothing.
   vehicle_speed_accel_margin_mps2:
     value: 5.0

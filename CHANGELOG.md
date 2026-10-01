@@ -4,6 +4,14 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Added
+- `uds/vehicle_cl250.yaml`: `timing.client_step_max_ms` = 10 (provisional, D-029, D-053): the longest time between two runs of the tester's step on the target, release jitter included. Required by codegen. gen/: `VEHICLE_CL250_CLIENT_STEP_MAX_MS` (rt_core, conn, hil_sim) and `CLIENT_STEP_MAX_MS` (Python).
+
+### Changed
+- codegen: the D-052 poll period floor becomes `poll_period_ms` ≥ `response_timeout_base_ms` + `client_step_max_ms` (D-053, ISSUES E-9). The tester sees an answer only at its next step; at P = B an answer just inside the base timeout, seen by a late step, made its DID due again at once and slow, with no timeout and no skip, so it could hold the slot back to back.
+- `uds/vehicle_cl250.yaml`: 0xF40C (ENGINE_SPEED) and 0xF40D (VEHICLE_SPEED) `poll_period_ms` 100 → 110 (D-053). 0xF40C `stale_after_ms` 300 → 330 (3 × period, D-025); 0xF40D keeps 300, the speed age of D-048. gen/ changes: those two rows of `vehicle_cl250_dids[]` (rt_core, conn, hil_sim) and the Python table. Bounds at C = 20 ms: nominal 0xF40D 150/300, 0xF40C 170/330, 0xF411 280/600, 0xF405 900/2400, 0xF442 920/2400; with any one DID faulty 220/300, 260/330, 480/600, 1740/2400, 2270/2400 ms. Polling budget 0.51. Consumers poll RPM and speed at about 9.1 Hz after the bump.
+- codegen: `did_fault_gap_bounds()` takes `client_step_max_ms` and holds the slot for `response_timeout_base_ms` + `client_step_max_ms` per faulty read, since the tester sees a timeout only at its next step (safety review MINOR-1 on D-053). `make check` also refuses `assumed_round_trip_ms` ≤ `client_step_max_ms` (the round trip includes one step). With no high-priority DID, speed behind RPM would reach 330/300 in fault mode, so 0xF40D needs its `high` priority (pinned by a test).
+
 ## [0.3.2] — 2026-10-01
 
 DID poller timing checks and the RPM poll period (ISSUES E-4, E-6 n3, E-7 (3), E-8; decisions D-043, D-050, D-051, D-052). Stricter codegen checks and one data change in the generated DID table: 0xF40C (ENGINE_SPEED) is polled every 100 ms instead of 50 ms and goes stale after 300 ms instead of 150 ms. No API, signal, ID, layout, scale, `tester_policy` or D-020 golden-copy change, so this is a PATCH release; consumers poll RPM at 10 Hz after the bump.
