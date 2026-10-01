@@ -168,25 +168,25 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
 
     for key in VEHICLE_REQUIRED_TIMING:
         value = data["timing"].get(key)
-        if not isinstance(value, int) or value <= 0:
+        if not _is_pos_int(value):
             errors.append(f"vehicle: timing.{key} must be a positive integer")
     rtt = data["timing"].get("assumed_round_trip_ms")
     periods = [d.get("poll_period_ms") for d in data["dids"]]
-    if isinstance(rtt, int) and all(isinstance(p, int) and p > 0 for p in periods):
+    if _is_pos_int(rtt) and all(_is_pos_int(p) for p in periods):
         load = sum(rtt / p for p in periods)
         if load > 0.8:
             errors.append(
                 f"vehicle: polling budget {load:.2f} > 0.8 at assumed_round_trip_ms={rtt} "
                 "(single request in flight)"
             )
-    if data["timing"].get("requests_in_flight") != 1:
+    if not _is_pos_int(data["timing"].get("requests_in_flight")) or (
+        data["timing"]["requests_in_flight"] != 1
+    ):
         errors.append("vehicle: requests_in_flight must be 1 (strict request/response)")
     complete = all(
-        isinstance(d.get(k), int) and d[k] > 0
-        for d in data["dids"]
-        for k in ("poll_period_ms", "stale_after_ms")
+        _is_pos_int(d.get(k)) for d in data["dids"] for k in ("poll_period_ms", "stale_after_ms")
     ) and all(d.get("priority") in DID_PRIORITIES and "name" in d for d in data["dids"])
-    if isinstance(rtt, int) and rtt > 0 and complete:
+    if _is_pos_int(rtt) and complete:
         # D-043: priority changes the order only; no DID may starve (safety-reviewer m3).
         bounds = did_sample_gap_bounds(data["dids"], rtt)
         for d in data["dids"]:
@@ -228,12 +228,12 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
             errors.append(f"{label}: factor_num/factor_den must be non-zero")
         if item["min"] > item["max"]:
             errors.append(f"{label}: min > max")
-        if item["poll_period_ms"] <= 0:
-            errors.append(f"{label}: poll_period_ms must be > 0")
-        if not item["poll_period_ms"] < item["stale_after_ms"] <= 0xFFFF:
+        if not _is_pos_int(item["poll_period_ms"]) or not _is_pos_int(item["stale_after_ms"]):
+            errors.append(f"{label}: poll_period_ms and stale_after_ms must be positive integers")
+        elif not item["poll_period_ms"] < item["stale_after_ms"] <= 0xFFFF:
             errors.append(f"{label}: stale_after_ms must be > poll_period_ms and <= 65535")
-        if item.get("poll_period_verified", True) is False and not isinstance(
-            item.get("legacy_poll_period_ms"), int
+        if item.get("poll_period_verified", True) is False and not _is_pos_int(
+            item.get("legacy_poll_period_ms")
         ):
             errors.append(f"{label}: provisional poll period needs legacy_poll_period_ms")
         if item["priority"] not in DID_PRIORITIES:
@@ -376,6 +376,11 @@ def check_limits(data: dict[str, Any], vehicle: dict[str, Any], platform_db: Dat
     if not _is_real(margin) or not 0 < margin <= 20:
         errors.append("limits: vehicle_speed_accel_margin_mps2 must be in (0, 20]")
     return errors
+
+
+def _is_pos_int(value: Any) -> bool:
+    """A positive int that is not a bool (YAML `true` would pass as 1, E-6 n3)."""
+    return isinstance(value, int) and not isinstance(value, bool) and value > 0
 
 
 def _is_real(value: Any) -> bool:
