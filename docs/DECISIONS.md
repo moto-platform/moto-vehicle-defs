@@ -298,6 +298,12 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 4. **`priority` enum = `high | normal`** (D-043). 0xF40D is `high`, every other DID `normal`. It is generated as `VEHICLE_CL250_PRIORITY_HIGH` (0u, the most urgent) / `_NORMAL` (1u) in the DID table and as `PRIORITIES` in Python. `tester_policy` and the golden D-020 copy are unchanged.
 - Why: E-1 needed concrete values. The user chose the recommended option each time.
 
+**D-049 — `main` requires a PR and green CI** (2026-10-01, user; ISSUES C-8, safety-reviewer MINOR-7 of group 3)
+1. Every platform repo with a CI workflow (and `moto-workspace` once it has one) gets branch protection on `main`: changes land only through a pull request, and the CI job must pass before merge. Repos without CI get the PR rule only, and the status check is added with their first workflow.
+2. Admin bypass stays enabled. It is for a hung or broken runner (like the 16 min "Install toolchains" hang on rt-core#10), not for skipping red checks; any bypass is noted in the PR.
+3. Required reviews stay off (single developer). `safety-reviewer` and `vss-schema-guardian` remain process gates (invariant 8), not GitHub settings.
+- Why: the blocking gates (cppcheck 2.22.0, `make misra`, native tests) only block if a red run cannot be merged. Not chosen: strict protection without admin bypass (a stuck runner would block all work), or no protection (gates rest on discipline only).
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
