@@ -204,7 +204,9 @@ def check_signal_helpers(cm: CMessage, member: str) -> None:
             if lo <= raw <= hi:
                 assert in_range(raw) is expected, (sig.name, raw)
     if encode is not None and decode is not None:
-        for raw in _boundaries(sig):
+        # float holds every integer up to 2^24 exactly; past that, encode()'s float-to-int
+        # conversion can overflow (undefined in C). No platform signal is wider than 16 bits.
+        for raw in (r for r in _boundaries(sig) if abs(r) <= 1 << 24):
             # C truncates (value - offset) / scale in float toward zero: one step at most.
             assert abs(encode(decode(raw)) - raw) <= 1, (sig.name, raw)
 
