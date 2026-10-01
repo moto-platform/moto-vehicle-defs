@@ -29,7 +29,7 @@ RESPONSE_TIMEOUT_MAX_MS = 2000
 #          priority); priority is the D-043 class, most urgent first in PRIORITIES
 PRIORITIES = ("high", "normal",)
 DIDS = {
-    "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 50, "normal"),
+    "ENGINE_SPEED": (0xF40C, 2, 1, 4, 0, "rpm", 0, 16383.75, 100, "normal"),
     "VEHICLE_SPEED": (0xF40D, 1, 1, 1, 0, "km/h", 0, 255, 100, "high"),
     "THROTTLE_POS": (0xF411, 1, 100, 255, 0, "%", 0, 100, 200, "normal"),
     "COOLANT_TEMP": (0xF405, 1, 1, 1, -40, "degC", -40, 215, 800, "normal"),
