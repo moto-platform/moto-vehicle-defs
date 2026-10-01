@@ -142,7 +142,9 @@ def did_fault_gap_bounds(
     and i's request gap is at most P_i + w_i. The sample age adds one round trip and the
     poll step on top (D-050 item 2). Each DID gets the worst bound over every
     higher-than-normal DID as f, the case D-050 demotes; a faulty normal DID also blocks
-    for B but is not covered (D-051). A DID without such an f is not in the result.
+    for B but is not covered (D-051). The model is the timed-out chain: an ECU that
+    alternates timeouts with answers just inside B resets the skip count and is not
+    covered either (D-051, ISSUES E-8). A DID without such an f is not in the result.
     None means w_i did not converge below the DID's stale_after_ms.
     """
     normal = DID_PRIORITIES.index("normal")
