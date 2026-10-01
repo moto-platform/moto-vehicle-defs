@@ -158,7 +158,7 @@ def test_an_overloaded_table_is_unbounded_and_fails(vehicle, platform_db):
     assert any("worst-case sample gap unbounded" in e for e in errs)
 
 
-@pytest.mark.parametrize("value", [None, 0, -5, "20"])
+@pytest.mark.parametrize("value", [None, 0, -5, "20", True])
 def test_assumed_round_trip_is_required_for_the_budget_and_gap_checks(vehicle, platform_db, value):
     if value is None:
         del vehicle["timing"]["assumed_round_trip_ms"]
@@ -175,3 +175,24 @@ def test_budget_within_0_8_but_gap_bound_failing_is_refused(vehicle, platform_db
     errs = check_vehicle(vehicle, platform_db)
     assert not any("polling budget" in e for e in errs)
     assert any("ENGINE_SPEED: worst-case sample gap 113 ms > stale_after_ms 112" in e for e in errs)
+
+
+@pytest.mark.parametrize("key", ["response_timeout_base_ms", "did_skip_cooldown_ms"])
+def test_a_bool_timing_value_is_refused(vehicle, platform_db, key):
+    # YAML `true` is an int subclass in Python and would pass as 1 ms (E-6 n3).
+    vehicle["timing"][key] = True
+    errs = check_vehicle(vehicle, platform_db)
+    assert any(f"timing.{key} must be a positive integer" in e for e in errs)
+
+
+def test_requests_in_flight_true_is_not_one(vehicle, platform_db):
+    vehicle["timing"]["requests_in_flight"] = True
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("requests_in_flight must be 1" in e for e in errs)
+
+
+@pytest.mark.parametrize("key", ["poll_period_ms", "stale_after_ms"])
+def test_a_bool_did_period_is_refused(vehicle, platform_db, key):
+    vehicle["dids"][0][key] = True
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("poll_period_ms and stale_after_ms must be positive integers" in e for e in errs)
