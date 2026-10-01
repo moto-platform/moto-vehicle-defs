@@ -64,6 +64,12 @@ def lib(tmp_path_factory):
         ctypes.c_uint32,
     ]
     so.moto_e2e_check_timeout.argtypes = [ctypes.POINTER(RxState), ctypes.c_uint32, ctypes.c_uint32]
+    so.moto_e2e_tx_init.restype = None
+    so.moto_e2e_tx_init.argtypes = [ctypes.POINTER(TxState)]
+    so.moto_e2e_rx_init.restype = None
+    so.moto_e2e_rx_init.argtypes = [ctypes.POINTER(RxState)]
+    so.moto_e2e_is_valid.restype = ctypes.c_bool
+    so.moto_e2e_is_valid.argtypes = [ctypes.c_int]
     so.vehicle_cl250_request_allowed.restype = ctypes.c_bool
     so.vehicle_cl250_request_allowed.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
     so.vehicle_cl250_frame_allowed.restype = ctypes.c_bool
@@ -139,6 +145,66 @@ def test_protect_and_check_match_reference(lib, max_delta):
     if max_delta == 1:
         expected.discard(e2e.E2EStatus.OK_SOME_LOST)  # impossible with max delta 1
     assert seen == expected
+
+
+BAD = int(e2e.E2EStatus.BAD_ARGUMENT)
+
+
+def _rx(synced=True):
+    return RxState(last_rx_ms=1000, last_counter=3, synced=synced)
+
+
+def _rx_tuple(s):
+    return (s.last_rx_ms, s.last_counter, s.synced)
+
+
+def test_e2e_protect_bad_arguments(lib):
+    """NULL data or state, or fewer than 2 bytes: BAD_ARGUMENT, nothing written."""
+    for data, size, state in (
+        (None, 8, TxState(5)),
+        (ctypes.create_string_buffer(b"\x11" * 8, 8), 8, None),
+        (ctypes.create_string_buffer(b"\x11" * 8, 8), 1, TxState(5)),
+        (ctypes.create_string_buffer(b"\x11" * 8, 8), 0, TxState(5)),
+    ):
+        st = ctypes.byref(state) if state is not None else None
+        assert lib.moto_e2e_protect(0x1021, data, size, st) == BAD
+        if data is not None:
+            assert data.raw == b"\x11" * 8
+        if state is not None:
+            assert state.counter == 5
+    with pytest.raises(ValueError):  # the Python reference refuses the short payload too
+        e2e.protect(0x1021, bytearray(1), e2e.TxState())
+
+
+def test_e2e_check_bad_arguments(lib):
+    data_id = 0x1021
+    frame = bytearray(8)
+    e2e.protect(data_id, frame, e2e.TxState())
+    frame = bytes(frame)  # a valid frame: only the argument makes it BAD_ARGUMENT
+    cases = [(None, 8, 1, True), (frame, 8, 1, False), (frame, 1, 1, True), (frame, 0, 1, True)]
+    cases += [(frame, 8, d, True) for d in (0, *range(15, 256))]
+    for data, size, max_delta, with_state in cases:
+        rx = _rx()
+        st = ctypes.byref(rx) if with_state else None
+        assert lib.moto_e2e_check(data_id, max_delta, 60, data, size, st, 1010) == BAD
+        assert _rx_tuple(rx) == (1000, 3, True)  # state untouched
+        if data is not None and with_state:
+            ref = e2e.RxState(1000, 3, True)
+            assert e2e.check(data_id, max_delta, 60, data[:size], ref, 1010) == BAD
+    for max_delta in range(1, 15):  # the valid range never answers BAD_ARGUMENT
+        status = lib.moto_e2e_check(data_id, max_delta, 60, frame, 8, ctypes.byref(_rx()), 1010)
+        assert status != BAD
+    assert not lib.moto_e2e_is_valid(BAD)
+
+
+def test_e2e_null_state_helpers(lib):
+    assert lib.moto_e2e_check_timeout(None, 60, 0) == BAD
+    lib.moto_e2e_tx_init(None)  # must not crash
+    lib.moto_e2e_rx_init(None)
+    # Documents, not endorses: protect()/check() refuse NULL data before calling crc(),
+    # so this path is never reached through them. It must not crash, and it covers the
+    # DataID only, like an empty payload.
+    assert lib.moto_e2e_crc(0x1021, None, 8) == e2e.compute_crc(0x1021, b"")
 
 
 def test_request_allow_list_matches_policy_exhaustively(lib, vehicle):
