@@ -3,7 +3,7 @@
 import pytest
 
 from moto_codegen import config
-from moto_codegen.yaml_checks import check_vehicle, request_allowed
+from moto_codegen.yaml_checks import check_vehicle, did_sample_gap_bounds, request_allowed
 
 
 def test_policy_allowing_a_forbidden_service_fails(vehicle, platform_db):
@@ -108,3 +108,70 @@ def test_tester_present_any_subfunction_fails(vehicle, platform_db):
 def test_stale_after_must_exceed_poll_period(vehicle, platform_db):
     vehicle["dids"][0]["stale_after_ms"] = vehicle["dids"][0]["poll_period_ms"]
     assert any("stale_after_ms" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def _gap_bounds(vehicle):
+    return did_sample_gap_bounds(vehicle["dids"], vehicle["timing"]["assumed_round_trip_ms"])
+
+
+def test_sample_gap_bounds_of_the_table_are_within_stale_after(vehicle):
+    # D-043 no starvation, worked by hand for the v0.3 table at C = 20 ms:
+    # speed (high, P100): w = 20 -> 140; RPM (P50): w = 20 + 20 = 40 -> 110;
+    # throttle (P200): w = 80 -> 300; coolant (P800): w = 140 -> 960;
+    # battery (P800): w = 180 -> 1000.
+    assert vehicle["timing"]["assumed_round_trip_ms"] == 20
+    assert _gap_bounds(vehicle) == {
+        "VEHICLE_SPEED": 140,
+        "ENGINE_SPEED": 110,
+        "THROTTLE_POS": 300,
+        "COOLANT_TEMP": 960,
+        "BATTERY_VOLTAGE": 1000,
+    }
+    for d in vehicle["dids"]:
+        assert _gap_bounds(vehicle)[d["name"]] <= d["stale_after_ms"]
+
+
+def test_a_stale_after_below_the_sample_gap_bound_fails(vehicle, platform_db):
+    rpm = next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")
+    rpm["stale_after_ms"] = 109  # bound 110
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("ENGINE_SPEED: worst-case sample gap 110 ms > stale_after_ms 109" in e for e in errs)
+    rpm["stale_after_ms"] = 110
+    assert not any("sample gap" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_the_bound_follows_the_priority_order(vehicle):
+    # Making throttle high puts it ahead of RPM: RPM's interference grows.
+    before = _gap_bounds(vehicle)
+    next(d for d in vehicle["dids"] if d["name"] == "THROTTLE_POS")["priority"] = "high"
+    after = _gap_bounds(vehicle)
+    assert after["ENGINE_SPEED"] > before["ENGINE_SPEED"]
+    assert after["THROTTLE_POS"] < before["THROTTLE_POS"]
+
+
+def test_an_overloaded_table_is_unbounded_and_fails(vehicle, platform_db):
+    for d in vehicle["dids"]:
+        d["poll_period_ms"] = 30
+        d["stale_after_ms"] = 60
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("polling budget" in e for e in errs)
+    assert any("worst-case sample gap unbounded" in e for e in errs)
+
+
+@pytest.mark.parametrize("value", [None, 0, -5, "20"])
+def test_assumed_round_trip_is_required_for_the_budget_and_gap_checks(vehicle, platform_db, value):
+    if value is None:
+        del vehicle["timing"]["assumed_round_trip_ms"]
+    else:
+        vehicle["timing"]["assumed_round_trip_ms"] = value
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("timing.assumed_round_trip_ms must be a positive integer" in e for e in errs)
+
+
+def test_budget_within_0_8_but_gap_bound_failing_is_refused(vehicle, platform_db):
+    # Budget 0.0375 * 21 = 0.79 passes; RPM's bound at C = 21 is 50 + 42 + 21 = 113.
+    vehicle["timing"]["assumed_round_trip_ms"] = 21
+    next(d for d in vehicle["dids"] if d["name"] == "ENGINE_SPEED")["stale_after_ms"] = 112
+    errs = check_vehicle(vehicle, platform_db)
+    assert not any("polling budget" in e for e in errs)
+    assert any("ENGINE_SPEED: worst-case sample gap 113 ms > stale_after_ms 112" in e for e in errs)

@@ -4,6 +4,9 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Added
+- codegen: D-043 no-starvation check (ISSUES E-4, safety-reviewer m3 on defs#13). `yaml_checks.did_sample_gap_bounds()` models the rt-core poller as non-preemptive fixed-priority scheduling (priority, then table order; one request in flight, each holding the slot for `assumed_round_trip_ms`) and bounds every DID's worst-case sample gap: poll period + one blocking round trip + higher-priority interference + its own round trip. `make check` fails if a bound exceeds the DID's `stale_after_ms`. Today's table at 20 ms: 0xF40D 140/300, 0xF40C 110/150, 0xF411 300/600, 0xF405 960/2400, 0xF442 1000/2400 ms. `timing.assumed_round_trip_ms` is now required (without it the polling budget and this check were skipped silently). gen/ is unchanged.
+
 ## [0.3.1] — 2026-10-01
 
 MISRA C:2012 gate on `gen/c` (ISSUES C-2), single-exit D-020 gate (ISSUES C-6) and runtime tests of the generated C (ISSUES C-7). Only generated source text and tests change: no API, signal, ID, layout, scale, `tester_policy` or D-020 golden-copy change, and no behaviour change, so this is a PATCH release.
