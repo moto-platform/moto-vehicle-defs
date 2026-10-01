@@ -124,6 +124,64 @@ def did_sample_gap_bounds(dids: list[dict[str, Any]], rtt: int) -> dict[str, int
     return bounds
 
 
+def did_fault_gap_bounds(
+    dids: list[dict[str, Any]], rtt: int, base: int, max_timeouts: int
+) -> dict[str, int | None]:
+    """Worst-case request gap of each DID while a high-priority DID is faulty (D-050, D-051).
+
+    A faulty DID f (its last read timed out, or its last answer came later than its
+    poll period) competes in the normal class at its table position and holds the slot
+    for at most the base response timeout B per read (no NRC 0x78 extension). After a
+    timeout its period restarts, so its reads are at least P_f + B apart, and after
+    max_timeouts timeouts in a row it is skipped, so at most max_timeouts - 1 faulty
+    reads follow its first failing attempt (that fresh attempt is not covered, D-050
+    item 3). For every other DID i, with a faulty read of f just started when i becomes
+    due, and every other read holding the slot for the assumed round trip C:
+      w_i = B + sum over j != f ordered before i of (floor(w_i / P_j) + 1) * C
+              + (if f is ordered before i) min(floor(w_i / (P_f + B)), max_timeouts - 2) * B
+    and i's request gap is at most P_i + w_i. The sample age adds one round trip and the
+    poll step on top (D-050 item 2). Each DID gets the worst bound over every
+    higher-than-normal DID as f, the case D-050 demotes; a faulty normal DID also blocks
+    for B but is not covered (D-051). The model is the timed-out chain: an ECU that
+    alternates timeouts with answers just inside B resets the skip count and is not
+    covered either (D-051, ISSUES E-8). A DID without such an f is not in the result.
+    None means w_i did not converge below the DID's stale_after_ms.
+    """
+    normal = DID_PRIORITIES.index("normal")
+    bounds: dict[str, int | None] = {}
+    demoted = [f for f in range(len(dids)) if DID_PRIORITIES.index(dids[f]["priority"]) < normal]
+    for i, d in enumerate(dids):
+        cases = [f for f in demoted if f != i]
+        if not cases:
+            continue
+        worst: int | None = 0
+        for f in cases:
+
+            def key(j: int, f: int = f) -> tuple[int, int]:
+                return (normal if j == f else DID_PRIORITIES.index(dids[j]["priority"]), j)
+
+            ahead = [j for j in range(len(dids)) if j != i and key(j) < key(i)]
+            blocking = max(base, rtt)
+            w = blocking
+            while True:
+                nxt = blocking
+                for j in ahead:
+                    if j == f:
+                        p_f = dids[f]["poll_period_ms"] + base
+                        nxt += min(w // p_f, max(max_timeouts - 2, 0)) * base
+                    else:
+                        nxt += (w // dids[j]["poll_period_ms"] + 1) * rtt
+                if nxt == w or nxt > d["stale_after_ms"]:
+                    break
+                w = nxt
+            if nxt != w:
+                worst = None
+                break
+            worst = max(worst, d["poll_period_ms"] + w)
+        bounds[d["name"]] = worst
+    return bounds
+
+
 def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[str]:
     errors: list[str] = []
     for key in ("schema_version", "source", "bus", "addressing", "transport",
@@ -196,6 +254,23 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
                     f"vehicle: DID {d['name']}: worst-case sample gap "
                     f"{'unbounded' if gap is None else f'{gap} ms'} > stale_after_ms "
                     f"{d['stale_after_ms']} at assumed_round_trip_ms={rtt} (D-043 starvation)"
+                )
+    base = data["timing"].get("response_timeout_base_ms")
+    max_timeouts = data["timing"].get("max_consecutive_timeouts")
+    if _is_pos_int(rtt) and _is_pos_int(base) and _is_pos_int(max_timeouts) and complete:
+        # D-050/D-051: a faulty high-priority DID (normal class, base timeout per read,
+        # skipped after max_consecutive_timeouts) must not starve the others (ISSUES E-7 (3)).
+        fault = did_fault_gap_bounds(data["dids"], rtt, base, max_timeouts)
+        for d in data["dids"]:
+            if d["name"] not in fault:
+                continue
+            gap = fault[d["name"]]
+            if gap is None or gap > d["stale_after_ms"]:
+                errors.append(
+                    f"vehicle: DID {d['name']}: fault-mode request gap "
+                    f"{'unbounded' if gap is None else f'{gap} ms'} > stale_after_ms "
+                    f"{d['stale_after_ms']} with a high-priority DID faulty at "
+                    f"response_timeout_base_ms={base} (D-050/D-051 starvation)"
                 )
 
     for section in ("bus", "transport"):
