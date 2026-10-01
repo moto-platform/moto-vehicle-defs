@@ -175,13 +175,13 @@ def _fault_bounds(vehicle):
 
 def test_fault_gap_bounds_of_the_table_are_within_stale_after(vehicle):
     # D-050..D-052, worked by hand (B = 100, C = 20, any one DID faulty; its reads alternate
-    # P_f and P_f + B apart, at most 2 * 5 - 3 = 7 after the blocking one):
+    # P_f and P_f + B apart, at most 2 * 5 - 2 = 8 after the blocking one):
     # RPM: throttle, coolant or battery faulty (normal DIDs, E-8 (2)): w = B + 2 * C
     #   (speed) = 140 -> 240;
     # speed: only the blocking read is ahead of it: w = 100 -> 200;
     # throttle: RPM or speed faulty: w = B + 1 * B + 3 * C = 260 -> 460;
     # coolant: RPM or speed faulty: w = B + 3 * B + 9 * C = 580 -> 1380;
-    # battery: RPM or speed faulty: w = B + 7 * B (the cap) + 22 * C = 1240 -> 2040.
+    # battery: RPM or speed faulty: w = B + 8 * B (the cap) + 23 * C = 1360 -> 2160.
     t = vehicle["timing"]
     assert (t["assumed_round_trip_ms"], t["response_timeout_base_ms"]) == (20, 100)
     assert t["max_consecutive_timeouts"] == 5
@@ -190,7 +190,7 @@ def test_fault_gap_bounds_of_the_table_are_within_stale_after(vehicle):
         "VEHICLE_SPEED": 200,
         "THROTTLE_POS": 460,
         "COOLANT_TEMP": 1380,
-        "BATTERY_VOLTAGE": 2040,
+        "BATTERY_VOLTAGE": 2160,
     }
     assert not any("fault-mode" in e for e in check_vehicle(vehicle, None))
 
@@ -242,12 +242,14 @@ def test_a_faulty_normal_did_sets_the_rpm_fault_bound(vehicle, platform_db):
 
 def test_slow_answers_between_timeouts_count_toward_the_faulty_reads(vehicle):
     # D-052 (ISSUES E-8 (3)): a slow answer does not reset the skip count, so each
-    # timeout before the skip may come with one slow answer: 2 * (max - 1) faulty reads.
-    # Battery is the DID whose window reaches the cap: 3 at max 3, 7 at max 5.
+    # timeout before the skip may come with one slow answer, and the first failing read
+    # may itself be a slow answer: 2 * max - 1 faulty reads after it, 2 * max - 2 after the
+    # blocking one (safety review MINOR-1). Battery's window reaches the cap: 4 at max 3,
+    # 8 at max 5.
     dids, t = vehicle["dids"], vehicle["timing"]
     rtt, base = t["assumed_round_trip_ms"], t["response_timeout_base_ms"]
-    assert did_fault_gap_bounds(dids, rtt, base, 3)["BATTERY_VOLTAGE"] == 1440
-    assert did_fault_gap_bounds(dids, rtt, base, 5)["BATTERY_VOLTAGE"] == 2040
+    assert did_fault_gap_bounds(dids, rtt, base, 3)["BATTERY_VOLTAGE"] == 1560
+    assert did_fault_gap_bounds(dids, rtt, base, 5)["BATTERY_VOLTAGE"] == 2160
 
 
 def test_without_the_skip_a_faulty_did_starves_the_slow_dids(vehicle, platform_db):

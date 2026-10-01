@@ -129,29 +129,30 @@ def did_fault_gap_bounds(
 ) -> dict[str, int | None]:
     """Worst-case request gap of each DID while another DID is faulty (D-050..D-052).
 
-    A faulty DID f (its last read timed out, or its last answer came later than its
-    poll period after its sample stamp) competes in the normal class at its table
-    position and holds the slot for at most the base response timeout B per read (no
-    NRC 0x78 extension). After a timeout its period restarts at the timeout, so its next
-    read starts at least P_f + B after the last one; after an answer the next read starts
-    at least P_f after it. With P_f >= B (D-052, checked separately) an answer within B
-    is within P_f of its own stamp and ends the fault state, so only an answer stamped
-    with an earlier timed-out read keeps f faulty: the densest chain alternates
-    timeouts and such answers, at least P_f and P_f + B apart in turn. Slow answers do
-    not reset the skip count (D-052), so at most 2 * (max_timeouts - 1) faulty reads
-    follow f's first failing attempt before the skip (that fresh attempt is not covered,
-    D-050 item 3). The plain timed-out chain is sparser and is covered too. For every
-    other DID i, with a faulty read of f just started when i becomes due, one faulty DID
-    at a time, and every other read holding the slot for the assumed round trip C:
+    A faulty DID f (its last read timed out, or its last answer came later than its poll
+    period after its sample stamp) competes in the normal class at its table position and
+    holds the slot for at most the base response timeout B per read (no NRC 0x78 extension).
+    After a timeout its period restarts at the timeout, so its next read starts at least P_f
+    + B after the last one; after an answer the next read starts at least P_f after it. With
+    P_f >= B (D-052, checked separately) an answer within B is within P_f of its own stamp
+    and ends the fault state, so only an answer stamped with an earlier timed-out read keeps
+    f faulty: the densest chain alternates timeouts and such answers, at least P_f and P_f +
+    B apart in turn. Slow answers do not reset the skip count (D-052), so at most 2 *
+    max_timeouts - 1 faulty reads follow f's first failing attempt before the skip: one
+    fewer when that attempt timed out, this many when it was a slow answer (safety review
+    MINOR-1 on D-052). The fresh attempt itself is not covered (D-050 item 3). The plain
+    timed-out chain is sparser and is covered too. For every other DID i, with a faulty read
+    of f just started when i becomes due, one faulty DID at a time, and every other read
+    holding the slot for the assumed round trip C:
       w_i = B + sum over j != f ordered before i of (floor(w_i / P_j) + 1) * C
-              + (if f is ordered before i) min(n_f(w_i), 2 * max_timeouts - 3) * B
+              + (if f is ordered before i) min(n_f(w_i), 2 * max_timeouts - 2) * B
       n_f(w) = 2 * floor(w / (2 * P_f + B)) + (1 if w mod (2 * P_f + B) >= P_f else 0)
     and i's request gap is at most P_i + w_i. The sample age adds one round trip and the
     poll step on top (D-050 item 2). Each DID gets the worst bound over every other DID
     as f. None means w_i did not converge below the DID's stale_after_ms.
     """
     normal = DID_PRIORITIES.index("normal")
-    cap = max(2 * max_timeouts - 3, 0)
+    cap = max(2 * max_timeouts - 2, 0)
     bounds: dict[str, int | None] = {}
     for i, d in enumerate(dids):
         worst: int | None = 0
