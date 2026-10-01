@@ -4,6 +4,10 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.3.1] — 2026-10-01
+
+MISRA C:2012 gate on `gen/c` (ISSUES C-2), single-exit D-020 gate (ISSUES C-6) and runtime tests of the generated C (ISSUES C-7). Only generated source text and tests change: no API, signal, ID, layout, scale, `tester_policy` or D-020 golden-copy change, and no behaviour change, so this is a PATCH release.
+
 ### Added
 - Runtime tests of the generated cantools C (ISSUES C-7, `tools/codegen/tests/test_cantools_c.py`): per node, pack/unpack/decode against cantools Python with boundary values and 10 000 random payloads per message, `*_init(NULL)`, every short size (rejected, nothing written), longer frames, `*_is_in_range()` at the raw limits, `*_encode()`, out-of-width members not leaking into neighbours, and pack/unpack scope = the DBC senders/receivers (safety-node's 0x020/0x022 decode included). A synthetic DBC test for `_MISRA_FIXUPS`. E2E BAD_ARGUMENT tests: NULL data/state, size < 2 and `max_delta` outside 1..14 leave the data and state untouched.
 
