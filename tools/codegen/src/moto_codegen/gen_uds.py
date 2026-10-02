@@ -14,11 +14,12 @@ from typing import Any
 from . import config
 from .c_e2e_templates import BANNER
 
-ENCODINGS = ("uint", "ascii", "bitfield", "vehicle_sample")
+ENCODINGS = ("uint", "ascii", "bitfield", "vehicle_sample", "record")
 VEHICLE_SAMPLE_HEADER_LEN = 3  # [state][age_ms hi][age_ms lo]
 VEHICLE_SAMPLE_STATES = {"NONE": 0, "VALID": 1, "STALE": 2}
 VEHICLE_SAMPLE_AGE_MAX_MS = 0xFFFF
 NO_VEHICLE_IDX = 0xFF
+FIELD_KEYS = {"byte", "mask", "length", "name", "description"}
 ISOTP_MAX_LEN = 4095  # 12-bit FF_DL, classic CAN
 TRANSPORT_KEYS = ("frame_dlc", "padding_byte", "block_size", "st_min_ms", "n_bs_ms", "n_cr_ms")
 SERVER_INT_KEYS = (
@@ -247,24 +248,67 @@ def _check_did(node: str, item: dict[str, Any], vehicle: dict[str, Any], has_veh
         errors.append(f"{label}: max_age_ms must be 1..65535")
     if enc == "uint" and length > 4:
         errors.append(f"{label}: uint length must be 1..4")
-    if enc == "bitfield":
-        used: dict[int, int] = {}
-        for f in item.get("fields") or []:
-            byte, mask = f.get("byte"), f.get("mask")
-            if not isinstance(byte, int) or not 0 <= byte < length or not 0 < mask <= 0xFF:
-                errors.append(f"{label}: field {f.get('name')} byte/mask invalid")
+    if enc in ("bitfield", "record"):
+        errors += _check_fields(label, enc, item, length)
+    return errors
+
+
+def field_max(field: dict[str, Any]) -> int:
+    """Largest value of a field: its mask, or the saturation value of a record uint."""
+    if "mask" in field:
+        return int(field["mask"])
+    return (1 << (8 * int(field["length"]))) - 1
+
+
+def _check_fields(label: str, enc: str, item: dict[str, Any], length: int) -> list[str]:
+    """bitfield: `{byte, mask}` fields. record: also `{byte, length}` unsigned big-endian
+    fields (1, 2 or 4 bytes, saturating), and every byte of the record belongs to a field."""
+    errors: list[str] = []
+    fields = item.get("fields") or []
+    used: dict[int, int] = {}
+    uint_bytes: set[int] = set()
+    names: set[str] = set()
+    for f in fields:
+        name, byte, mask, size = f.get("name"), f.get("byte"), f.get("mask"), f.get("length")
+        if not set(f) <= FIELD_KEYS:
+            errors.append(f"{label}: field {name} has unknown keys {sorted(set(f) - FIELD_KEYS)}")
+        if not isinstance(name, str) or not name.isupper() or name in names:
+            errors.append(f"{label}: field {name} name missing, not UPPER_CASE or duplicate")
+        names.add(str(name))
+        if not f.get("description"):
+            errors.append(f"{label}: field {name} description missing")
+        if not isinstance(byte, int) or not 0 <= byte < length:
+            errors.append(f"{label}: field {name} byte invalid")
+            continue
+        if enc == "record" and mask is None:
+            if size not in (1, 2, 4) or byte + size > length:
+                errors.append(f"{label}: field {name} length must be 1, 2 or 4 inside the record")
                 continue
-            if used.get(byte, 0) & mask:
-                errors.append(f"{label}: field {f.get('name')} overlaps")
-            used[byte] = used.get(byte, 0) | mask
-        if not item.get("fields"):
-            errors.append(f"{label}: bitfield needs fields")
-        field_names = {f.get("name") for f in item.get("fields") or []}
-        for fname, values in (item.get("values") or {}).items():
-            if fname not in field_names or not all(
-                isinstance(v, int) and 0 <= v <= 0xFF for v in values.values()
-            ):
-                errors.append(f"{label}: values.{fname} invalid")
+            span = set(range(byte, byte + size))
+            if span & (uint_bytes | set(used)):
+                errors.append(f"{label}: field {name} overlaps")
+            uint_bytes |= span
+            continue
+        if size is not None or not isinstance(mask, int) or not 0 < mask <= 0xFF:
+            errors.append(f"{label}: field {name} byte/mask invalid")
+            continue
+        if used.get(byte, 0) & mask or byte in uint_bytes:
+            errors.append(f"{label}: field {name} overlaps")
+        used[byte] = used.get(byte, 0) | mask
+    if not fields:
+        errors.append(f"{label}: {enc} needs fields")
+    elif enc == "record" and not errors and uint_bytes | set(used) != set(range(length)):
+        errors.append(f"{label}: record bytes not covered by a field")
+    by_name = {f.get("name"): f for f in fields}
+    for fname, values in (item.get("values") or {}).items():
+        f = by_name.get(fname)
+        valid = f is not None and (isinstance(f.get("mask"), int) or f.get("length") in (1, 2, 4))
+        if (
+            not valid
+            or not values
+            or not all(isinstance(v, int) and 0 <= v <= field_max(f) for v in values.values())
+        ):
+            errors.append(f"{label}: values.{fname} invalid")
     return errors
 
 
@@ -463,10 +507,11 @@ def generate_server_c(node: str, content: dict[str, Any], data: dict[str, Any],
     h += ["} platform_uds_did_index_t;", ""]
     h += [
         "typedef enum {",
-        f"    {p}_ENC_UINT = 0,        /* unsigned big-endian */",
-        f"    {p}_ENC_ASCII = 1,       /* NUL-padded text */",
-        f"    {p}_ENC_BITFIELD = 2,    /* see the *_MASK / *_BYTE defines */",
-        f"    {p}_ENC_VEHICLE_SAMPLE = 3 /* [state][age_ms hi][age_ms lo][raw] */",
+        f"    {p}_ENC_UINT = 0,           /* unsigned big-endian */",
+        f"    {p}_ENC_ASCII = 1,          /* NUL-padded text */",
+        f"    {p}_ENC_BITFIELD = 2,       /* see the *_MASK / *_BYTE defines */",
+        f"    {p}_ENC_VEHICLE_SAMPLE = 3, /* [state][age_ms hi][age_ms lo][raw] */",
+        f"    {p}_ENC_RECORD = 4          /* *_BYTE with *_MASK, or *_LENGTH bytes big-endian */",
         "} platform_uds_encoding_t;",
         "",
         define("NO_VEHICLE_IDX", _hex(NO_VEHICLE_IDX, 2)),
@@ -485,13 +530,21 @@ def generate_server_c(node: str, content: dict[str, Any], data: dict[str, Any],
         if "max_age_ms" in d:
             h.append(
                 define(
-                    f"{d['name']}_MAX_AGE_MS", f"{d['max_age_ms']}u", "older reads as not running"
+                    f"{d['name']}_MAX_AGE_MS", f"{d['max_age_ms']}u", "older data is stale (D-040)"
                 )
             )
         for f in d.get("fields") or []:
             base = f"{d['name']}_{f['name']}"
             h.append(define(f"{base}_BYTE", f"{f['byte']}u"))
-            h.append(define(f"{base}_MASK", _hex(f["mask"], 2), f["description"].rstrip(".")))
+            if "mask" in f:
+                h.append(define(f"{base}_MASK", _hex(f["mask"], 2), f["description"].rstrip(".")))
+            else:
+                h.append(define(f"{base}_LENGTH", f"{f['length']}u", f["description"].rstrip(".")))
+                h.append(
+                    define(
+                        f"{base}_MAX", _hex(field_max(f), 2 * f["length"]), "counters saturate here"
+                    )
+                )
         for fname, values in (d.get("values") or {}).items():
             for vname, v in values.items():
                 h.append(define(f"{d['name']}_{fname}_{vname}", f"{v}u"))

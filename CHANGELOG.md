@@ -4,6 +4,19 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-02
+
+rt-core health DID and a bus-off DTC (ISSUES E-11 (1), E-12 (1); decisions D-054 item 8, D-055). New platform-server entries only: existing DIDs, DTCs, their indices and layouts are unchanged, so this is a MINOR release. No CAN message, signal, VSS path, vehicle DID, `tester_policy` or D-020 golden-copy change.
+
+### Added
+- `uds/dids.yaml`: RT_CORE DID 0xFD02 `RT_CORE_HEALTH` (23 bytes, read only, D-055): byte 0 flags `STEP_STATS_FRESH` (0x01) and `VEHICLE_LATCHED` (0x02); bytes 1-4 the D-053 step counters `STEP_OVERRUNS` and `STEP_GAP_MAX_MS` (u16); bytes 5-13 the vehicle CAN port and bytes 14-22 the platform port, each `STATE` (u8: ERROR_ACTIVE 0, ERROR_PASSIVE 1, BUS_OFF 2, LATCHED 3) then `BUS_OFFS`, `RECOVERIES`, `RECOVER_DEFERRED`, `NAS_ABORTS` (u16). Multi-byte fields are big-endian and saturate at their maximum; `max_age_ms` 500 bounds the step counters' freshness. Appended after 0xFD14, so `PLATFORM_UDS_IDX_RT_CORE_HEALTH` = 9 and earlier indices keep their values.
+- `uds/dids.yaml`: RT_CORE DTC 0xC00188 `VEHICLE_BUS_OFF_LATCHED` (U0001-88, SAE J2012 failure type 0x88 bus off): fails while the vehicle CAN port is latched after its bus-off limit (D-030, D-054). Clearing it does not release the latch. `PLATFORM_UDS_DTC_IDX_VEHICLE_BUS_OFF_LATCHED` = 2.
+- codegen: DID encoding `record` (`PLATFORM_UDS_ENC_RECORD` = 4). Its fields are `{byte, mask}` flags or `{byte, length}` unsigned big-endian values of 1, 2 or 4 bytes that saturate, never wrap; every byte belongs to exactly one field. gen/ adds `*_BYTE`, `*_LENGTH` and `*_MAX` per value field (`*_MASK` per flag) and the `values` names. gen/ changes: rt_core `platform_uds.{h,c}` (`PLATFORM_UDS_DID_COUNT` 10, `PLATFORM_UDS_MAX_DID_LENGTH` 23, `PLATFORM_UDS_DTC_COUNT` 3) and Python `moto_defs/uds.py`.
+
+### Fixed
+- `uds/dids.yaml`: 0xFD00 field `FAULT` lost the end of its description ("see values.") to a YAML flow-mapping comma; quoted. codegen now refuses unknown keys in DID fields, which is how it was found. Only a generated comment changes.
+- codegen: every bitfield/record field needs an UPPER_CASE unique name and a description, and a `values` entry must fit its field (its mask, or the field's maximum).
+
 ## [0.3.3] — 2026-10-02
 
 Poll period margin for the tester step (ISSUES E-9, decision D-053). One timing value and the matching generated constant are added, and two rows of the generated DID table change: 0xF40C (ENGINE_SPEED) and 0xF40D (VEHICLE_SPEED) are polled every 110 ms instead of 100 ms, and 0xF40C goes stale after 330 ms instead of 300 ms. No signal, ID, layout, scale, `tester_policy` or D-020 golden-copy change, so this is a PATCH release; consumers poll RPM and speed at about 9.1 Hz after the bump.

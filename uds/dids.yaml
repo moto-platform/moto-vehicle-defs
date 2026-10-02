@@ -8,9 +8,12 @@
 #   dids:  - did: 0xF189       # 0xF1xx ISO identification, 0xFDxx platform-specific
 #            name: SW_VERSION
 #            length: 12         # bytes of the data record (fixed)
-#            encoding: ascii    # ascii | uint | bitfield | vehicle_sample
+#            encoding: ascii    # ascii | uint | bitfield | vehicle_sample | record
 #            access: read       # read-only unless the user approves otherwise
 #            description: ...
+#   bitfield fields are {byte, mask}; record fields are {byte, mask} or {byte, length}
+#   (unsigned big-endian, 1/2/4 bytes, saturating at their maximum, never wrapping), and
+#   every byte of a record belongs to a field.
 #   dtcs:  - dtc: 0xC10000      # 3-byte DTC (ISO 14229-1 Annex D), J2012 code in `code`
 #            name: ...
 #            code: U0100-00
@@ -85,7 +88,7 @@ nodes:
           - {byte: 0, mask: 0x01, name: ECU_PRESENT, description: The CL250 ECU answered within ecu_absent_timeout_ms.}
           - {byte: 0, mask: 0x02, name: SESSION_UP, description: The extended session with the ECU is established.}
           - {byte: 0, mask: 0x04, name: LATCHED, description: The client latched fail-closed and sends nothing (D-039).}
-          - {byte: 1, mask: 0xFF, name: FAULT, description: Latch reason, see values.}
+          - {byte: 1, mask: 0xFF, name: FAULT, description: "Latch reason, see values."}
         values:
           FAULT: {NONE: 0, GATE: 1, GUARD: 2, FOREIGN_TESTER: 3, NOT_RUNNING: 4}
       - did: 0xFD01
@@ -108,6 +111,37 @@ nodes:
          access: read, description: Last CL250 coolant temperature sample.}
       - {did: 0xFD14, name: VEHICLE_BATTERY_VOLTAGE, encoding: vehicle_sample, vehicle_did: BATTERY_VOLTAGE,
          access: read, description: Last CL250 control module voltage sample.}
+      # rt-core health (D-054 item 8, D-055): the D-053 step counters of the vehicle UDS
+      # client and, per CAN port, the state machine of services/can_sm. Appended last so
+      # the existing platform_uds_did_index_t values stay unchanged.
+      - did: 0xFD02
+        name: RT_CORE_HEALTH
+        length: 23
+        encoding: record
+        access: read
+        description: rt-core health. Step counters of the vehicle UDS client (D-053) and, per CAN port, state, bus-offs, recovery attempts, deferred recoveries and N_As aborts since boot (D-054). Counters saturate, never wrap.
+        # The step counters older than this (or none since boot) read as their last values
+        # with STEP_STATS_FRESH clear (the client is not running). The CAN fields are read
+        # from services/can_sm at the time of the request.
+        max_age_ms: 500
+        fields:
+          - {byte: 0, mask: 0x01, name: STEP_STATS_FRESH, description: The step counters were written by the running vehicle UDS client within max_age_ms.}
+          - {byte: 0, mask: 0x02, name: VEHICLE_LATCHED, description: "The vehicle port latched after its bus-off limit and stays off the vehicle bus until reboot (D-030, D-054); same as VEHICLE_STATE LATCHED."}
+          - {byte: 1, length: 2, name: STEP_OVERRUNS, description: Poll gaps above client_step_max_ms since boot (D-053).}
+          - {byte: 3, length: 2, name: STEP_GAP_MAX_MS, description: Longest gap between two client polls since boot in ms (D-053).}
+          - {byte: 5, length: 1, name: VEHICLE_STATE, description: "State of the vehicle CAN port, see values."}
+          - {byte: 6, length: 2, name: VEHICLE_BUS_OFFS, description: Bus-off events of the vehicle port since boot.}
+          - {byte: 8, length: 2, name: VEHICLE_RECOVERIES, description: Bus-off recovery attempts of the vehicle port since boot.}
+          - {byte: 10, length: 2, name: VEHICLE_RECOVER_DEFERRED, description: Steps a due recovery of the vehicle port waited for a pending frame's abort.}
+          - {byte: 12, length: 2, name: VEHICLE_NAS_ABORTS, description: TX aborts of the vehicle port after N_As without a TX confirmation.}
+          - {byte: 14, length: 1, name: PLATFORM_STATE, description: "State of the platform CAN port, see values (never LATCHED, D-054)."}
+          - {byte: 15, length: 2, name: PLATFORM_BUS_OFFS, description: Bus-off events of the platform port since boot.}
+          - {byte: 17, length: 2, name: PLATFORM_RECOVERIES, description: Bus-off recovery attempts of the platform port since boot.}
+          - {byte: 19, length: 2, name: PLATFORM_RECOVER_DEFERRED, description: Steps a due recovery of the platform port waited for a pending frame's abort.}
+          - {byte: 21, length: 2, name: PLATFORM_NAS_ABORTS, description: TX aborts of the platform port after N_As without a TX confirmation.}
+        values:
+          VEHICLE_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3}
+          PLATFORM_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3}
     dtcs:
       - dtc: 0xC10000
         name: VEHICLE_ECU_COMM_LOST
@@ -117,6 +151,11 @@ nodes:
         name: VEHICLE_TESTER_LATCHED
         code: U3000-00
         description: The vehicle UDS client latched fail-closed (gate, guard or foreign tester, D-039), or it is not running (no status within max_age_ms of 0xFD00). Clearing the DTC does not release the latch.
+      # SAE J2012 U0001 (high speed CAN communication bus) with failure type 0x88 (bus off).
+      - dtc: 0xC00188
+        name: VEHICLE_BUS_OFF_LATCHED
+        code: U0001-88
+        description: rt-core's vehicle CAN port latched after its bus-off limit since boot and stays off the vehicle bus until reboot (D-030, D-054, D-055). Fails while the latch holds; clearing the DTC does not release the latch.
     routines: []
   SAFETY:
     dids: []

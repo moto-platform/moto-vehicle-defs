@@ -36,10 +36,10 @@ extern "C" {
 #define PLATFORM_UDS_S3_SERVER_MS (5000u)
 #define PLATFORM_UDS_MAX_READ_DIDS (4u)
 #define PLATFORM_UDS_RX_BUFFER (64u) /* longest request accepted */
-#define PLATFORM_UDS_MAX_DID_LENGTH (12u) /* longest data record */
+#define PLATFORM_UDS_MAX_DID_LENGTH (23u) /* longest data record */
 #define PLATFORM_UDS_DTC_STATUS_AVAILABILITY_MASK (0x09u)
 
-#define PLATFORM_UDS_DID_COUNT (9u)
+#define PLATFORM_UDS_DID_COUNT (10u)
 #define PLATFORM_UDS_DID_ACTIVE_DIAGNOSTIC_SESSION (0xF186u) /* uint */
 #define PLATFORM_UDS_DID_ACTIVE_DIAGNOSTIC_SESSION_LENGTH (1u) /* data record bytes */
 #define PLATFORM_UDS_DID_SW_VERSION (0xF189u) /* ascii */
@@ -58,6 +58,8 @@ extern "C" {
 #define PLATFORM_UDS_DID_VEHICLE_COOLANT_TEMP_LENGTH (4u) /* data record bytes */
 #define PLATFORM_UDS_DID_VEHICLE_BATTERY_VOLTAGE (0xFD14u) /* vehicle_sample */
 #define PLATFORM_UDS_DID_VEHICLE_BATTERY_VOLTAGE_LENGTH (5u) /* data record bytes */
+#define PLATFORM_UDS_DID_RT_CORE_HEALTH (0xFD02u) /* record */
+#define PLATFORM_UDS_DID_RT_CORE_HEALTH_LENGTH (23u) /* data record bytes */
 
 /* Index into platform_uds_dids[]. */
 typedef enum {
@@ -70,13 +72,15 @@ typedef enum {
     PLATFORM_UDS_IDX_VEHICLE_THROTTLE_POS = 6,
     PLATFORM_UDS_IDX_VEHICLE_COOLANT_TEMP = 7,
     PLATFORM_UDS_IDX_VEHICLE_BATTERY_VOLTAGE = 8,
+    PLATFORM_UDS_IDX_RT_CORE_HEALTH = 9,
 } platform_uds_did_index_t;
 
 typedef enum {
-    PLATFORM_UDS_ENC_UINT = 0,        /* unsigned big-endian */
-    PLATFORM_UDS_ENC_ASCII = 1,       /* NUL-padded text */
-    PLATFORM_UDS_ENC_BITFIELD = 2,    /* see the *_MASK / *_BYTE defines */
-    PLATFORM_UDS_ENC_VEHICLE_SAMPLE = 3 /* [state][age_ms hi][age_ms lo][raw] */
+    PLATFORM_UDS_ENC_UINT = 0,           /* unsigned big-endian */
+    PLATFORM_UDS_ENC_ASCII = 1,          /* NUL-padded text */
+    PLATFORM_UDS_ENC_BITFIELD = 2,       /* see the *_MASK / *_BYTE defines */
+    PLATFORM_UDS_ENC_VEHICLE_SAMPLE = 3, /* [state][age_ms hi][age_ms lo][raw] */
+    PLATFORM_UDS_ENC_RECORD = 4          /* *_BYTE with *_MASK, or *_LENGTH bytes big-endian */
 } platform_uds_encoding_t;
 
 #define PLATFORM_UDS_NO_VEHICLE_IDX (0xFFu)
@@ -90,7 +94,7 @@ typedef struct {
 
 extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 
-#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_MAX_AGE_MS (500u) /* older reads as not running */
+#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_MAX_AGE_MS (500u) /* older data is stale (D-040) */
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_ECU_PRESENT_BYTE (0u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_ECU_PRESENT_MASK (0x01u) /* The CL250 ECU answered within ecu_absent_timeout_ms */
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_SESSION_UP_BYTE (0u)
@@ -98,12 +102,62 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_LATCHED_BYTE (0u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_LATCHED_MASK (0x04u) /* The client latched fail-closed and sends nothing (D-039) */
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_BYTE (1u)
-#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_MASK (0xFFu) /* Latch reason */
+#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_MASK (0xFFu) /* Latch reason, see values */
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_NONE (0u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_GATE (1u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_GUARD (2u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_FOREIGN_TESTER (3u)
 #define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_NOT_RUNNING (4u)
+
+#define PLATFORM_UDS_RT_CORE_HEALTH_MAX_AGE_MS (500u) /* older data is stale (D-040) */
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_STATS_FRESH_BYTE (0u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_STATS_FRESH_MASK (0x01u) /* The step counters were written by the running vehicle UDS client within max_age_ms */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_LATCHED_BYTE (0u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_LATCHED_MASK (0x02u) /* The vehicle port latched after its bus-off limit and stays off the vehicle bus until reboot (D-030, D-054); same as VEHICLE_STATE LATCHED */
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_OVERRUNS_BYTE (1u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_OVERRUNS_LENGTH (2u) /* Poll gaps above client_step_max_ms since boot (D-053) */
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_OVERRUNS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_GAP_MAX_MS_BYTE (3u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_GAP_MAX_MS_LENGTH (2u) /* Longest gap between two client polls since boot in ms (D-053) */
+#define PLATFORM_UDS_RT_CORE_HEALTH_STEP_GAP_MAX_MS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_BYTE (5u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_LENGTH (1u) /* State of the vehicle CAN port, see values */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_MAX (0xFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_BUS_OFFS_BYTE (6u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_BUS_OFFS_LENGTH (2u) /* Bus-off events of the vehicle port since boot */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_BUS_OFFS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_RECOVERIES_BYTE (8u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_RECOVERIES_LENGTH (2u) /* Bus-off recovery attempts of the vehicle port since boot */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_RECOVERIES_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_RECOVER_DEFERRED_BYTE (10u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_RECOVER_DEFERRED_LENGTH (2u) /* Steps a due recovery of the vehicle port waited for a pending frame's abort */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_RECOVER_DEFERRED_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_NAS_ABORTS_BYTE (12u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_NAS_ABORTS_LENGTH (2u) /* TX aborts of the vehicle port after N_As without a TX confirmation */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_NAS_ABORTS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_BYTE (14u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_LENGTH (1u) /* State of the platform CAN port, see values (never LATCHED, D-054) */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_MAX (0xFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_BUS_OFFS_BYTE (15u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_BUS_OFFS_LENGTH (2u) /* Bus-off events of the platform port since boot */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_BUS_OFFS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_RECOVERIES_BYTE (17u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_RECOVERIES_LENGTH (2u) /* Bus-off recovery attempts of the platform port since boot */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_RECOVERIES_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_RECOVER_DEFERRED_BYTE (19u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_RECOVER_DEFERRED_LENGTH (2u) /* Steps a due recovery of the platform port waited for a pending frame's abort */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_RECOVER_DEFERRED_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_NAS_ABORTS_BYTE (21u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_NAS_ABORTS_LENGTH (2u) /* TX aborts of the platform port after N_As without a TX confirmation */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_NAS_ABORTS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_ERROR_ACTIVE (0u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_ERROR_PASSIVE (1u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_BUS_OFF (2u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_LATCHED (3u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_ERROR_ACTIVE (0u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_ERROR_PASSIVE (1u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_BUS_OFF (2u)
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_LATCHED (3u)
 
 #define PLATFORM_UDS_VEHICLE_SAMPLE_HEADER_LEN (3u)
 #define PLATFORM_UDS_VEHICLE_SAMPLE_STATE_NONE (0u)
@@ -111,14 +165,16 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_VEHICLE_SAMPLE_STATE_STALE (2u)
 #define PLATFORM_UDS_VEHICLE_SAMPLE_AGE_MAX_MS (0xFFFFu)
 
-#define PLATFORM_UDS_DTC_COUNT (2u)
+#define PLATFORM_UDS_DTC_COUNT (3u)
 #define PLATFORM_UDS_DTC_VEHICLE_ECU_COMM_LOST (0xC10000u) /* U0100-00 */
 #define PLATFORM_UDS_DTC_VEHICLE_TESTER_LATCHED (0xF00000u) /* U3000-00 */
+#define PLATFORM_UDS_DTC_VEHICLE_BUS_OFF_LATCHED (0xC00188u) /* U0001-88 */
 
 /* Index into platform_uds_dtcs[]. */
 typedef enum {
     PLATFORM_UDS_DTC_IDX_VEHICLE_ECU_COMM_LOST = 0,
     PLATFORM_UDS_DTC_IDX_VEHICLE_TESTER_LATCHED = 1,
+    PLATFORM_UDS_DTC_IDX_VEHICLE_BUS_OFF_LATCHED = 2,
 } platform_uds_dtc_index_t;
 
 extern const uint32_t platform_uds_dtcs[PLATFORM_UDS_DTC_COUNT];

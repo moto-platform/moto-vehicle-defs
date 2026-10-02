@@ -32,7 +32,7 @@ Signal add/change flow: the `/signal-change` skill. CI must fail red if `gen/` i
 
 ## Versioning rule — THE MOST IMPORTANT RULE
 
-This repo is **semantically versioned**: `v0.x` now (v0.1.0 … v0.3.3), `v1.0.0` once `platform.dbc` is stable (D-013, D-036). Other repos pin to a specific version (git submodule + tag, or package version). Adding/changing/removing a signal:
+This repo is **semantically versioned**: `v0.x` now (v0.1.0 … v0.4.0), `v1.0.0` once `platform.dbc` is stable (D-013, D-036). Other repos pin to a specific version (git submodule + tag, or package version). Adding/changing/removing a signal:
 
 1. Is done here first, a line is added to `CHANGELOG.md`
 2. A new version is tagged
