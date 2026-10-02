@@ -80,10 +80,12 @@ SERVERS = {
             "VEHICLE_THROTTLE_POS": (0xFD12, 4, "vehicle_sample"),
             "VEHICLE_COOLANT_TEMP": (0xFD13, 4, "vehicle_sample"),
             "VEHICLE_BATTERY_VOLTAGE": (0xFD14, 5, "vehicle_sample"),
+            "RT_CORE_HEALTH": (0xFD02, 23, "record"),
         },
         "dtcs": {
             "VEHICLE_ECU_COMM_LOST": (0xC10000, "U0100-00"),
             "VEHICLE_TESTER_LATCHED": (0xF00000, "U3000-00"),
+            "VEHICLE_BUS_OFF_LATCHED": (0xC00188, "U0001-88"),
         },
     },
 }

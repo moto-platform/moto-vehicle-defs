@@ -38,6 +38,7 @@ def _errors(dids, iso, vehicle):
     [
         ("U0100-00", 0xC10000),
         ("U3000-00", 0xF00000),
+        ("U0001-88", 0xC00188),
         ("P0301-1F", 0x03011F),
         ("C1234-56", 0x523456),
         ("B0000-00", 0x800000),
@@ -108,6 +109,60 @@ def test_dids_rejects(dids, iso, vehicle, mutate, needle):
     mutate(dids)
     errors = _errors(dids, iso, vehicle)
     assert any(needle in e for e in errors), errors
+
+
+def _health(dids):
+    return next(d for d in _rt(dids)["dids"] if d["name"] == "RT_CORE_HEALTH")
+
+
+def _health_field(dids, name):
+    return next(f for f in _health(dids)["fields"] if f["name"] == name)
+
+
+@pytest.mark.parametrize(
+    ("mutate", "needle"),
+    [
+        (lambda d: _health_field(d, "STEP_OVERRUNS").update(length=3), "1, 2 or 4"),
+        (lambda d: _health_field(d, "PLATFORM_NAS_ABORTS").update(byte=22), "1, 2 or 4"),
+        (lambda d: _health_field(d, "STEP_GAP_MAX_MS").update(byte=2), "overlaps"),
+        (lambda d: _health_field(d, "VEHICLE_LATCHED").update(byte=1), "overlaps"),
+        (lambda d: _health(d).update(length=24), "not covered"),
+        (lambda d: _health_field(d, "VEHICLE_STATE").pop("description"), "description missing"),
+        (lambda d: _health_field(d, "VEHICLE_STATE").update(name="STEP_OVERRUNS"), "duplicate"),
+        (lambda d: _health_field(d, "VEHICLE_STATE").update({"see values.": None}), "unknown"),
+        (lambda d: _health(d)["values"].update(VEHICLE_STATE={"BIG": 256}), "values.VEHICLE_STATE"),
+        (lambda d: _health(d)["values"].update(NOPE={"A": 0}), "values.NOPE"),
+        (lambda d: _health(d).update(fields=[]), "record needs fields"),
+        (lambda d: _health_field(d, "STEP_OVERRUNS").update(length=True), "not bool"),
+        (lambda d: _health_field(d, "VEHICLE_LATCHED").update(mask=True), "not bool"),
+        (lambda d: _health_field(d, "VEHICLE_STATE").update(name="A-B"), "UPPER_CASE"),
+        (lambda d: _health(d)["values"]["VEHICLE_STATE"].update(AGAIN=3), "values.VEHICLE"),
+        (lambda d: _health(d)["values"]["VEHICLE_STATE"].update({"lower": 9}), "values.VEHICLE"),
+        (lambda d: _health(d)["values"]["VEHICLE_STATE"].update(FLAG=True), "values.VEHICLE"),
+        (lambda d: _rt(d)["dids"][2]["fields"][0].update(length=1), "byte/mask invalid"),
+        (lambda d: _rt(d)["dids"][2]["fields"][0].pop("mask"), "byte/mask invalid"),
+    ],
+)
+def test_record_rejects(dids, iso, vehicle, mutate, needle):
+    mutate(dids)
+    errors = _errors(dids, iso, vehicle)
+    assert any(needle in e for e in errors), errors
+
+
+def test_health_record_layout(dids):
+    """D-055: 23 bytes, flags then u16 step counters, then 9 bytes per CAN port."""
+    item = _health(dids)
+    assert (item["did"], item["length"], item["encoding"]) == (0xFD02, 23, "record")
+    fields = {f["name"]: (f["byte"], f.get("length"), f.get("mask")) for f in item["fields"]}
+    assert fields["STEP_STATS_FRESH"] == (0, None, 0x01)
+    assert fields["VEHICLE_LATCHED"] == (0, None, 0x02)
+    assert fields["STEP_OVERRUNS"] == (1, 2, None)
+    assert fields["STEP_GAP_MAX_MS"] == (3, 2, None)
+    for port, base in (("VEHICLE", 5), ("PLATFORM", 14)):
+        assert fields[f"{port}_STATE"] == (base, 1, None)
+        for i, name in enumerate(("BUS_OFFS", "RECOVERIES", "RECOVER_DEFERRED", "NAS_ABORTS")):
+            assert fields[f"{port}_{name}"] == (base + 1 + 2 * i, 2, None)
+    assert _rt(dids)["dids"][-1] is item  # appended: existing indices unchanged
 
 
 def test_vehicle_sample_needs_vehicle_node(dids, iso, vehicle):
@@ -300,6 +355,8 @@ def test_python_module_matches(dids, vehicle):
     assert ns["TRANSPORT"]["functional_request_id"] == 0x7DF
     assert rt["dids"]["VEHICLE_ENGINE_SPEED"] == (0xFD10, 5, "vehicle_sample")
     assert rt["dtcs"]["VEHICLE_ECU_COMM_LOST"] == (0xC10000, "U0100-00")
+    assert rt["dtcs"]["VEHICLE_BUS_OFF_LATCHED"] == (0xC00188, "U0001-88")
+    assert rt["dids"]["RT_CORE_HEALTH"] == (0xFD02, 23, "record")
     assert ns["SID_CLEAR_DIAGNOSTIC_INFORMATION"] == 0x14
 
 
@@ -310,6 +367,26 @@ def test_did_length_and_max_age_macros(dids, vehicle):
         assert f"#define PLATFORM_UDS_DID_{item['name']}_LENGTH ({length}u)" in text
     assert "#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_MAX_AGE_MS (500u)" in text
     assert "#define PLATFORM_UDS_VEHICLE_TESTER_STATUS_FAULT_NOT_RUNNING (4u)" in text
+
+
+def test_record_macros(dids):
+    text = (C_DIR / "rt_core" / "platform_uds.h").read_text()
+    p = "#define PLATFORM_UDS_RT_CORE_HEALTH"
+    assert "PLATFORM_UDS_ENC_RECORD = 4" in text
+    assert f"{p}_MAX_AGE_MS (500u)" in text
+    for f in _health(dids)["fields"]:
+        assert f"{p}_{f['name']}_BYTE ({f['byte']}u)" in text
+        if "mask" in f:
+            assert f"{p}_{f['name']}_MASK (0x{f['mask']:02X}u)" in text
+        else:
+            top = (1 << (8 * f["length"])) - 1
+            assert f"{p}_{f['name']}_LENGTH ({f['length']}u)" in text
+            assert f"{p}_{f['name']}_MAX (0x{top:0{2 * f['length']}X}u)" in text
+    assert f"{p}_VEHICLE_STATE_LATCHED (3u)" in text
+    for port in ("VEHICLE", "PLATFORM"):  # safety review MAJOR-1: 0 is healthy, so no zero
+        assert f"{p}_{port}_STATE_UNKNOWN (255u)" in text
+    assert "#define PLATFORM_UDS_DTC_VEHICLE_BUS_OFF_LATCHED (0xC00188u) /* U0001-88 */" in text
+    assert "#define PLATFORM_UDS_MAX_DID_LENGTH (23u)" in text
 
 
 def test_max_age_rejected_when_invalid(dids, iso, vehicle):
