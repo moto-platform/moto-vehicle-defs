@@ -139,8 +139,11 @@ def _py_pack(cm: CMessage, raw: dict[str, int]) -> bytes:
     return bytes(cm.msg.encode(by_name, scaling=False, padding=False, strict=False))
 
 
-def check_round_trip(cm: CMessage, rng: random.Random, payloads: int) -> None:
-    """unpack == cantools decode, pack == cantools encode, both ways, and the guards."""
+def check_round_trip(
+    cm: CMessage, rng: random.Random, payloads: int, encode_rounds: bool = True
+) -> None:
+    """unpack == cantools decode, pack == cantools encode, both ways, and the guards.
+    encode_rounds=False: raw cantools output, whose encode() still truncates."""
     n = cm.msg.length
     datas = [bytes(rng.randrange(256) for _ in range(n)) for _ in range(payloads)]
     datas += [b"\x00" * n, b"\xff" * n]
@@ -166,7 +169,7 @@ def check_round_trip(cm: CMessage, rng: random.Random, payloads: int) -> None:
             expected = sig.conversion.raw_to_scaled(value, decode_choices=False)
             assert fn(value) == pytest.approx(expected, rel=1e-6, abs=1e-6), (sig.name, value)
     for member in cm.signals:
-        check_signal_helpers(cm, member)
+        check_signal_helpers(cm, member, encode_rounds)
     if cm.pack is not None:
         check_pack_masks_each_member(cm)
     check_guards(cm)
@@ -191,7 +194,7 @@ def check_pack_masks_each_member(cm: CMessage) -> None:
         assert _py_raw(cm, packed) == {**zero, member: _truncate(sig, all_ones)}, (sig.name,)
 
 
-def check_signal_helpers(cm: CMessage, member: str) -> None:
+def check_signal_helpers(cm: CMessage, member: str, encode_rounds: bool = True) -> None:
     """is_in_range() at the raw limits and one step outside; encode() back to raw."""
     sig = cm.signals[member]
     lo, hi = _raw_range(sig)
@@ -203,12 +206,66 @@ def check_signal_helpers(cm: CMessage, member: str) -> None:
                               (raw_max + 1, False)):  # fmt: skip
             if lo <= raw <= hi:
                 assert in_range(raw) is expected, (sig.name, raw)
-    if encode is not None and decode is not None:
-        # float holds every integer up to 2^24 exactly; past that, encode()'s float-to-int
-        # conversion can overflow (undefined in C). No platform signal is wider than 16 bits.
-        for raw in (r for r in _boundaries(sig) if abs(r) <= 1 << 24):
-            # C truncates (value - offset) / scale in float toward zero: one step at most.
-            assert abs(encode(decode(raw)) - raw) <= 1, (sig.name, raw)
+    if encode is not None and encode_rounds:
+        check_encode_rounds(sig, encode, decode)
+        check_encode_saturates(cm, member, encode)
+
+
+def _encode_raws(sig: Signal) -> list[int]:
+    """Raw values whose physical value encode() must map back exactly: the boundaries plus
+    a sweep, within the physical range (outside it, the caller checks is_in_phys_range())
+    and within 2^24 (float holds every integer up to there; past it the float-to-int
+    conversion can overflow, undefined in C; no platform signal is wider than 16 bits)."""
+    lo, hi = _raw_range(sig)
+    if sig.minimum is not None and sig.maximum is not None and sig.maximum > sig.minimum:
+        lo = max(lo, round(sig.conversion.scaled_to_raw(sig.minimum)))
+        hi = min(hi, round(sig.conversion.scaled_to_raw(sig.maximum)))
+    lo, hi = max(lo, -(1 << 24)), min(hi, 1 << 24)
+    # Every raw value up to 16 bits (BATTERY_VOLTAGE lost a step on 38863 of 65536).
+    sweep = range(lo, hi + 1, 1 if hi - lo <= 1 << 16 else (hi - lo) // 4096)
+    return sorted({*sweep, *(r for r in _boundaries(sig) if lo <= r <= hi)})
+
+
+def check_encode_rounds(sig: Signal, encode, decode) -> None:
+    """D-056: encode() rounds (value - offset) / scale to the nearest raw value like the
+    cantools Python reference, so decode() -> encode() is exact and a value up to 0.45
+    raw steps off still maps to its raw value (the float quotient of 0.010 V by 0.001
+    used to truncate to 9). Ties are not tested: C rounds halves away from zero, Python
+    to even."""
+    for raw in _encode_raws(sig):
+        # Off-step values only up to 2^18, where float still resolves 1/32 of a raw step.
+        for frac in (0.0, -0.45, 0.45) if abs(raw) <= 1 << 18 else (0.0,):
+            value = sig.conversion.raw_to_scaled(raw + frac, decode_choices=False)
+            assert round(sig.conversion.scaled_to_raw(value)) == raw  # the Python reference
+            assert encode(value) == raw, (sig.name, raw, frac)
+        if decode is not None:
+            assert encode(decode(raw)) == raw, (sig.name, raw)
+
+
+def check_encode_saturates(cm: CMessage, member: str, encode) -> None:
+    """D-056 (safety review MAJOR-2): outside the C type's range encode() returns the type
+    limit, never a wrapped value (a float-to-int conversion out of range is undefined in C;
+    + 0.5 had made [max + 0.5, max + 1) such a case: AGE 2556 ms could read 0 = fresh),
+    and NaN returns 0."""
+    sig = cm.signals[member]
+    ctype = dict(cm.struct._fields_)[member]
+    bits = 8 * ctypes.sizeof(ctype)
+    signed = ctype(-1).value < 0
+    t_min, t_max = (-(1 << (bits - 1)), (1 << (bits - 1)) - 1) if signed else (0, (1 << bits) - 1)
+    if bits > 24:  # float cannot hold the 32/64-bit limits: the nearest float toward zero
+        t_max = gen_c._f32_toward_zero(t_max)
+    probes = [(t_max * 2.0 + 10.0, t_max), (t_min * 2.0 - 10.0, t_min), (1e30, t_max),
+              (-1e30, t_min)]  # fmt: skip
+    if bits <= 16:  # half a step past the limit, where float still resolves it
+        probes += [(t_max + 0.4, t_max), (t_max + 0.6, t_max), (t_min - 0.4, t_min),
+                   (t_min - 0.6, t_min)]  # fmt: skip
+    for raw, expected in probes:
+        value = sig.conversion.raw_to_scaled(raw, decode_choices=False)
+        assert encode(value) == expected, (sig.name, raw)
+    signs = (1.0, -1.0) if sig.scale > 0 else (-1.0, 1.0)
+    assert encode(signs[0] * float("inf")) == t_max, sig.name
+    assert encode(signs[1] * float("inf")) == t_min, sig.name
+    assert encode(float("nan")) == 0, sig.name
 
 
 def check_guards(cm: CMessage) -> None:
@@ -288,6 +345,7 @@ def test_misra_fixups_rewrite_every_pattern_and_keep_behaviour(tmp_path):
     fixed = gen_c._misra_fixups(source)
     for pattern, _ in gen_c._MISRA_FIXUPS:
         assert not pattern.search(fixed), pattern.pattern
+    fixed = gen_c._encode_rounding(fixed, header)  # the full generate_platform_c() pipeline
     assert fixed.count("(void)memset(") == 2 * len(db.messages)
     # Same behaviour: original and rewritten source both match cantools Python.
     for kind, text in (("orig", source), ("fixed", fixed)):
@@ -301,4 +359,26 @@ def test_misra_fixups_rewrite_every_pattern_and_keep_behaviour(tmp_path):
         assert len(api) == len(db.messages)
         rng = random.Random("c7-synthetic")
         for cm in api.values():
-            check_round_trip(cm, rng, 2000)
+            check_round_trip(cm, rng, 2000, encode_rounds=kind == "fixed")
+
+
+def test_encode_rounding_rewrites_every_encode_and_refuses_an_unknown_body():
+    """D-056: every <msg>_<signal>_encode() of the synthetic DBC (unsigned, signed, scale
+    and offset, 4 to 64 bits) is rewritten; a body cantools might emit in a later version
+    stops the generation instead of shipping a truncating encode()."""
+    db = parse_dbc(SYNTHETIC_DBC)
+    header, source, _, _ = generate(
+        db, "synth", "synth.h", "synth.c", "synth_fuzzer.c",
+        floating_point_numbers=True, use_float=True,
+    )  # fmt: skip
+    signals = sum(len(m.signals) for m in db.messages)
+    assert len(gen_c._ENCODE_RE.findall(source)) == signals
+    rounded = gen_c._encode_rounding(source, header)
+    assert not gen_c._ENCODE_RE.search(rounded)
+    assert rounded.count("const float raw = ") == signals
+    assert ": (raw - 0.5f);" in rounded  # signed
+    assert "? 4294967040.0f :" in rounded  # S32/U64 limits: the nearest float below
+    body = "_encode(float value)\n{\n    return"
+    changed = source.replace(body, body.replace("    return", "  return"), 1)
+    with pytest.raises(ValueError, match="encode rounding"):
+        gen_c._encode_rounding(changed, header)

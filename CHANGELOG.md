@@ -4,6 +4,15 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-10-03
+
+Generated C encoders round to nearest (decision D-056, found while planning the rt-core platform-bus republisher, ISSUES D-5). No DBC, signal, ID, layout, scale, VSS path, DID, `tester_policy` or D-020 golden-copy change. Every generated `<msg>_<signal>_encode()` changes behaviour, so the same physical value can now produce a raw value one step higher than before: a MINOR release that each consumer bumps on purpose.
+
+### Fixed
+- codegen: cantools' C `<msg>_<signal>_encode()` truncated `(value - offset) / scale` toward zero, while the cantools Python reference (and every Python consumer) rounds. In single-precision float the quotient often lands just below the integer: on rt-core's 0x110 `BATTERY_VOLTAGE` 38863 of the 65536 raw values, and on `THROTTLE_POS` 49 of 256, encoded one step low (0.010 V → 9 mV); signed values such as `LEAN_ANGLE` lost up to one step toward zero. The body is now rewritten to round to nearest, halves away from zero (Python rounds halves to even; they differ only on exact ties), and codegen stops if the number of rewritten bodies differs from the encode declarations in the header.
+- codegen: `<msg>_<signal>_encode()` also **saturates** at its C type's range and returns 0 for NaN. Before, a value outside the type's range converted out of range (undefined in C, typically a wrapped value); rounding would have added the half step [max + 0.5, max + 1) to that, e.g. `VEHICLE_SPEED_AGE` of 2556 ms reading 0 = fresh (safety review MAJOR-2). Inside the type's range only the rounding changes; the physical range stays the caller's check (`is_in_phys_range()`). The rewritten body casts a plain object, not a composite expression (MISRA C:2012 10.8, MAJOR-1; the cppcheck addon cannot see 10.8 on floats, noted in `misra/README.md`). gen/ changes: `platform.c` of rt_core, safety, io, conn and hil_sim (encode bodies only; pack/unpack/decode unchanged). safety and io encode only their heartbeat fields from integers, bit-identical to before.
+- tests (C-7): `encode()` now maps every raw value in the physical range back exactly (all of them up to 16 bits) and agrees with the Python reference for values up to 0.45 steps off, and returns the type limits past them (half a step, far, ±inf) and 0 for NaN, on every node, whether or not the node also has `decode()`.
+
 ## [0.4.0] — 2026-10-02
 
 rt-core health DID and a bus-off DTC (ISSUES E-11 (1), E-12 (1); decisions D-054 item 8, D-055). New platform-server entries only: existing DIDs, DTCs, their indices and layouts are unchanged, so this is a MINOR release. No CAN message, signal, VSS path, vehicle DID, `tester_policy` or D-020 golden-copy change.

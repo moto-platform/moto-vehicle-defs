@@ -335,7 +335,14 @@ int platform_heartbeat_conn_init(struct platform_heartbeat_conn_t *msg_p)
 
 uint8_t platform_heartbeat_conn_e2_e_crc_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_conn_e2_e_crc_is_in_range(uint8_t value)
@@ -352,7 +359,14 @@ bool platform_heartbeat_conn_e2_e_crc_is_in_phys_range(float value)
 
 uint8_t platform_heartbeat_conn_e2_e_counter_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_conn_e2_e_counter_is_in_range(uint8_t value)
@@ -367,7 +381,14 @@ bool platform_heartbeat_conn_e2_e_counter_is_in_phys_range(float value)
 
 uint8_t platform_heartbeat_conn_node_mode_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_conn_node_mode_is_in_range(uint8_t value)
@@ -382,7 +403,14 @@ bool platform_heartbeat_conn_node_mode_is_in_phys_range(float value)
 
 uint8_t platform_heartbeat_conn_error_count_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_conn_error_count_is_in_range(uint8_t value)
@@ -399,7 +427,14 @@ bool platform_heartbeat_conn_error_count_is_in_phys_range(float value)
 
 uint16_t platform_heartbeat_conn_uptime_encode(float value)
 {
-    return (uint16_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_heartbeat_conn_uptime_is_in_range(uint16_t value)
