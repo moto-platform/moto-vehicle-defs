@@ -20,6 +20,7 @@ VEHICLE_SAMPLE_STATES = {"NONE": 0, "VALID": 1, "STALE": 2}
 VEHICLE_SAMPLE_AGE_MAX_MS = 0xFFFF
 NO_VEHICLE_IDX = 0xFF
 FIELD_KEYS = {"byte", "mask", "length", "name", "description"}
+_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]*$")
 ISOTP_MAX_LEN = 4095  # 12-bit FF_DL, classic CAN
 TRANSPORT_KEYS = ("frame_dlc", "padding_byte", "block_size", "st_min_ms", "n_bs_ms", "n_cr_ms")
 SERVER_INT_KEYS = (
@@ -272,8 +273,11 @@ def _check_fields(label: str, enc: str, item: dict[str, Any], length: int) -> li
         name, byte, mask, size = f.get("name"), f.get("byte"), f.get("mask"), f.get("length")
         if not set(f) <= FIELD_KEYS:
             errors.append(f"{label}: field {name} has unknown keys {sorted(set(f) - FIELD_KEYS)}")
-        if not isinstance(name, str) or not name.isupper() or name in names:
+        if not isinstance(name, str) or not _NAME_RE.match(name) or name in names:
             errors.append(f"{label}: field {name} name missing, not UPPER_CASE or duplicate")
+        if any(isinstance(f.get(k), bool) for k in ("byte", "mask", "length")):
+            errors.append(f"{label}: field {name} byte/mask/length must be integers, not bool")
+            continue
         names.add(str(name))
         if not f.get("description"):
             errors.append(f"{label}: field {name} description missing")
@@ -306,7 +310,12 @@ def _check_fields(label: str, enc: str, item: dict[str, Any], length: int) -> li
         if (
             not valid
             or not values
-            or not all(isinstance(v, int) and 0 <= v <= field_max(f) for v in values.values())
+            or not all(isinstance(n, str) and _NAME_RE.match(n) for n in values)
+            or len(set(values.values())) != len(values)
+            or not all(
+                isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= field_max(f)
+                for v in values.values()
+            )
         ):
             errors.append(f"{label}: values.{fname} invalid")
     return errors
@@ -530,7 +539,9 @@ def generate_server_c(node: str, content: dict[str, Any], data: dict[str, Any],
         if "max_age_ms" in d:
             h.append(
                 define(
-                    f"{d['name']}_MAX_AGE_MS", f"{d['max_age_ms']}u", "older data is stale (D-040)"
+                    f"{d['name']}_MAX_AGE_MS",
+                    f"{d['max_age_ms']}u",
+                    "older data is stale (D-040), see the DID",
                 )
             )
         for f in d.get("fields") or []:

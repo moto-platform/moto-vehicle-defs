@@ -133,6 +133,12 @@ def _health_field(dids, name):
         (lambda d: _health(d)["values"].update(VEHICLE_STATE={"BIG": 256}), "values.VEHICLE_STATE"),
         (lambda d: _health(d)["values"].update(NOPE={"A": 0}), "values.NOPE"),
         (lambda d: _health(d).update(fields=[]), "record needs fields"),
+        (lambda d: _health_field(d, "STEP_OVERRUNS").update(length=True), "not bool"),
+        (lambda d: _health_field(d, "VEHICLE_LATCHED").update(mask=True), "not bool"),
+        (lambda d: _health_field(d, "VEHICLE_STATE").update(name="A-B"), "UPPER_CASE"),
+        (lambda d: _health(d)["values"]["VEHICLE_STATE"].update(AGAIN=3), "values.VEHICLE"),
+        (lambda d: _health(d)["values"]["VEHICLE_STATE"].update({"lower": 9}), "values.VEHICLE"),
+        (lambda d: _health(d)["values"]["VEHICLE_STATE"].update(FLAG=True), "values.VEHICLE"),
         (lambda d: _rt(d)["dids"][2]["fields"][0].update(length=1), "byte/mask invalid"),
         (lambda d: _rt(d)["dids"][2]["fields"][0].pop("mask"), "byte/mask invalid"),
     ],
@@ -377,6 +383,8 @@ def test_record_macros(dids):
             assert f"{p}_{f['name']}_LENGTH ({f['length']}u)" in text
             assert f"{p}_{f['name']}_MAX (0x{top:0{2 * f['length']}X}u)" in text
     assert f"{p}_VEHICLE_STATE_LATCHED (3u)" in text
+    for port in ("VEHICLE", "PLATFORM"):  # safety review MAJOR-1: 0 is healthy, so no zero
+        assert f"{p}_{port}_STATE_UNKNOWN (255u)" in text
     assert "#define PLATFORM_UDS_DTC_VEHICLE_BUS_OFF_LATCHED (0xC00188u) /* U0001-88 */" in text
     assert "#define PLATFORM_UDS_MAX_DID_LENGTH (23u)" in text
 

@@ -119,10 +119,12 @@ nodes:
         length: 23
         encoding: record
         access: read
-        description: rt-core health. Step counters of the vehicle UDS client (D-053) and, per CAN port, state, bus-offs, recovery attempts, deferred recoveries and N_As aborts since boot (D-054). Counters saturate, never wrap.
+        description: rt-core health. Step counters of the vehicle UDS client (D-053) and, per CAN port, state, bus-offs, recovery attempts, deferred recoveries and N_As aborts since boot (D-054). Counters saturate, never wrap. max_age_ms bounds the step counters only. A STATE outside 0..3 reads as UNKNOWN (fail-safe, since 0 is ERROR_ACTIVE).
         # The step counters older than this (or none since boot) read as their last values
         # with STEP_STATS_FRESH clear (the client is not running). The CAN fields are read
-        # from services/can_sm at the time of the request.
+        # from services/can_sm at the time of the request; a port whose controller state
+        # cannot be read, or any port before init, reads as UNKNOWN, never as a last state
+        # (safety review MAJOR-1). VEHICLE_LATCHED and VEHICLE_STATE come from one read.
         max_age_ms: 500
         fields:
           - {byte: 0, mask: 0x01, name: STEP_STATS_FRESH, description: The step counters were written by the running vehicle UDS client within max_age_ms.}
@@ -140,8 +142,8 @@ nodes:
           - {byte: 19, length: 2, name: PLATFORM_RECOVER_DEFERRED, description: Steps a due recovery of the platform port waited for a pending frame's abort.}
           - {byte: 21, length: 2, name: PLATFORM_NAS_ABORTS, description: TX aborts of the platform port after N_As without a TX confirmation.}
         values:
-          VEHICLE_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3}
-          PLATFORM_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3}
+          VEHICLE_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3, UNKNOWN: 0xFF}
+          PLATFORM_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3, UNKNOWN: 0xFF}
     dtcs:
       - dtc: 0xC10000
         name: VEHICLE_ECU_COMM_LOST
