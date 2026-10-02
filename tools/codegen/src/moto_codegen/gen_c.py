@@ -46,6 +46,63 @@ def _misra_fixups(source: str) -> str:
     return source
 
 
+# cantools' <msg>_<signal>_encode() truncates (value - offset) / scale toward zero, so a
+# float quotient just below an integer loses one raw step (0.010 V -> 9 mV), while the
+# cantools Python reference rounds (D-056). The body is rewritten to round to nearest,
+# halves away from zero (Python rounds halves to even: they differ only on exact ties;
+# `raw + 0.5f` may also round a value within one ulp below a tie up, inside the error the
+# float quotient already has). It also saturates at the C type's range and maps NaN to 0,
+# so no input converts out of range (undefined in C): an out-of-range value gives the type
+# limit instead of a wrapped number. The physical range stays the caller's check
+# (is_in_phys_range()). The cast applies to a plain object, not a composite expression
+# (MISRA C:2012 10.8, which the cppcheck addon does not check for float operands).
+_ENCODE_RE = re.compile(
+    r"^(?P<type>(?P<u>u?)int(?P<bits>8|16|32|64)_t) (?P<name>\w+_encode)\(float value\)\n"
+    r"\{\n    return \((?P=type)\)\((?P<expr>[^;\n]+)\);\n\}$",
+    re.MULTILINE,
+)
+
+
+def _f32_toward_zero(n: int) -> int:
+    """The float32 value nearest to n on the side of zero (n itself below 2^24)."""
+    shift = max(0, abs(n).bit_length() - 24)
+    magnitude = (abs(n) >> shift) << shift
+    return magnitude if n >= 0 else -magnitude
+
+
+def _round_encode(found: re.Match[str]) -> str:
+    ctype, name, expr, bits = found["type"], found["name"], found["expr"], int(found["bits"])
+    # Two separate ifs, not an else-if chain: NaN fails both and stays 0 (cppcheck does
+    # not model NaN and would call the second branch of a chain always true).
+    if found["u"]:
+        top = _f32_toward_zero((1 << bits) - 1)
+        branches = (
+            "    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */\n"
+            f"        rounded = (raw >= {top}.0f) ? {top}.0f : (raw + 0.5f);\n    }}\n"
+        )
+    else:
+        top = _f32_toward_zero((1 << (bits - 1)) - 1)
+        bottom = -(1 << (bits - 1))
+        branches = (
+            "    if (raw >= 0.0f) {\n"
+            f"        rounded = (raw >= {top}.0f) ? {top}.0f : (raw + 0.5f);\n    }}\n"
+            "    if (raw < 0.0f) { /* NaN fails both: 0 */\n"
+            f"        rounded = (raw <= {bottom}.0f) ? {bottom}.0f : (raw - 0.5f);\n    }}\n"
+        )
+    return (
+        f"{ctype} {name}(float value)\n{{\n    const float raw = {expr};\n"
+        f"    float rounded = 0.0f;\n\n{branches}\n    return ({ctype})rounded;\n}}"
+    )
+
+
+def _encode_rounding(source: str, header: str) -> str:
+    rounded, count = _ENCODE_RE.subn(_round_encode, source)
+    expected = len(re.findall(r"\w+_encode\(float value\);", header))
+    if count != expected:  # a cantools upgrade changed the body: never ship truncation
+        raise ValueError(f"encode rounding: rewrote {count} of {expected} encode functions")
+    return rounded
+
+
 def _sends(target: config.CTarget, msg: Message) -> bool:
     return target.all_messages or target.node in msg.senders
 
@@ -66,7 +123,8 @@ def generate_platform_c(db: Database, target: config.CTarget) -> dict[str, str]:
         use_float=True,  # single-precision FPU (H7/G4/ESP32-S3); no double math on MCUs
         node_name=None if target.all_messages else target.node,
     )
-    return {"platform.h": _strip_date(header), "platform.c": _misra_fixups(_strip_date(source))}
+    source = _encode_rounding(_misra_fixups(_strip_date(source)), header)
+    return {"platform.h": _strip_date(header), "platform.c": source}
 
 
 # --------------------------------------------------------------------------- E2E wrappers

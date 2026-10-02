@@ -118,7 +118,14 @@ int platform_ekf_lean_init(struct platform_ekf_lean_t *msg_p)
 
 uint8_t platform_ekf_lean_e2_e_crc_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_lean_e2_e_crc_is_in_range(uint8_t value)
@@ -135,7 +142,14 @@ bool platform_ekf_lean_e2_e_crc_is_in_phys_range(float value)
 
 uint8_t platform_ekf_lean_e2_e_counter_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_lean_e2_e_counter_is_in_range(uint8_t value)
@@ -150,7 +164,14 @@ bool platform_ekf_lean_e2_e_counter_is_in_phys_range(float value)
 
 uint8_t platform_ekf_lean_lean_angle_state_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_lean_lean_angle_state_is_in_range(uint8_t value)
@@ -165,7 +186,17 @@ bool platform_ekf_lean_lean_angle_state_is_in_phys_range(float value)
 
 int16_t platform_ekf_lean_lean_angle_encode(float value)
 {
-    return (int16_t)(value / 0.01f);
+    const float raw = value / 0.01f;
+    float rounded = 0.0f;
+
+    if (raw >= 0.0f) {
+        rounded = (raw >= 32767.0f) ? 32767.0f : (raw + 0.5f);
+    }
+    if (raw < 0.0f) { /* NaN fails both: 0 */
+        rounded = (raw <= -32768.0f) ? -32768.0f : (raw - 0.5f);
+    }
+
+    return (int16_t)rounded;
 }
 
 bool platform_ekf_lean_lean_angle_is_in_range(int16_t value)
@@ -180,7 +211,14 @@ bool platform_ekf_lean_lean_angle_is_in_phys_range(float value)
 
 uint8_t platform_ekf_lean_lean_angle_quality_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_lean_lean_angle_quality_is_in_range(uint8_t value)
@@ -227,7 +265,14 @@ int platform_vehicle_speed_init(struct platform_vehicle_speed_t *msg_p)
 
 uint8_t platform_vehicle_speed_e2_e_crc_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_speed_e2_e_crc_is_in_range(uint8_t value)
@@ -244,7 +289,14 @@ bool platform_vehicle_speed_e2_e_crc_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_speed_e2_e_counter_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_speed_e2_e_counter_is_in_range(uint8_t value)
@@ -259,7 +311,14 @@ bool platform_vehicle_speed_e2_e_counter_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_speed_vehicle_speed_valid_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_speed_vehicle_speed_valid_is_in_range(uint8_t value)
@@ -274,7 +333,14 @@ bool platform_vehicle_speed_vehicle_speed_valid_is_in_phys_range(float value)
 
 uint16_t platform_vehicle_speed_vehicle_speed_encode(float value)
 {
-    return (uint16_t)(value / 0.01f);
+    const float raw = value / 0.01f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_vehicle_speed_vehicle_speed_is_in_range(uint16_t value)
@@ -289,7 +355,14 @@ bool platform_vehicle_speed_vehicle_speed_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_speed_vehicle_speed_age_encode(float value)
 {
-    return (uint8_t)(value / 10.0f);
+    const float raw = value / 10.0f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_speed_vehicle_speed_age_is_in_range(uint8_t value)
@@ -342,7 +415,14 @@ int platform_ekf_friction_mass_init(struct platform_ekf_friction_mass_t *msg_p)
 
 uint8_t platform_ekf_friction_mass_e2_e_crc_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_friction_mass_e2_e_crc_is_in_range(uint8_t value)
@@ -359,7 +439,14 @@ bool platform_ekf_friction_mass_e2_e_crc_is_in_phys_range(float value)
 
 uint8_t platform_ekf_friction_mass_e2_e_counter_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_friction_mass_e2_e_counter_is_in_range(uint8_t value)
@@ -374,7 +461,14 @@ bool platform_ekf_friction_mass_e2_e_counter_is_in_phys_range(float value)
 
 uint8_t platform_ekf_friction_mass_friction_coeff_state_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_friction_mass_friction_coeff_state_is_in_range(uint8_t value)
@@ -389,7 +483,14 @@ bool platform_ekf_friction_mass_friction_coeff_state_is_in_phys_range(float valu
 
 uint8_t platform_ekf_friction_mass_total_mass_state_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_friction_mass_total_mass_state_is_in_range(uint8_t value)
@@ -404,7 +505,14 @@ bool platform_ekf_friction_mass_total_mass_state_is_in_phys_range(float value)
 
 uint16_t platform_ekf_friction_mass_friction_coeff_encode(float value)
 {
-    return (uint16_t)(value / 0.001f);
+    const float raw = value / 0.001f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_ekf_friction_mass_friction_coeff_is_in_range(uint16_t value)
@@ -419,7 +527,14 @@ bool platform_ekf_friction_mass_friction_coeff_is_in_phys_range(float value)
 
 uint8_t platform_ekf_friction_mass_friction_coeff_quality_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_friction_mass_friction_coeff_quality_is_in_range(uint8_t value)
@@ -434,7 +549,14 @@ bool platform_ekf_friction_mass_friction_coeff_quality_is_in_phys_range(float va
 
 uint16_t platform_ekf_friction_mass_total_mass_encode(float value)
 {
-    return (uint16_t)(value / 0.1f);
+    const float raw = value / 0.1f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_ekf_friction_mass_total_mass_is_in_range(uint16_t value)
@@ -449,7 +571,14 @@ bool platform_ekf_friction_mass_total_mass_is_in_phys_range(float value)
 
 uint8_t platform_ekf_friction_mass_total_mass_quality_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_ekf_friction_mass_total_mass_quality_is_in_range(uint8_t value)
@@ -496,7 +625,14 @@ int platform_heartbeat_rt_core_init(struct platform_heartbeat_rt_core_t *msg_p)
 
 uint8_t platform_heartbeat_rt_core_e2_e_crc_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_rt_core_e2_e_crc_is_in_range(uint8_t value)
@@ -513,7 +649,14 @@ bool platform_heartbeat_rt_core_e2_e_crc_is_in_phys_range(float value)
 
 uint8_t platform_heartbeat_rt_core_e2_e_counter_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_rt_core_e2_e_counter_is_in_range(uint8_t value)
@@ -528,7 +671,14 @@ bool platform_heartbeat_rt_core_e2_e_counter_is_in_phys_range(float value)
 
 uint8_t platform_heartbeat_rt_core_node_mode_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_rt_core_node_mode_is_in_range(uint8_t value)
@@ -543,7 +693,14 @@ bool platform_heartbeat_rt_core_node_mode_is_in_phys_range(float value)
 
 uint8_t platform_heartbeat_rt_core_error_count_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_heartbeat_rt_core_error_count_is_in_range(uint8_t value)
@@ -560,7 +717,14 @@ bool platform_heartbeat_rt_core_error_count_is_in_phys_range(float value)
 
 uint16_t platform_heartbeat_rt_core_uptime_encode(float value)
 {
-    return (uint16_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_heartbeat_rt_core_uptime_is_in_range(uint16_t value)
@@ -1058,7 +1222,14 @@ int platform_vehicle_engine_init(struct platform_vehicle_engine_t *msg_p)
 
 uint16_t platform_vehicle_engine_engine_speed_encode(float value)
 {
-    return (uint16_t)(value / 0.25f);
+    const float raw = value / 0.25f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_vehicle_engine_engine_speed_is_in_range(uint16_t value)
@@ -1075,7 +1246,14 @@ bool platform_vehicle_engine_engine_speed_is_in_phys_range(float value)
 
 uint16_t platform_vehicle_engine_battery_voltage_encode(float value)
 {
-    return (uint16_t)(value / 0.001f);
+    const float raw = value / 0.001f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
+    }
+
+    return (uint16_t)rounded;
 }
 
 bool platform_vehicle_engine_battery_voltage_is_in_range(uint16_t value)
@@ -1092,7 +1270,14 @@ bool platform_vehicle_engine_battery_voltage_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_coolant_temp_encode(float value)
 {
-    return (uint8_t)(value - -40.0f);
+    const float raw = value - -40.0f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_coolant_temp_is_in_range(uint8_t value)
@@ -1109,7 +1294,14 @@ bool platform_vehicle_engine_coolant_temp_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_throttle_pos_encode(float value)
 {
-    return (uint8_t)(value / 0.392156862745098f);
+    const float raw = value / 0.392156862745098f;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_throttle_pos_is_in_range(uint8_t value)
@@ -1126,7 +1318,14 @@ bool platform_vehicle_engine_throttle_pos_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_engine_speed_valid_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_engine_speed_valid_is_in_range(uint8_t value)
@@ -1141,7 +1340,14 @@ bool platform_vehicle_engine_engine_speed_valid_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_battery_voltage_valid_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_battery_voltage_valid_is_in_range(uint8_t value)
@@ -1156,7 +1362,14 @@ bool platform_vehicle_engine_battery_voltage_valid_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_coolant_temp_valid_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_coolant_temp_valid_is_in_range(uint8_t value)
@@ -1171,7 +1384,14 @@ bool platform_vehicle_engine_coolant_temp_valid_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_throttle_pos_valid_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_throttle_pos_valid_is_in_range(uint8_t value)
@@ -1186,7 +1406,14 @@ bool platform_vehicle_engine_throttle_pos_valid_is_in_phys_range(float value)
 
 uint8_t platform_vehicle_engine_ecu_present_encode(float value)
 {
-    return (uint8_t)(value);
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
 }
 
 bool platform_vehicle_engine_ecu_present_is_in_range(uint8_t value)
