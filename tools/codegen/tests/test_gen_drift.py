@@ -16,13 +16,14 @@ def _compare(files):
     assert stale == [], f"gen/ is out of date, run `make gen`: {stale}"
 
 
-def test_c_and_python_are_up_to_date():
+def test_c_python_and_dart_are_up_to_date():
     files = render_all(with_vss=False)
     _compare(files)
     on_disk = {
-        p.relative_to(config.GEN_DIR) for p in (config.GEN_DIR / "c").rglob("*") if p.is_file()
-    } | {
-        p.relative_to(config.GEN_DIR) for p in (config.GEN_DIR / "python").rglob("*") if p.is_file()
+        p.relative_to(config.GEN_DIR)
+        for sub in ("c", "python", "dart")
+        for p in (config.GEN_DIR / sub).rglob("*")
+        if p.is_file() and "__pycache__" not in p.parts
     }
     assert on_disk == set(files), "unexpected extra files in gen/"
 

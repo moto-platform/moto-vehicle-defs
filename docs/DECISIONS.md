@@ -416,7 +416,7 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Why: VWP §3.5 asks for ≥ 5 Hz GPS for the speed check and turn radius; the phone's 1 Hz was not chosen. architecture-guard: no blocker, on the conditions of items 1-3.
 
 **D-061 — Q-017 resolved: BLE packet schemas move to moto-vehicle-defs** (2026-10-03, user; before BLE v4; D-032)
-1. The telemetry packet (versions 2, 3 and 4), the IMU block and the GPS block (D-060) are defined in `moto-vehicle-defs/ble/` as the single source. codegen generates a C header for conn (packed structs, sizes checked at compile time, constants), a Python module in `moto_defs` for moto-server and a Dart package for moto-mobile; the gen/ drift check covers them.
+1. The telemetry packet (versions 2, 3 and 4), the IMU block and the GPS block (D-060) are defined in `moto-vehicle-defs/ble/` as the single source. codegen generates a C header for conn (offset/size macros, no packed structs since gen/c stays MISRA-clean; conn's packed structs static_assert against them), a Python module in `moto_defs` for moto-server and a Dart package for moto-mobile; the gen/ drift check covers them.
 2. conn stops owning `docs/ble_telemetry_packet_schema.json`; moto-mobile adds the `external/moto-vehicle-defs` submodule (relative URL, pinned to a tag like every consumer) and uses the Dart package by path; moto-server uses `moto_defs`. The verbatim copies and their drift tests are replaced by the generated code.
 3. A layout change is a defs change with a version bump; conn, moto-mobile and moto-server take it together.
 - Why: the user chose codegen over keeping the copies for v4.

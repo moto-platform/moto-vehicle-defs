@@ -93,11 +93,13 @@ moto-vehicle-defs/
   vss/overlay.vspec     motorcycle extensions (Vehicle.Motorcycle.*) + dbc2vss mappings (from platform.dbc)
   uds/dids.yaml         our platform nodes' UDS servers (IDs, timing, DIDs, DTCs)
   uds/iso14229.yaml     generic ISO 14229-1 codes
+  ble/ble_schema.json   BLE packet schema of conn (telemetry v2/v3/v4, IMU block, GATT; D-061)
   tools/codegen/        python: cantools + vss-tools wrapper
         │ make gen  (run before tagging, output is committed)
         ▼
   gen/c/<node>/         per-node filtered: pack/unpack + E2E protect/check + ID constants + DID table (const, no malloc)
-  gen/python/           signal constants for host/server/hil
+  gen/python/           signal constants for host/server/hil (+ BLE schema for moto-server)
+  gen/dart/             BLE layout constants for moto-mobile (Dart package moto_defs)
   gen/vss/              VSS JSON for Kuksa (+ dbc2vss mapping)
 ```
 
