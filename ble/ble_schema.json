@@ -102,7 +102,7 @@
     "rule": "Deprecated -- do not use for analysis (D-023). Always `notAvailable`; kept only so the layout stays close to version 2. Lean comes from the rt-core EKF later."
   },
   "fields": [
-    { "name": "version",            "offset": 0,  "size": 1, "type": "uint8",  "description": "Packet format version, 4 (3 in sessions recorded before D-058)." },
+    { "name": "version",            "offset": 0,  "size": 1, "type": "uint8",  "description": "Packet format version, 3 or 4 (see `versioning`); the sender produces the current version." },
     { "name": "seq",                "offset": 1,  "size": 1, "type": "uint8",  "description": "Rolling 0-255 counter incremented once per telemetry packet sent (any version)." },
     { "name": "deviceTimeMs",       "offset": 2,  "size": 4, "type": "uint32", "description": "Node clock in ms when the packet was built, see `deviceTime`." },
     { "name": "rpm",                "offset": 6,  "size": 2, "type": "uint16", "defsSignal": "ENGINE_SPEED", "scale": 1, "description": "Engine speed in rpm (integer part), range 0-16383." },
