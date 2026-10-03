@@ -122,7 +122,7 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_RT_CORE_HEALTH_STEP_GAP_MAX_MS_MAX (0xFFFFu) /* counters saturate here */
 #define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_BYTE (5u)
 #define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_LENGTH (1u) /* State of the vehicle CAN port, see values */
-#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_MAX (0xFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_STATE_MAX (0xFFu)
 #define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_BUS_OFFS_BYTE (6u)
 #define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_BUS_OFFS_LENGTH (2u) /* Bus-off events of the vehicle port since boot */
 #define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_BUS_OFFS_MAX (0xFFFFu) /* counters saturate here */
@@ -137,7 +137,7 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_RT_CORE_HEALTH_VEHICLE_NAS_ABORTS_MAX (0xFFFFu) /* counters saturate here */
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_BYTE (14u)
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_LENGTH (1u) /* State of the platform CAN port, see values (never LATCHED, D-054) */
-#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_MAX (0xFFu) /* counters saturate here */
+#define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_MAX (0xFFu)
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_BUS_OFFS_BYTE (15u)
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_BUS_OFFS_LENGTH (2u) /* Bus-off events of the platform port since boot */
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_BUS_OFFS_MAX (0xFFFFu) /* counters saturate here */

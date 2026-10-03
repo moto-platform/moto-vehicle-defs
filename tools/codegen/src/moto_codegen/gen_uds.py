@@ -551,9 +551,13 @@ def generate_server_c(node: str, content: dict[str, Any], data: dict[str, Any],
                 h.append(define(f"{base}_MASK", _hex(f["mask"], 2), f["description"].rstrip(".")))
             else:
                 h.append(define(f"{base}_LENGTH", f"{f['length']}u", f["description"].rstrip(".")))
+                # An enum field (one with `values`) is a state, not a counter: no saturation note.
+                is_enum = f["name"] in (d.get("values") or {})
                 h.append(
                     define(
-                        f"{base}_MAX", _hex(field_max(f), 2 * f["length"]), "counters saturate here"
+                        f"{base}_MAX",
+                        _hex(field_max(f), 2 * f["length"]),
+                        "" if is_enum else "counters saturate here",
                     )
                 )
         for fname, values in (d.get("values") or {}).items():

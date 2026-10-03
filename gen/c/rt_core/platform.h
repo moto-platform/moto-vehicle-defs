@@ -313,7 +313,7 @@ struct platform_vehicle_speed_t {
     uint16_t vehicle_speed;
 
     /**
-     * Time since rt-core received the source sample; saturates at 2550 ms.
+     * Age of the source sample when rt-core wrote this frame, counted from the send time of the oldest unanswered read of DID 0xF40D (D-051), so never younger than the ECU sample; nearest 10 ms, saturates at 2550 ms; an INVALID speed sends 2550 (D-056). It does not include the wait in the TX buffer (at most one write of rt-core): the worst case for a VALID frame at its consumer is stale_after_ms of DID 0xF40D + one cycle + one rt-core comms pass (about 351 ms).
      *
      * Range: 0..255 (0..2550 ms)
      * Scale: 10
