@@ -8,7 +8,7 @@
 - **Path:** CL250 ECU → DLC Y-cable → CAN transceiver → ESP32-S3 TWAI → BLE → phone (`moto-mobile`) → session zip → `moto-server` (D-032).
 - **No on-vehicle storage:** conn keeps no local copy. Data lost while the phone is disconnected is accepted, and the server report shows the gaps (D-045). Persistent logging (microSD, safe shutdown) is rt-core's job later, so the Phase 0 plan's microSD and supercapacitor items are not part of this build.
 - **IMU:** an MPU-6050-class IMU on the same ESP32 at 100 Hz, streamed over BLE. It is for offline analysis only: it is not a vehicle signal, not a safety input, and no lean is estimated from it (D-032, D-044).
-- **Not in this build:** rt-core (H7, Q-019), the platform bus, safety-node, io-node, Raspi, GPS (see §9).
+- **Not in this build:** rt-core (H7, Q-019), the platform bus, safety-node, io-node, Raspi. GPS joins it per D-060 (see §9).
 
 ```
  CL250 DLC ──Y-cable (CANH, CANL, GND; < 50 cm, twisted)──┐
@@ -126,10 +126,10 @@ Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is
 
 | Measurement | Why | How with this build |
 |---|---|---|
-| Tester step time (`loop()` max) | D-053 assumes `client_step_max_ms` = 10 ms; conn's step is unbounded (conn README) | USB serial: the G0.1 timing report (min/avg/max per 10 s); scope on `GPIO8` |
-| ECU round trip | D-029, A-4 polling budget (assumed 20 ms) | **Not reported by conn today.** It needs a small instrumentation change in conn or a laptop CAN tool. Open item |
-| Passive broadcast traffic | Q-001 (VWP §5.5 step 1: 5 min listen-only) | **Not possible with conn as it is:** its listen window is 2 s and then it polls. Needs a listen-only capture tool (USB-CAN on the laptop, not yet listed as on hand). Open item |
-| PID support (0x01 0x00 / 0x20 / 0x40) | A-4: MAP, fuel trim, wheel speed | Not in conn's poll table. A defs change (`/signal-change`) first. Open item |
+| Tester step gap | D-053 assumes `client_step_max_ms` = 10 ms; conn's step is unbounded (conn README) | D-058 item 2: the poller's step-gap max and over-10-ms count in BLE telemetry v4 (server report); the G0.1 serial report still gives the per-module `loop()` durations; scope on `GPIO8` |
+| ECU round trip | D-029, A-4 polling budget (assumed 20 ms) | D-058 item 1: per DID min/max/sum/count and 0x78 count, one rotating record per BLE telemetry v4 packet (server report) |
+| Passive broadcast traffic | Q-001 (VWP §5.5 step 1: 5 min listen-only) | D-058 item 4: flash the `esp32-s3-devkitc-1-listen-only` env (no TX at all), log USB serial for 5 min with the ignition on, then flash the tester env again. Record the result on Q-001 |
+| PID support, vehicle info, DTCs | A-4: MAP, fuel trim, wheel speed | D-059: flash the `esp32-s3-devkitc-1-probe` env once (0x01 bitmaps, 0x09, 0x19, 0x22 0xF4xx support DIDs, segmented answers with one FC.CTS); the serial output goes into defs with `/signal-change`, `verified: false`. Never commit the VIN |
 | Sleep current | VWP §4.3, < 1 mA | Multimeter or INA226 in series, ignition off |
 | Engine-on noise | VWP §4.2 | The same idle recording with the engine stopped and running; compare CAN error counters and IMU noise |
 | IMU zero and axis offset | VWP §3.4, §5.4 | Upright on flat ground, then a known tilt (side stand) |
@@ -148,7 +148,7 @@ Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is
 - **Session = one ride.** Files per `moto-mobile/docs/session-format.md`: `meta.json`, `telemetry.csv`, `events.csv`, `summary.json`, `imu.csv`.
 - Fill the metadata of the Phase 0 plan §3.2 / VWP §6.2: ambient temperature and weather, tyre pressures, fuel level, rider weight and load, vehicle configuration, condition label (healthy / fault type), route type, notes. Add the unit and IMU mounting (§4).
 - **Never commit ride data to any repo** (all repos are public, D-033). Sessions live under `$MOTO_DATA_DIR` on the server machine, with a second copy off the laptop.
-- **GPS:** the current path records none. The VWP §3.5 GPS (CAN speed validation, turn radius) needs a source decision: a GPS module on a later node, or a phone GPS log kept local and never uploaded raw (invariant 7). Open item, **CONFIRM** with the user before adding it.
+- **GPS (D-060):** a u-blox NEO-M8N on a conn UART (UBX-NAV-PVT, 10 Hz; pins **CONFIRM**). Only ground speed, heading, their accuracies, fix type and satellite count leave conn, on the BLE GPS block; latitude, longitude and height never do. The phone writes them to `gps.csv`, which goes to the server with the session. A speed + heading series can rebuild the route's shape, so sessions stay on your own machine and never in a repo.
 
 ## 10. Open items (fill in, then move facts into the sections above)
 
@@ -158,9 +158,9 @@ Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is
 | 2 | Parts actually on hand (every **CONFIRM** in §2) | Build start |
 | 3 | Ignition-switched tap point on the CL250 harness | §3.2 |
 | 4 | IMU bracket location and axis directions | §4, metadata |
-| 5 | GPS source and privacy handling | T1 speed check, §9 |
-| 6 | Listen-only capture tool for Q-001 | §7 |
-| 7 | ECU round-trip instrumentation | D-029, A-4 |
+| 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** | T1 speed check, §9 |
+| 6 | ~~Listen-only capture tool for Q-001~~ decided in D-058 item 4 (conn `-listen-only` env) | §7 |
+| 7 | ~~ECU round-trip instrumentation~~ decided in D-058 items 1-3 (BLE telemetry v4) | D-029, A-4 |
 
 ## 11. Later: moving to rt-core
 
