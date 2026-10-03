@@ -381,7 +381,11 @@ def test_record_macros(dids):
         else:
             top = (1 << (8 * f["length"])) - 1
             assert f"{p}_{f['name']}_LENGTH ({f['length']}u)" in text
-            assert f"{p}_{f['name']}_MAX (0x{top:0{2 * f['length']}X}u)" in text
+            line = f"{p}_{f['name']}_MAX (0x{top:0{2 * f['length']}X}u)"
+            assert line in text
+            # E-13 (1): a state (enum) field is no counter, so no saturation note on its MAX.
+            saturates = f"{line} /* counters saturate here */" in text
+            assert saturates == (f["name"] not in _health(dids)["values"]), f["name"]
     assert f"{p}_VEHICLE_STATE_LATCHED (3u)" in text
     for port in ("VEHICLE", "PLATFORM"):  # safety review MAJOR-1: 0 is healthy, so no zero
         assert f"{p}_{port}_STATE_UNKNOWN (255u)" in text

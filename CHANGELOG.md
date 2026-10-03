@@ -4,6 +4,15 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.5.1] — 2026-10-03
+
+Comment and docs alignment after the D-056 reviews (ISSUES E-11 (2), E-13 (1), E-14 (1)/(2)). Generated code changes in comments only: no DBC signal, ID, layout, scale, VSS path, DID, macro value, `tester_policy` or D-020 golden change, so a consumer bump is optional.
+
+### Fixed
+- `dbc/platform.dbc`: 0x021 `VEHICLE_SPEED_AGE` comment said "since rt-core received the source sample". It now says what rt-core sends (D-051, D-056): the age counted from the send time of the oldest unanswered read of DID 0xF40D, nearest 10 ms, 2550 for INVALID, without the wait in the TX buffer (at most one write), so the worst case for a VALID frame at its consumer is `stale_after_ms` + one cycle + one rt-core comms pass (about 351 ms). Regenerated into the `platform.h` of conn, hil_sim and rt_core.
+- codegen: a STATE (enum) field of a `record` DID no longer gets the "counters saturate here" comment on its `*_MAX` macro (0xFD02 `VEHICLE_STATE_MAX`, `PLATFORM_STATE_MAX`); the macros and their values are unchanged.
+- `docs/DECISIONS.md`: D-053 item 5 defines the step gap S as the `uds/vehicle_cl250.yaml` comment and rt-core count it (every step, with `rx_busy` or not); D-054 item 6 says a dedicated-buffer E2E frame is never older than one write of its sender (not one cycle); D-056 item 6 records the one-Tx-FIFO-element rule (M_CAN erratum "Tx FIFO message sequence inversion"; the board's ST errata ES0392 / ES0491 to be checked with Q-019).
+
 ## [0.5.0] — 2026-10-03
 
 Generated C encoders round to nearest (decision D-056, found while planning the rt-core platform-bus republisher, ISSUES D-5). No DBC, signal, ID, layout, scale, VSS path, DID, `tester_policy` or D-020 golden-copy change. Every generated `<msg>_<signal>_encode()` changes behaviour, so the same physical value can now produce a raw value one step higher than before: a MINOR release that each consumer bumps on purpose.
