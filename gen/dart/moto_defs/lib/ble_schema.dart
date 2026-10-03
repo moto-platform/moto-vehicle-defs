@@ -90,7 +90,7 @@ abstract final class BleTelemetryV2Sizes {
 
 /// Telemetry version 3: byte offset of each field (little-endian).
 abstract final class BleTelemetryV3Offsets {
-  /// Packet format version, 4 (3 in sessions recorded before D-058).
+  /// Packet format version, 3 or 4 (see `versioning`); the sender produces the current version.
   static const int version = 0;
   /// Rolling 0-255 counter incremented once per telemetry packet sent (any version).
   static const int seq = 1;
@@ -140,7 +140,7 @@ abstract final class BleTelemetryV3Offsets {
 
 /// Telemetry version 3: byte size of each field (little-endian).
 abstract final class BleTelemetryV3Sizes {
-  /// Packet format version, 4 (3 in sessions recorded before D-058).
+  /// Packet format version, 3 or 4 (see `versioning`); the sender produces the current version.
   static const int version = 1;
   /// Rolling 0-255 counter incremented once per telemetry packet sent (any version).
   static const int seq = 1;
@@ -190,7 +190,7 @@ abstract final class BleTelemetryV3Sizes {
 
 /// Telemetry version 4: byte offset of each field (little-endian).
 abstract final class BleTelemetryV4Offsets {
-  /// Packet format version, 4 (3 in sessions recorded before D-058).
+  /// Packet format version, 3 or 4 (see `versioning`); the sender produces the current version.
   static const int version = 0;
   /// Rolling 0-255 counter incremented once per telemetry packet sent (any version).
   static const int seq = 1;
@@ -256,7 +256,7 @@ abstract final class BleTelemetryV4Offsets {
 
 /// Telemetry version 4: byte size of each field (little-endian).
 abstract final class BleTelemetryV4Sizes {
-  /// Packet format version, 4 (3 in sessions recorded before D-058).
+  /// Packet format version, 3 or 4 (see `versioning`); the sender produces the current version.
   static const int version = 1;
   /// Rolling 0-255 counter incremented once per telemetry packet sent (any version).
   static const int seq = 1;
