@@ -4,6 +4,19 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-10-03
+
+BLE packet schema moves into defs and gets telemetry version 4 (decisions D-061, D-058; Q-017 resolved). No DBC, DID, VSS, `tester_policy` or D-020 golden-copy change, and no existing generated file changes except the module list comment in `gen/python/moto_defs/__init__.py`. The consumers of the new files (moto-connectivity-node, moto-mobile, moto-server) switch together: each bumps its pin and drops its own copy of the schema.
+
+### Added
+- `ble/ble_schema.json` (D-061): the BLE packet schema moved from moto-connectivity-node's `docs/ble_telemetry_packet_schema.json`, all existing keys and texts kept so the schema-driven decoder of moto-server still reads it. `ble/README.md` explains how to change a layout.
+- Telemetry packet version 4 (D-058): 57 bytes, v3's 37 bytes unchanged and eight fields appended with `sinceVersion: 4` at offsets 37-56: `stepGapMaxMs`, `stepGapOverCount` (tester step gap, D-053 definition), and one rotating per-DID ECU round-trip record `rttDid`, `rttMinMs`, `rttMaxMs`, `rttSumMs`, `rttCount`, `rttNrc78Count`. TEMPORARY until rt-core's health DID 0xFD02 (D-055). `version` 4, `acceptedVersions` [2, 3, 4], `totalBytesByVersion` {3: 37, 4: 57}, a `testerStats` section with the rules; the sender uses v4 when the payload limit is at least 57, else the v2 fallback (v3 is decoded for old sessions only).
+- codegen `gen_ble`: checks that fields are contiguous from offset 0, match their type sizes and the declared totals (also per version), that the v2 fallback and the IMU header and sample layouts are contiguous and match their byte counts, `totalBytesMax` = header + maxSamples x sample, flag bits are unique 0..7, and UUIDs are well-formed.
+- `gen/c/conn/ble_schema.h`: header-only C99 macros (UUID strings, MTU, versions and sizes, `BLE_TELEMETRY_V4_*` and `BLE_TELEMETRY_V2_*` offsets and sizes, sentinels, flag, canFlags and bus-state values, IMU block constants). No packed structs, so `make misra` stays clean; conn static-asserts its own structs against the macros.
+- `gen/python/moto_defs/ble.py`: `SCHEMA` and `CURRENT_VERSION`, `ACCEPTED_VERSIONS`, `TOTAL_BYTES_BY_VERSION`, `telemetry_fields()`.
+- `gen/dart/moto_defs/`: Dart package `moto_defs` (`lib/ble_schema.dart`, `lib/moto_defs.dart`, `pubspec.yaml`) with the same constants for moto-mobile.
+- tests: `test_ble.py` (each check fails on a mutated copy; C, Python and Dart agree on the v4 offsets; v3 is the old 37-byte layout and a prefix of v4); `test_gen_drift.py` also compares `gen/dart`.
+
 ## [0.5.1] — 2026-10-03
 
 Comment and docs alignment after the D-056 reviews (ISSUES E-11 (2), E-13 (1), E-14 (1)/(2)). Generated code changes in comments only: no DBC signal, ID, layout, scale, VSS path, DID, macro value, `tester_policy` or D-020 golden change, so a consumer bump is optional.

@@ -1,6 +1,6 @@
 [project]
 name = "moto-codegen"
-version = "0.5.1"
+version = "0.6.0"
 description = "Code generator and consistency checks for moto-vehicle-defs"
 requires-python = ">=3.11"
 dependencies = [

@@ -17,6 +17,7 @@ DIDS_YAML = REPO_ROOT / "uds" / "dids.yaml"
 ISO14229_YAML = REPO_ROOT / "uds" / "iso14229.yaml"
 LIMITS_YAML = REPO_ROOT / "limits" / "platform_limits.yaml"
 OVERLAY_VSPEC = REPO_ROOT / "vss" / "overlay.vspec"
+BLE_SCHEMA = REPO_ROOT / "ble" / "ble_schema.json"
 GEN_DIR = REPO_ROOT / "gen"
 
 # Node name -> node_id (ARCHITECTURE section 4).

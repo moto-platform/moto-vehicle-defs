@@ -132,7 +132,8 @@ def generate_init_py() -> str:
     return (
         BANNER.format(source="moto-vehicle-defs")
         + "\n# Modules: platform (platform.dbc constants), vehicle_cl250 (CL250 DIDs),\n"
-        "# e2e (reference E2E protect/check), uds (ISO 14229 codes, platform servers).\n"
+        "# e2e (reference E2E protect/check), uds (ISO 14229 codes, platform servers),\n"
+        "# limits (platform_limits.yaml), ble (BLE packet schema, D-061).\n"
     )
 
 

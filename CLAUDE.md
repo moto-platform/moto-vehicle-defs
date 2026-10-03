@@ -20,9 +20,10 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /vss/overlay.vspec    → Vehicle.Motorcycle.* extensions + dbc2vss mappings (kuksa-can-provider format)
 /uds/dids.yaml        → per-node UDS servers: IDs, timing, services, DIDs, DTCs
 /uds/iso14229.yaml    → generic ISO 14229-1 codes (names for numbers only)
+/ble/ble_schema.json  → BLE packet schema of conn: telemetry v2/v3/v4, IMU block, GATT UUIDs; single source for conn, moto-mobile, moto-server (D-061)
 /limits/platform_limits.yaml → k_yellow/k_red, µ/mass fallbacks, rt-core speed rules, per-node scope (provisional, D-029, D-048)
-/tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, VSS JSON
-/gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging)
+/tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, Dart, VSS JSON
+/gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging): `c/<node>`, `python/moto_defs`, `dart/moto_defs` (BLE schema), `vss`
 /misra/               → MISRA C:2012 deviation register for gen/c + cppcheck suppressions (D-046)
 /docs/                → all platform documentation (index: docs/README.md)
 /CHANGELOG.md         → what changed in each release
@@ -32,7 +33,7 @@ Signal add/change flow: the `/signal-change` skill. CI must fail red if `gen/` i
 
 ## Versioning rule — THE MOST IMPORTANT RULE
 
-This repo is **semantically versioned**: `v0.x` now (v0.1.0 … v0.4.0), `v1.0.0` once `platform.dbc` is stable (D-013, D-036). Other repos pin to a specific version (git submodule + tag, or package version). Adding/changing/removing a signal:
+This repo is **semantically versioned**: `v0.x` now (v0.1.0 … v0.6.0), `v1.0.0` once `platform.dbc` is stable (D-013, D-036). Other repos pin to a specific version (git submodule + tag, or package version). Adding/changing/removing a signal:
 
 1. Is done here first, a line is added to `CHANGELOG.md`
 2. A new version is tagged

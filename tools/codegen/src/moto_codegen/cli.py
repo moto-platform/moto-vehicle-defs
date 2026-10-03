@@ -7,7 +7,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import config, gen_c, gen_python, gen_uds, gen_vss
+from . import config, gen_ble, gen_c, gen_python, gen_uds, gen_vss
 from .dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
 from .yaml_checks import check_limits, check_vehicle, load_yaml
 
@@ -28,6 +28,7 @@ def run_checks(with_vss: bool = True) -> list[str]:
     errors += check_limits(
         load_yaml(config.LIMITS_YAML), load_yaml(config.VEHICLE_YAML), platform_db
     )
+    errors += gen_ble.check_schema(gen_ble.load_schema())
     if with_vss:
         base = gen_vss.fetch_base()
         errors += gen_vss.check_overlay(
@@ -60,6 +61,11 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
             )
         for name, text in parts.items():
             files[out / name] = text
+    ble = gen_ble.load_schema()
+    for name, text in gen_ble.generate_c(ble).items():
+        files[Path("c") / "conn" / name] = text
+    for name, text in gen_ble.generate_dart(ble).items():
+        files[Path("dart") / "moto_defs" / name] = text
     py = Path("python") / "moto_defs"
     files[py / "__init__.py"] = gen_python.generate_init_py()
     files[py / "platform.py"] = gen_python.generate_platform_py(db)
@@ -67,6 +73,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     files[py / "e2e.py"] = gen_python.generate_e2e_py()
     files[py / "limits.py"] = gen_python.generate_limits_py(limits)
     files[py / "uds.py"] = gen_uds.generate_uds_py(iso, dids, vehicle)
+    files[py / "ble.py"] = gen_ble.generate_python(ble)
     if with_vss:
         files[Path("vss") / "vss_dbc.json"] = gen_vss.export_json(gen_vss.fetch_base())
     return files
