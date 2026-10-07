@@ -9,6 +9,27 @@
 
 ---
 
+## Group 0 — Faz 0 ESP32 Anomali Veri Toplama Donanımı & Vizör HUD PoC
+
+| Part / Entegre | Qty | Detailed Product Description (Ürün Açıklaması & Teknik Detay) | Estimate (TL) | Status |
+|---|---|---|---|---|
+| **ESP32 DevKit V1 (WROOM-32 30-Pin)** | 2 | Ana Veri Toplama MCU'su & Kask Vizör MCU'su. Çift çekirdek 240MHz, 512KB SRAM, Dahili TWAI (CAN Controller), I2S, I2C, SPI, Wi-Fi 4 ve Bluetooth 4.2/BLE desteği. | 180 - 300 | |
+| **SN65HVD230 CAN Transceiver** | 2 | 3.3V Logic Seviyeli CAN Alıcı-Verici Entegresi. OBD2 CAN otobüsünü (500 kbps) ESP32 TWAI (GPIO4/5) pinlerine dönüştürür. | 120 - 220 | |
+| **OBD2 Erkek Soket + Kablo (SAE J1962 / EURO5)** | 1 | Motosikletin sele altı DLC teşhis portuna doğrudan takılan 16-pin erkek konnektör ve dayanıklı kablo demeti (Pin 4/5: GND, Pin 6: CAN-H, Pin 14: CAN-L, Pin 16: +12V). | 150 - 300 | |
+| **MPU-6050 / BMI270 6-DOF IMU** | 1 | Şasi Dinamikleri Sensörü. 3-Eksen İvmeölçer + 3-Eksen Jiroskop (I2C: GPIO21/22). Yatma açısı, ivmelenme, kasis/çukur ve şasi hareketi (0-50 Hz) için şasiye sabitlenir. | 100 - 220 | |
+| **ADXL345 / LIS3DH Yüksek Frekans İvmeölçer** | 1 | Motor Rezonansı & Titreşim Sensörü. 13-bit çözünürlük, 3.2 kHz sampling rate. Doğrudan motor bloğuna cıvatalanarak krank, yanma ve rulman titreşim frekansı (FFT) ölçer. | 120 - 250 | |
+| **INMP441 Dijital MEMS I2S Mikrofon** | 2 | 24-bit Dijital I2S Ses Sensörü. 1x Motor Bloğu ses analizi (subap, zincir, yanma sesi), 1x Ön Çevre/Rüzgar Gürültüsü Filtreleme (Noise cancellation reference). EMI parazitizdir. | 180 - 350 | |
+| **NEO-6M / NEO-M8N GPS Modülü + Aktif Anten** | 1 | Seri UART (RX2/TX2) GPS Alıcısı. Coğrafi konum, irtifa ve tekerlek kayması/patinaj tespiti için gerçek GPS hızı doğrulama. | 250 - 450 | |
+| **MicroSD SPI Modülü + 32GB Industrial Card** | 1 | Offline Veri Kaydedici. İnternet kesintilerinde verileri kayıpsız `.csv` / `.bin` formatında 50 Hz hızında SD karta yazar. | 200 - 380 | |
+| **Mini DC-DC Step-Down (MP1584 / LM2596)** | 1 | Wide-Input (7-28V ➔ 5V 3A) Güç Düşürücü. OBD2 Pin 16'daki 12V akü voltajını ESP32 VIN girişi için kararlı 5V seviyesine düşürür. | 70 - 150 | |
+| **Koruma Entegreleri Paketi** | 1 set | 1A Cam Sigorta + 1N4007 Ters Polarite Diyodu + 470uF 16V Filtre Kondansatörü + 120Ω CAN Sonlandırma Direnci. | 50 - 100 | |
+| **0.39" Micro-OLED / 0.96" OLED + Optik Prizma** | 1 | Kask Vizör HUD Ekranı. High-brightness (>3000 nits) Micro-OLED veya PoC OLED + Combiner prizma mercek ile vizörde 2-3 metre sonsuz odağa telemetri yansıtma. | 400 - 1200 | |
+| **BLE TPMS Lastik Basınç/Sıcaklık Sensörü** | 2 | Sibop tipi Bluetooth LE Kablosuz Lastik Basınç/Sıcaklık Sensörü. Anomali modeline basnç düşüşü ve lastik aşırı ısınma verisi sağlar. | 350 - 700 | |
+| **Subframe Kutu & Titreşim Sönümleme** | 1 set | IP65 Su Geçirmez / PETG 3D Kutu + Kauçuk Titreşim Takozları (Vibration Damper Rubber Mounts) + Cable Gland Rekorları. | 150 - 400 | |
+| **Subtotal (Group 0 - Data Logger + HUD PoC)** | | | **~2,320 - 5,020** | |
+
+---
+
 ## Group 1 — Now (for moto-vehicle-defs + moto-hil-bench + connectivity-node)
 
 | Part | Qty | Purpose | Estimate (TL) | Status |
@@ -140,11 +161,16 @@
 
 ---
 
-## Grand Total (Groups 1-10, mandatory/core)
+## Grand Total (Groups 0-10, Core Platform + Data Logger + HUD PoC)
 
-**~8,900-16,900 TL** (approximate range updated with the GSM+NFC tag line items added to Group 6)
+**~11,220 - 21,920 TL** (Tüm Çekirdek Sistem + ESP32 Veri Toplama + Vizör HUD PoC Toplam Maliyeti)
 
-Excludes Groups 11-12. Buy in stages — Group 1 this week, Groups 2-3 over the next few weeks, the rest once the relevant subsystem development begins.
+* **Grup 0 (Veri Loglayıcı & Vizör HUD):** ~2,320 - 5,020 TL
+* **Grup 1-10 (Tüm Çekirdek Donanım Mimarisi):** ~8,900 - 16,900 TL
+* **Grup 11 (Opsiyonel Deneysel Doğrulama - Süspansiyon/Fren Sensörleri):** ~950 - 2,100 TL
+* **Grup 12 (İleri Seviye / Faz 2 Eklentileri):** ~5,350 - 11,350 TL
+
+*(Not: Elindeki mevcut parçalar — Raspi 5 8GB, Nextion Ekran, i7 Masaüstü HIL, STM32F103, ESP32 — bu bütçeden düşülmüştür, sıfırdan almaya gerek yoktur).*
 
 ## Already On Hand (summary)
 

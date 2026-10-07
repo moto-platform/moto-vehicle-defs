@@ -14,6 +14,7 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `feature-pool.md` | Pool | All feature candidates (IDs F1.., K1.., ...), open-source references |
 | `hardware-procurement-list.md` | Current | Hardware groups 1-12, items on hand |
 | `hardware-integration.md` | Working guide (2026-10-03) | Phase 0 on-vehicle build: parts, wiring, mounting, bring-up gates, first measurements, open items |
+| `ideas/*` | Idea notes (drafted with Gemini, 2026-10-05), **not decisions** | `can-data-expansion.md` (CAN/UDS expansion, tasks V-01..V-16), `mcp-scenarios.md` (moto-mcp scenarios). Each lists its known conflicts with recorded decisions at the top; nothing applies without a D-xxx |
 | `e2e-profile.md` | **Authoritative (spec, short)** | E2E frame layout, CRC, counter, receiver statuses, timeouts (D-005, D-026) |
 | `legacy-telemetry-notes.md` | Reference (short) | Legacy HondaCl250_Telemetry facts per D-023: UDS state machine, NRC table, bus-off backoff, ISO-TP first-frame pitfall, ESP32-S3 pin map, discrepancies, accepted security risks, legacy test coverage |
 | `archive/tr/*` | Turkish originals + the two advisor documents (D-038) | **Not read by Claude.** Ç1-Ç8 are in `ARCHITECTURE.md` §9 |
