@@ -1,7 +1,9 @@
 """C-6: the single-exit D-020 gate behaves exactly like the multi-exit one it replaced.
 
 `_reference_c()` is the pre-C-6 template (defs v0.3.0, early returns), frozen here and
-generated from the current `tester_policy`, with every function renamed `ref_*`. One C
+generated from the current `tester_policy`, with every function renamed `ref_*`. D-059
+added one branch to its frame gate: the one FC.CTS, byte for byte, built here from
+`transport.flow_control` independently of codegen's `vehicle_fc_frame()`. One C
 program links it next to the generated `vehicle_cl250.c` and compares both on the same
 inputs. The input space is covered completely wherever a function reads few enough bytes:
 every byte the request and frame gates read, every DID, every response byte the decode
@@ -44,7 +46,15 @@ def _reference_c(vehicle) -> str:
             "        sub = (uint8_t)(payload[1] & 0x7Fu); /* ignore suppressPosRsp bit */",
             f"        return {cond};",
         ]
-    return _REFERENCE_HEAD + "\n".join(cases) + "\n" + _REFERENCE_TAIL
+    fc = vehicle["transport"]["flow_control"]
+    head = [0x30 | fc["flow_status"], fc["block_size"], fc["st_min_ms"]]
+    ref_fc = head + [fc["padding_byte"]] * (8 - len(head))
+    fc_c = (
+        "static const uint8_t ref_fc_cts[8] = { "
+        + ", ".join(f"0x{b:02X}u" for b in ref_fc)
+        + " };\n"
+    )
+    return fc_c + _REFERENCE_HEAD + "\n".join(cases) + "\n" + _REFERENCE_TAIL
 
 
 _REFERENCE_HEAD = """
@@ -101,9 +111,21 @@ _REFERENCE_TAIL = """    default:
 static bool ref_frame_allowed(const uint8_t *frame, size_t size)
 {
     size_t len;
+    size_t i;
 
-    if ((frame == NULL) || (size < 2u) || ((frame[0] & 0xF0u) != 0u)) {
-        return false; /* not a Single Frame */
+    if ((frame == NULL) || (size < 2u)) {
+        return false;
+    }
+    if ((frame[0] & 0xF0u) != 0u) { /* D-059: not a Single Frame, so the FC.CTS or nothing */
+        if (size != 8u) {
+            return false;
+        }
+        for (i = 0u; i < 8u; i++) {
+            if (frame[i] != ref_fc_cts[i]) {
+                return false;
+            }
+        }
+        return true;
     }
     len = (size_t)(frame[0] & 0x0Fu);
     if ((len == 0u) || (len > 7u) || ((len + 1u) > size)) {
@@ -233,9 +255,11 @@ int main(void)
     }
     printf("request calls=%lu hits=%lu\n", calls, hits);
 
-    /* frame_allowed(): it reads frame[0..2]; all 2^24 values, every size. */
+    /* frame_allowed(): a Single Frame reads frame[0..2]; all 2^24 values, every size.
+     * The bytes after them hold the padding, so the FC.CTS is among the inputs. */
     calls = 0u;
     hits = 0u;
+    (void)memset(buf, ref_fc_cts[7], sizeof(buf));
     for (s = 0u; s < N_SIZES; s++) {
         if (vehicle_cl250_frame_allowed(NULL, sizes[s]) != ref_frame_allowed(NULL, sizes[s])) {
             mismatches++;
@@ -256,6 +280,35 @@ int main(void)
         }
     }
     printf("frame calls=%lu hits=%lu\n", calls, hits);
+
+    /* D-059: the FC branch reads frame[0..7]. From the allowed FC.CTS, every value of
+     * every pair of byte positions (one position when p == q), every size. */
+    calls = 0u;
+    hits = 0u;
+    for (s = 0u; s < N_SIZES; s++) {
+        size_t p;
+        size_t q;
+
+        for (p = 0u; p < 8u; p++) {
+            for (q = p; q < 8u; q++) {
+                for (v = 0u; v <= 0xFFFFu; v++) {
+                    bool a;
+
+                    (void)memcpy(buf, ref_fc_cts, 8u);
+                    (void)memset(&buf[8], ref_fc_cts[7], sizeof(buf) - 8u);
+                    buf[p] = (uint8_t)(v >> 8u);
+                    buf[q] = (uint8_t)v;
+                    a = vehicle_cl250_frame_allowed(buf, sizes[s]);
+                    if (a != ref_frame_allowed(buf, sizes[s])) {
+                        mismatches++;
+                    }
+                    hits += a ? 1u : 0u;
+                    calls++;
+                }
+            }
+        }
+    }
+    printf("fc calls=%lu hits=%lu\n", calls, hits);
 
     /* decode(): the table entries and synthetic ones for every guard and the NaN
      * range bounds; every value of up to two data bytes, sampled beyond. */
@@ -388,6 +441,7 @@ def test_single_exit_gate_equals_previous_gate(vehicle, tmp_path, opt):
     assert int(report["find"]["hits"]) == len(vehicle["dids"])
     assert int(report["request"]["calls"]) == 12 * 0x10000
     assert int(report["frame"]["calls"]) == 12 * 0x1000000
+    assert int(report["fc"]["calls"]) == 12 * 36 * 0x10000
     for name, counts in report.items():
         assert 0 < int(counts["hits"]) < int(counts["calls"]), (name, counts)
 

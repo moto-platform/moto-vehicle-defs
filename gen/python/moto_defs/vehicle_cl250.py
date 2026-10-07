@@ -8,6 +8,36 @@ FALLBACK_REQUEST_ID = 0x7E0
 FALLBACK_RESPONSE_ID = 0x7E8
 FALLBACK_VERIFIED = False
 PADDING_BYTE = 0xAA
+# D-059: the one Flow Control frame the tester may send (FC.CTS, byte-exact)
+FC_CTS_FRAME = bytes([0x30, 0x00, 0x00, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA])
+MAX_FF_DL = 255
+# D-059 discovery scan: (name, request, bitmap, after_name, after_id)
+DISCOVERY_SCAN = (
+    ("OBD_PIDS_01_20", bytes([0x01, 0x00]), True, None, None),
+    ("OBD_PIDS_21_40", bytes([0x01, 0x20]), True, "OBD_PIDS_01_20", 0x20),
+    ("OBD_PIDS_41_60", bytes([0x01, 0x40]), True, "OBD_PIDS_21_40", 0x40),
+    ("OBD_PIDS_61_80", bytes([0x01, 0x60]), True, "OBD_PIDS_41_60", 0x60),
+    ("OBD_PIDS_81_A0", bytes([0x01, 0x80]), True, "OBD_PIDS_61_80", 0x80),
+    ("OBD_PIDS_A1_C0", bytes([0x01, 0xA0]), True, "OBD_PIDS_81_A0", 0xA0),
+    ("OBD_PIDS_C1_E0", bytes([0x01, 0xC0]), True, "OBD_PIDS_A1_C0", 0xC0),
+    ("OBD_PIDS_E1_FF", bytes([0x01, 0xE0]), True, "OBD_PIDS_C1_E0", 0xE0),
+    ("OBD_INFOTYPES_01_20", bytes([0x09, 0x00]), True, None, None),
+    ("OBD_VIN", bytes([0x09, 0x02]), False, "OBD_INFOTYPES_01_20", 0x02),
+    ("OBD_CALID", bytes([0x09, 0x04]), False, "OBD_INFOTYPES_01_20", 0x04),
+    ("OBD_CVN", bytes([0x09, 0x06]), False, "OBD_INFOTYPES_01_20", 0x06),
+    ("OBD_IPT", bytes([0x09, 0x08]), False, "OBD_INFOTYPES_01_20", 0x08),
+    ("OBD_ECU_NAME", bytes([0x09, 0x0A]), False, "OBD_INFOTYPES_01_20", 0x0A),
+    ("DTC_COUNT", bytes([0x19, 0x01, 0xFF]), False, None, None),
+    ("DTC_LIST", bytes([0x19, 0x02, 0xFF]), False, None, None),
+    ("DID_F401_F420", bytes([0x22, 0xF4, 0x00]), True, None, None),
+    ("DID_F421_F440", bytes([0x22, 0xF4, 0x20]), True, "DID_F401_F420", 0x20),
+    ("DID_F441_F460", bytes([0x22, 0xF4, 0x40]), True, "DID_F421_F440", 0x40),
+    ("DID_F461_F480", bytes([0x22, 0xF4, 0x60]), True, "DID_F441_F460", 0x60),
+    ("DID_F481_F4A0", bytes([0x22, 0xF4, 0x80]), True, "DID_F461_F480", 0x80),
+    ("DID_F4A1_F4C0", bytes([0x22, 0xF4, 0xA0]), True, "DID_F481_F4A0", 0xA0),
+    ("DID_F4C1_F4E0", bytes([0x22, 0xF4, 0xC0]), True, "DID_F4A1_F4C0", 0xC0),
+    ("DID_F4E1_F4FF", bytes([0x22, 0xF4, 0xE0]), True, "DID_F4C1_F4E0", 0xE0),
+)
 # Q-021/D-040: watch-only functional request IDs (id, extended); never sent
 FUNCTIONAL_WATCH_IDS = ((0x7DF, False), (0x18DB33F1, True),)
 SESSION_REQUEST = bytes([0x10, 0x03])

@@ -35,6 +35,15 @@ extern const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[VEHICLE_CL2
 #define VEHICLE_CL250_FRAME_DLC (8u)
 #define VEHICLE_CL250_PADDING_BYTE (0xAAu)
 
+/* D-059 (Q-020): the one Flow Control frame the tester may send, FC.CTS, while it
+ * receives the segmented answer to its own allowed request, and only for a First
+ * Frame with FF_DL <= MAX_FF_DL (anything longer gets no FC). The frame gate passes
+ * exactly vehicle_cl250_fc_cts[], byte for byte. */
+#define VEHICLE_CL250_FC_BLOCK_SIZE (0u) /* one FC per reception */
+#define VEHICLE_CL250_FC_ST_MIN_MS (0u)
+#define VEHICLE_CL250_MAX_FF_DL (255u) /* bytes */
+extern const uint8_t vehicle_cl250_fc_cts[VEHICLE_CL250_FRAME_DLC];
+
 #define VEHICLE_CL250_SESSION_SID (0x10u)
 #define VEHICLE_CL250_SESSION_SUBFUNCTION (0x03u) /* extended session */
 #define VEHICLE_CL250_SESSION_POSITIVE_SID (0x50u)
@@ -108,11 +117,30 @@ bool vehicle_cl250_decode(const vehicle_cl250_did_t *entry, const uint8_t *data,
  * Every vehicle-bus transmission must pass this check. */
 bool vehicle_cl250_request_allowed(const uint8_t *payload, size_t size);
 
-/* Last gate before the CAN driver: `frame` is the raw ISO-TP frame. Only a
- * Single Frame (PCI 0x01..0x07) whose payload passes
- * vehicle_cl250_request_allowed() is accepted; FF/CF/FC are refused (the
- * tester never needs multi-frame requests). */
+/* Last gate before the CAN driver: `frame` is the raw ISO-TP frame. Accepted:
+ * a Single Frame (PCI 0x01..0x07) whose payload passes
+ * vehicle_cl250_request_allowed(), or (D-059) exactly the 8-byte
+ * vehicle_cl250_fc_cts[]. Refused: FF/CF (requests are never multi-frame) and
+ * any other FC. Stateless: when an FC may be sent is the client's job. */
 bool vehicle_cl250_frame_allowed(const uint8_t *frame, size_t size);
+
+/* D-059 discovery scan, run once by conn's probe env, in table order. Standard
+ * requests (SAE J1979, ISO 14229-1), each checked against the gates by codegen.
+ * bitmap_offset != 0: the positive response carries a 4-byte support bitmap at
+ * this offset (counted from the response SID); bit 7 of its first byte is id
+ * base + 1, base = the last request byte. after != SCAN_NONE: send only if entry
+ * `after`'s bitmap marks `after_id` supported. */
+#define VEHICLE_CL250_SCAN_COUNT (24u)
+#define VEHICLE_CL250_SCAN_REQUEST_MAX (3u) /* request bytes */
+#define VEHICLE_CL250_SCAN_NONE (0xFFu) /* no `after` condition */
+typedef struct {
+    uint8_t request[VEHICLE_CL250_SCAN_REQUEST_MAX];
+    uint8_t size;          /* request bytes used */
+    uint8_t bitmap_offset; /* 0 = the answer is not a support bitmap */
+    uint8_t after;         /* index of the gating bitmap entry, or SCAN_NONE */
+    uint8_t after_id;      /* id that entry must mark supported */
+} vehicle_cl250_scan_t;
+extern const vehicle_cl250_scan_t vehicle_cl250_discovery_scan[VEHICLE_CL250_SCAN_COUNT];
 
 /* Parses a raw ReadDataByIdentifier response frame for `expected_did`:
  * checks Single Frame PCI, SID 0x62, the DID echo and the length, then

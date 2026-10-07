@@ -109,6 +109,52 @@ ALLOWED_VEHICLE_SERVICES: dict[int, frozenset[int] | None] = {
 }
 
 
+# D-059 (Q-020), golden copy: the only frame besides a Single Frame request that the
+# vehicle-bus tester may send is one Flow Control frame, FC.ContinueToSend with BS 0
+# (one FC per reception) and an STmin in the ms range. The YAML fixes the bytes within
+# these bounds; widening them (WAIT, OVFLW, BS > 0, multi-frame requests) needs a new
+# decision and safety-reviewer.
+VEHICLE_FC_PCI = 0x30  # PCI type 3 = Flow Control
+VEHICLE_FC_FLOW_STATUS = 0x0  # ContinueToSend
+VEHICLE_FC_BLOCK_SIZE = 0
+VEHICLE_FC_ST_MIN_MAX_MS = 0x7F  # 0x00-0x7F = 0-127 ms; the µs codes are not used
+VEHICLE_FC_MAX_FF_DL = 0xFFF  # 12-bit FF_DL only (D-034: no 32-bit escape)
+
+
+def flow_control_d059_errors(transport: dict) -> list[str]:
+    """Errors if transport.flow_control is missing or outside the golden D-059 FC."""
+    fc = transport.get("flow_control")
+    if not isinstance(fc, dict):
+        return ["transport.flow_control missing (D-059)"]
+    errors = []
+    if transport.get("frame_dlc") != 8:
+        errors.append("transport.frame_dlc must be 8: the FC is a full classic CAN frame")
+    if fc.get("flow_status") != VEHICLE_FC_FLOW_STATUS:
+        errors.append("transport.flow_control.flow_status must be 0 (ContinueToSend, D-059)")
+    if fc.get("block_size") != VEHICLE_FC_BLOCK_SIZE:
+        errors.append("transport.flow_control.block_size must be 0 (one FC per reception, D-059)")
+    st_min = fc.get("st_min_ms")
+    if type(st_min) is not int or not 0 <= st_min <= VEHICLE_FC_ST_MIN_MAX_MS:
+        errors.append("transport.flow_control.st_min_ms must be an integer 0..127 (D-059)")
+    if fc.get("padding_byte") != transport.get("padding_byte"):
+        errors.append("transport.flow_control.padding_byte must equal transport.padding_byte")
+    max_ff_dl = fc.get("max_ff_dl")
+    if type(max_ff_dl) is not int or not 8 <= max_ff_dl <= VEHICLE_FC_MAX_FF_DL:
+        errors.append("transport.flow_control.max_ff_dl must be an integer 8..4095 (D-059)")
+    return errors
+
+
+def vehicle_fc_frame(transport: dict) -> bytes:
+    """The one FC.CTS frame (8 bytes) the gate passes; raises outside the golden copy."""
+    errors = flow_control_d059_errors(transport)
+    if errors:
+        raise ValueError("; ".join(errors))
+    fc = transport["flow_control"]
+    pad = fc["padding_byte"]
+    head = [VEHICLE_FC_PCI | fc["flow_status"], fc["block_size"], fc["st_min_ms"]]
+    return bytes(head + [pad] * (transport["frame_dlc"] - len(head)))
+
+
 def policy_d020_errors(policy: dict) -> list[str]:
     """Errors if the YAML tester policy allows anything outside the golden D-020 list."""
     errors = []

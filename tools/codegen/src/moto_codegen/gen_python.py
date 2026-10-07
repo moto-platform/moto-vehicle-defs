@@ -56,6 +56,20 @@ def generate_vehicle_py(vehicle: dict[str, Any]) -> str:
     lines.append(f"FALLBACK_RESPONSE_ID = 0x{addr['fallback']['response_id']:03X}")
     lines.append(f"FALLBACK_VERIFIED = {bool(addr['fallback']['verified'])}")
     lines.append(f"PADDING_BYTE = 0x{vehicle['transport']['padding_byte']:02X}")
+    fc = vehicle["transport"]["flow_control"]
+    lines.append("# D-059: the one Flow Control frame the tester may send (FC.CTS, byte-exact)")
+    lines.append(f"FC_CTS_FRAME = {_py_bytes(list(config.vehicle_fc_frame(vehicle['transport'])))}")
+    lines.append(f"MAX_FF_DL = {fc['max_ff_dl']}")
+    lines.append("# D-059 discovery scan: (name, request, bitmap, after_name, after_id)")
+    lines.append("DISCOVERY_SCAN = (")
+    for e in vehicle["discovery_scan"]["requests"]:
+        after = e.get("after")
+        lines.append(
+            f'    ("{e["name"]}", {_py_bytes(e["request"])}, {bool(e.get("bitmap"))}, '
+            + (f'"{after["name"]}", 0x{after["id"]:02X}' if after else "None, None")
+            + "),"
+        )
+    lines.append(")")
     watch = addr["functional_watch"]["ids"]
     lines.append("# Q-021/D-040: watch-only functional request IDs (id, extended); never sent")
     lines.append(
