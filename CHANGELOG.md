@@ -4,6 +4,15 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+Planned as v0.8.0 (MINOR): the GPS block of D-060 (BLE schema, D-061). Additive: a new characteristic and its layout; telemetry v4, the IMU block, every DBC, DID, VSS path, `tester_policy` and the D-020 golden copy are unchanged. Consumers: conn sends the block (UBX NAV-PVT parser), moto-mobile records it to the session's `gps.csv`, moto-server stores it; they take the new pin together (D-061 item 3).
+
+### Added
+- `ble/ble_schema.json` `gpsBlock` (D-060 item 3): 26 bytes, little-endian, packed, version 1, one block per UBX-NAV-PVT (10 Hz): `version`, `seq`, `deviceTimeMs` (node clock when the NAV-PVT was complete), `groundSpeed` and `speedAccuracy` (mm/s), `headingOfMotion` and `headingAccuracy` (1e-5 deg), `fixType` (NAV-PVT values 0-5), `numSv`, `flags` (`gnssFixOk`, `parseError`, `uartOverflow`), `reserved`. No latitude, longitude or height (invariant 7). Rules: `privacy`, `timeRule`, `mtuRule` (suspended below 26 bytes of payload, never truncated), `sequenceRule`, `scale`.
+- `gatt.characteristics.gps` (notify, new UUID).
+- codegen `gen_ble`: GPS layout, flag-bit, fixType-value and scale checks, the `gps` characteristic in the UUID checks, and a refusal of any GPS field name that looks like a position (lat, lon, height, alt, hMSL, ECEF, pos).
+- `gen/c/conn/ble_schema.h`: `BLE_GATT_GPS_CHAR_UUID`, `BLE_GPS_*` (version, sizes, offsets, scale, fixType values, flag bits). `gen/python/moto_defs/ble.py`: `GPS_BLOCK_VERSION`, `GPS_TOTAL_BYTES`, `gps_fields()`. `gen/dart/moto_defs`: `BleGpsBlock`, `BleGpsOffsets`, `BleGpsSizes`, `BleGpsFixType`, `BleGpsFlagBits`, `BleGpsScale`.
+- tests (`test_ble.py`): each GPS check fails on a mutated copy (gap, total, a `latitude` or `hMsl` field, duplicate fixType value or flag bit, unknown unit, missing or duplicate characteristic UUID); C, Python and Dart agree on the layout, scale, fixType and flags; the header compiles strict with the GPS macros.
+
 ## [0.6.0] — 2026-10-03
 
 BLE packet schema moves into defs and gets telemetry version 4 (decisions D-061, D-058; Q-017 resolved). No DBC, DID, VSS, `tester_policy` or D-020 golden-copy change, and no existing generated file changes except the module list comment in `gen/python/moto_defs/__init__.py`. The consumers of the new files (moto-connectivity-node, moto-mobile, moto-server) switch together: each bumps its pin and drops its own copy of the schema.

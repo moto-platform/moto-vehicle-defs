@@ -14,6 +14,7 @@
 #define BLE_GATT_SERVICE_UUID "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define BLE_GATT_TELEMETRY_CHAR_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define BLE_GATT_IMU_CHAR_UUID "f62bc083-e25d-46b3-aa0b-2e9e6bc8f1e5"
+#define BLE_GATT_GPS_CHAR_UUID "3c8f9255-ba3f-4bda-90b3-8c30bcbcace1"
 #define BLE_GATT_TELEMATICS_RX_CHAR_UUID "828919fe-e41c-40ee-b4c6-2c974c2d3345"
 #define BLE_GATT_REQUESTED_MTU (185u)
 
@@ -194,5 +195,51 @@
 #define BLE_IMU_FLAG_DEVICE_OVERFLOW (1u << 0u) /* The node's sample ring buffer was full at least once since the previous block; the oldest unsent samples were kept and new ones dropped. */
 #define BLE_IMU_FLAG_READ_ERROR (1u << 1u) /* At least one sensor read failed since the previous block. */
 #define BLE_IMU_FLAG_SENSOR_RECONFIGURED (1u << 2u) /* The node found the sensor configuration lost (e.g. a brown-out reset it to its defaults) or reads failing, and configured it again since the previous block. Samples before this block may be in the wrong scale or frozen. */
+
+/* GPS block (characteristic `gps`, D-060): speed and heading only; latitude,
+ * longitude and height never leave the node. */
+#define BLE_GPS_BLOCK_VERSION (1u)
+#define BLE_GPS_TOTAL_BYTES (26u)
+#define BLE_GPS_NOTIFY_PERIOD_MS (100u)
+/* GPS raw scale: physical = raw / LSB_PER_<unit>. */
+#define BLE_GPS_SPEED_LSB_PER_MPS (1000u)
+#define BLE_GPS_HEADING_LSB_PER_DEG (100000u)
+
+/* GPS block (26 bytes) */
+#define BLE_GPS_VERSION_OFFSET (0u) /* uint8 */
+#define BLE_GPS_VERSION_SIZE (1u)
+#define BLE_GPS_SEQ_OFFSET (1u) /* uint8 */
+#define BLE_GPS_SEQ_SIZE (1u)
+#define BLE_GPS_DEVICE_TIME_MS_OFFSET (2u) /* uint32 */
+#define BLE_GPS_DEVICE_TIME_MS_SIZE (4u)
+#define BLE_GPS_GROUND_SPEED_OFFSET (6u) /* int32 */
+#define BLE_GPS_GROUND_SPEED_SIZE (4u)
+#define BLE_GPS_HEADING_OF_MOTION_OFFSET (10u) /* int32 */
+#define BLE_GPS_HEADING_OF_MOTION_SIZE (4u)
+#define BLE_GPS_SPEED_ACCURACY_OFFSET (14u) /* uint32 */
+#define BLE_GPS_SPEED_ACCURACY_SIZE (4u)
+#define BLE_GPS_HEADING_ACCURACY_OFFSET (18u) /* uint32 */
+#define BLE_GPS_HEADING_ACCURACY_SIZE (4u)
+#define BLE_GPS_FIX_TYPE_OFFSET (22u) /* uint8 */
+#define BLE_GPS_FIX_TYPE_SIZE (1u)
+#define BLE_GPS_NUM_SV_OFFSET (23u) /* uint8 */
+#define BLE_GPS_NUM_SV_SIZE (1u)
+#define BLE_GPS_FLAGS_OFFSET (24u) /* uint8 */
+#define BLE_GPS_FLAGS_SIZE (1u)
+#define BLE_GPS_RESERVED_OFFSET (25u) /* uint8 */
+#define BLE_GPS_RESERVED_SIZE (1u)
+
+/* GPS `fixType` values (UBX-NAV-PVT fixType) */
+#define BLE_GPS_FIX_TYPE_NO_FIX (0u)
+#define BLE_GPS_FIX_TYPE_DEAD_RECKONING_ONLY (1u)
+#define BLE_GPS_FIX_TYPE_FIX2D (2u)
+#define BLE_GPS_FIX_TYPE_FIX3D (3u)
+#define BLE_GPS_FIX_TYPE_GNSS_DEAD_RECKONING (4u)
+#define BLE_GPS_FIX_TYPE_TIME_ONLY (5u)
+
+/* GPS block `flags` bits */
+#define BLE_GPS_FLAG_GNSS_FIX_OK (1u << 0u) /* NAV-PVT flags.gnssFixOK: the fix is within the receiver's DOP and accuracy masks. */
+#define BLE_GPS_FLAG_PARSE_ERROR (1u << 1u) /* The node's UBX parser dropped at least one message (Fletcher checksum, length or class/ID error) since the previous block. */
+#define BLE_GPS_FLAG_UART_OVERFLOW (1u << 2u) /* The node's UART receive buffer overflowed at least once since the previous block; bytes were lost. */
 
 #endif /* BLE_SCHEMA_H */
