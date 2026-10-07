@@ -4,7 +4,9 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
-Planned as v0.8.0 (MINOR): the GPS block of D-060 (BLE schema, D-061). Additive: a new characteristic and its layout; telemetry v4, the IMU block, every DBC, DID, VSS path, `tester_policy` and the D-020 golden copy are unchanged. Consumers: conn sends the block (UBX NAV-PVT parser), moto-mobile records it to the session's `gps.csv`, moto-server stores it; they take the new pin together (D-061 item 3).
+## [0.8.0] — 2026-10-07
+
+MINOR: the GPS block of D-060 (BLE schema, D-061). Additive: a new characteristic and its layout; telemetry v4, the IMU block, every DBC, DID, VSS path, `tester_policy` and the D-020 golden copy are unchanged. Consumers: conn sends the block (UBX NAV-PVT parser), moto-mobile records it to the session's `gps.csv`, moto-server stores it; they take the new pin together (D-061 item 3).
 
 ### Added
 - `ble/ble_schema.json` `gpsBlock` (D-060 item 3): 26 bytes, little-endian, packed, version 1, one block per UBX-NAV-PVT (10 Hz): `version`, `seq`, `deviceTimeMs` (node clock when the NAV-PVT was complete), `groundSpeed` and `speedAccuracy` (mm/s), `headingOfMotion` and `headingAccuracy` (1e-5 deg), `fixType` (NAV-PVT values 0-5), `numSv`, `flags` (`gnssFixOk`, `parseError`, `uartOverflow`), `reserved`. No latitude, longitude or height (invariant 7). Rules: `privacy`, `timeRule`, `mtuRule` (suspended below 26 bytes of payload, never truncated), `sequenceRule`, `scale`.
@@ -13,9 +15,9 @@ Planned as v0.8.0 (MINOR): the GPS block of D-060 (BLE schema, D-061). Additive:
 - `gen/c/conn/ble_schema.h`: `BLE_GATT_GPS_CHAR_UUID`, `BLE_GPS_*` (version, sizes, offsets, scale, fixType values, flag bits). `gen/python/moto_defs/ble.py`: `GPS_BLOCK_VERSION`, `GPS_TOTAL_BYTES`, `gps_fields()`. `gen/dart/moto_defs`: `BleGpsBlock`, `BleGpsOffsets`, `BleGpsSizes`, `BleGpsFixType`, `BleGpsFlagBits`, `BleGpsScale`.
 - tests (`test_ble.py`): each GPS check fails on a mutated copy (gap, total, a `latitude` or `hMsl` field, duplicate fixType value or flag bit, unknown unit, missing or duplicate characteristic UUID); C, Python and Dart agree on the layout, scale, fixType and flags; the header compiles strict with the GPS macros.
 
-## [0.7.0] — not yet tagged
+## [0.7.0] — 2026-10-07
 
-Planned as v0.7.0 (MINOR): the D-059 frame-gate widening and the discovery scan list (Q-020 resolved). `tester_policy`'s services are unchanged; the golden D-020 copy gains the one Flow Control frame and nothing else. No DBC, DID, VSS or BLE change. The gate file `vehicle_cl250.{h,c}` changes in conn, hil_sim and rt_core; rt-core keeps v0.5.x until its next defs bump (D-059 item 5), and its vehicle link must check the link state before it sends any FC.
+MINOR: the D-059 frame-gate widening and the discovery scan list (Q-020 resolved). The concrete FC frame, `max_ff_dl` and scan list were confirmed by the user before this tag (safety-reviewer's stop rule for a gate widening). `tester_policy`'s services are unchanged; the golden D-020 copy gains the one Flow Control frame and nothing else. No DBC, DID, VSS or BLE change. The gate file `vehicle_cl250.{h,c}` changes in conn, hil_sim and rt_core; rt-core keeps v0.5.x until its next defs bump (D-059 item 5), and its vehicle link must check the link state before it sends any FC.
 
 ### Added
 - `uds/vehicle_cl250.yaml` `transport.flow_control` (D-059 item 1): FC.CTS with `block_size` 0 (one FC per reception), `st_min_ms` 0, `padding_byte` 0xAA (= the transport padding) and `max_ff_dl` 255 (the largest segmented answer the client accepts; anything longer gets no FC). Platform choices, not legacy values.
