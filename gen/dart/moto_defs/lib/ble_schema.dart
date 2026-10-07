@@ -6,6 +6,7 @@ abstract final class BleGatt {
   static const String serviceUuid = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
   static const String telemetryCharacteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
   static const String imuCharacteristicUuid = 'f62bc083-e25d-46b3-aa0b-2e9e6bc8f1e5';
+  static const String gpsCharacteristicUuid = '3c8f9255-ba3f-4bda-90b3-8c30bcbcace1';
   static const String telematicsRxCharacteristicUuid = '828919fe-e41c-40ee-b4c6-2c974c2d3345';
   /// ATT MTU the central requests.
   static const int requestedMtu = 185;
@@ -457,4 +458,91 @@ abstract final class BleImuScale {
   static const double accelLsbPerG = 4096.0;
   /// physical (deg/s) = raw / this value.
   static const double gyroLsbPerDps = 65.5;
+}
+
+/// GPS block format (characteristic `gps`, D-060): speed and heading only, no position.
+abstract final class BleGpsBlock {
+  static const int version = 1;
+  static const int totalBytes = 26;
+  static const int notifyPeriodMs = 100;
+}
+
+/// GPS block: byte offset of each field.
+abstract final class BleGpsOffsets {
+  /// GPS block format version, 1.
+  static const int version = 0;
+  /// Rolling 0-255 counter, see `sequenceRule`.
+  static const int seq = 1;
+  /// Node clock in ms when the NAV-PVT message was complete, see `timeRule`.
+  static const int deviceTimeMs = 2;
+  /// Ground speed (2-D), mm/s, see `scale.speed`.
+  static const int groundSpeed = 6;
+  /// Heading of motion (2-D), 1e-5 deg, see `scale.heading`.
+  static const int headingOfMotion = 10;
+  /// Speed accuracy estimate, mm/s, see `scale.speed`.
+  static const int speedAccuracy = 14;
+  /// Heading accuracy estimate (motion and vehicle), 1e-5 deg, see `scale.heading`.
+  static const int headingAccuracy = 18;
+  /// GNSS fix type, see `fixType`.
+  static const int fixType = 22;
+  /// Satellites used in the navigation solution.
+  static const int numSv = 23;
+  /// See `gpsBlock.flags`.
+  static const int flags = 24;
+  /// Always 0.
+  static const int reserved = 25;
+}
+
+/// GPS block: byte size of each field.
+abstract final class BleGpsSizes {
+  /// GPS block format version, 1.
+  static const int version = 1;
+  /// Rolling 0-255 counter, see `sequenceRule`.
+  static const int seq = 1;
+  /// Node clock in ms when the NAV-PVT message was complete, see `timeRule`.
+  static const int deviceTimeMs = 4;
+  /// Ground speed (2-D), mm/s, see `scale.speed`.
+  static const int groundSpeed = 4;
+  /// Heading of motion (2-D), 1e-5 deg, see `scale.heading`.
+  static const int headingOfMotion = 4;
+  /// Speed accuracy estimate, mm/s, see `scale.speed`.
+  static const int speedAccuracy = 4;
+  /// Heading accuracy estimate (motion and vehicle), 1e-5 deg, see `scale.heading`.
+  static const int headingAccuracy = 4;
+  /// GNSS fix type, see `fixType`.
+  static const int fixType = 1;
+  /// Satellites used in the navigation solution.
+  static const int numSv = 1;
+  /// See `gpsBlock.flags`.
+  static const int flags = 1;
+  /// Always 0.
+  static const int reserved = 1;
+}
+
+/// GPS `fixType` values (UBX-NAV-PVT fixType).
+abstract final class BleGpsFixType {
+  static const int noFix = 0;
+  static const int deadReckoningOnly = 1;
+  static const int fix2d = 2;
+  static const int fix3d = 3;
+  static const int gnssDeadReckoning = 4;
+  static const int timeOnly = 5;
+}
+
+/// GPS block `flags` bit masks.
+abstract final class BleGpsFlagBits {
+  /// NAV-PVT flags.gnssFixOK: the fix is within the receiver's DOP and accuracy masks.
+  static const int gnssFixOk = 1 << 0;
+  /// The node's UBX parser dropped at least one message (Fletcher checksum, length or class/ID error) since the previous block.
+  static const int parseError = 1 << 1;
+  /// The node's UART receive buffer overflowed at least once since the previous block; bytes were lost.
+  static const int uartOverflow = 1 << 2;
+}
+
+/// GPS raw scale: physical = raw / this value.
+abstract final class BleGpsScale {
+  /// physical (m/s) = raw / this value.
+  static const int speedLsbPerMps = 1000;
+  /// physical (deg) = raw / this value.
+  static const int headingLsbPerDeg = 100000;
 }

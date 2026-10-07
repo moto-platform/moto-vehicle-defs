@@ -1,15 +1,16 @@
 {
-  "$schemaDescription": "Single source of truth for the BLE notifications sent by moto-connectivity-node to moto-mobile: the telemetry packet (current version 4, top level), its low-MTU fallback (the version 2 layout) and the IMU sample block. This file lives in moto-vehicle-defs ble/ (D-061, Q-017 resolved); codegen generates gen/c/conn/ble_schema.h (offset/size macros; moto-connectivity-node's packed structs static_assert against them), gen/python/moto_defs/ble.py (moto-server decodes raw_hex/imu raw bytes driven by SCHEMA) and gen/dart/moto_defs (moto-mobile decoders), so no consumer keeps a copy of this file. Ported from HondaCl250_Telemetry@legacy-final (version 1) per D-023; version 3 and the IMU block per D-032; version 4 per D-058.",
+  "$schemaDescription": "Single source of truth for the BLE notifications sent by moto-connectivity-node to moto-mobile: the telemetry packet (current version 4, top level), its low-MTU fallback (the version 2 layout), the IMU sample block and the GPS block. This file lives in moto-vehicle-defs ble/ (D-061, Q-017 resolved); codegen generates gen/c/conn/ble_schema.h (offset/size macros; moto-connectivity-node's packed structs static_assert against them), gen/python/moto_defs/ble.py (moto-server decodes raw_hex/imu raw bytes driven by SCHEMA) and gen/dart/moto_defs (moto-mobile decoders), so no consumer keeps a copy of this file. Ported from HondaCl250_Telemetry@legacy-final (version 1) per D-023; version 3 and the IMU block per D-032; version 4 per D-058; the GPS block per D-060.",
   "gatt": {
     "serviceUuid": "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
     "characteristics": {
       "telemetry": { "uuid": "beb5483e-36e1-4688-b7f5-ea07361b26a8", "properties": ["notify"], "carries": "BLETelemetryPacket (version 4, or version 2 at low MTU)" },
       "imu": { "uuid": "f62bc083-e25d-46b3-aa0b-2e9e6bc8f1e5", "properties": ["notify"], "carries": "ImuBlock" },
+      "gps": { "uuid": "3c8f9255-ba3f-4bda-90b3-8c30bcbcace1", "properties": ["notify"], "carries": "GpsBlock (D-060)" },
       "telematicsRx": { "uuid": "828919fe-e41c-40ee-b4c6-2c974c2d3345", "properties": ["write", "writeWithoutResponse"], "carries": "Phone telematics text (not part of this schema)" }
     },
     "mtu": {
       "requested": 185,
-      "rule": "The central requests an ATT MTU of at least `requested` right after connecting (Android: requestMtu; iOS negotiates on its own). The firmware reads the negotiated MTU and never sends a notification larger than MTU - 3 bytes: it sends the version 4 telemetry layout (`totalBytes`, 57) when MTU - 3 >= 57 (blePayloadLimit(mtu) >= 57), otherwise it falls back to the version 2 layout (`lowMtuFallback`), and it shrinks or suspends IMU blocks (`imuBlock.mtuRule`). Version 3 (37 bytes) is no longer produced; receivers still decode it for old sessions. It never truncates a packet."
+      "rule": "The central requests an ATT MTU of at least `requested` right after connecting (Android: requestMtu; iOS negotiates on its own). The firmware reads the negotiated MTU and never sends a notification larger than MTU - 3 bytes: it sends the version 4 telemetry layout (`totalBytes`, 57) when MTU - 3 >= 57 (blePayloadLimit(mtu) >= 57), otherwise it falls back to the version 2 layout (`lowMtuFallback`), it shrinks or suspends IMU blocks (`imuBlock.mtuRule`) and suspends GPS blocks below their size (`gpsBlock.mtuRule`). Version 3 (37 bytes) is no longer produced; receivers still decode it for old sessions. It never truncates a packet."
     }
   },
   "packetName": "BLETelemetryPacket",
@@ -211,6 +212,66 @@
       { "name": "gx", "offset": 6,  "size": 2, "type": "int16", "description": "Angular rate x, raw, see `scale.gyro`." },
       { "name": "gy", "offset": 8,  "size": 2, "type": "int16", "description": "Angular rate y, raw, see `scale.gyro`." },
       { "name": "gz", "offset": 10, "size": 2, "type": "int16", "description": "Angular rate z, raw, see `scale.gyro`." }
+    ]
+  },
+  "gpsBlock": {
+    "packetName": "GpsBlock",
+    "characteristic": "gps",
+    "version": 1,
+    "endianness": "little",
+    "packed": true,
+    "totalBytes": 26,
+    "notifyPeriodMs": 100,
+    "source": {
+      "part": "u-blox NEO-M8N on moto-connectivity-node's UART (D-060, TEMPORARY until rt-core owns the GPS)",
+      "protocol": "UBX binary only, NMEA off on the port; UBX-NAV-PVT at 10 Hz, UART >= 38400 baud. Parsed byte-wise with the Fletcher checksum on the node; one block is notified per valid NAV-PVT.",
+      "fieldOrigin": "groundSpeed = gSpeed, headingOfMotion = headMot, speedAccuracy = sAcc, headingAccuracy = headAcc, fixType = fixType, numSv = numSV, flags.gnssFixOk = flags bit 0 (gnssFixOK) of the same NAV-PVT."
+    },
+    "privacy": "Latitude, longitude and height never leave the node: not on BLE, not on the phone, not on the server (D-060 item 3, invariant 7). codegen refuses a GPS field whose name looks like a position (lat, lon, height, altitude, ECEF, position). A speed + heading series can still rebuild the route's shape by dead reckoning (D-060 item 5, accepted residual risk): sessions stay on the user's machine and are never committed (D-033).",
+    "timeRule": "deviceTimeMs is the node clock (the same clock as the telemetry and IMU `deviceTimeMs`) when the last byte of the NAV-PVT message was received, so CAN, IMU and GPS samples can be aligned offline. GPS time and date are not sent.",
+    "mtuRule": "A block is sent only when MTU - 3 >= totalBytes (26); otherwise GPS notifications are suspended and the loss shows up as a `seq` gap. It is never truncated.",
+    "sequenceRule": "seq is a rolling 0-255 counter incremented once per GPS block sent; receivers count lost blocks as (seq - prev.seq - 1) mod 256.",
+    "scale": {
+      "speed": { "lsbPerUnit": 1000, "unit": "m/s", "rule": "groundSpeed and speedAccuracy: m/s = raw / 1000 (raw in mm/s, as in NAV-PVT)" },
+      "heading": { "lsbPerUnit": 100000, "unit": "deg", "rule": "headingOfMotion and headingAccuracy: deg = raw / 100000 (raw in 1e-5 deg, as in NAV-PVT)" }
+    },
+    "fixType": {
+      "field": "fixType",
+      "rule": "The NAV-PVT fixType as received. The speed check of D-060 item 4 uses only blocks with fixType 3 (fix3d) or 4 (gnssDeadReckoning) and flags.gnssFixOk set.",
+      "values": [
+        { "name": "noFix",             "value": 0 },
+        { "name": "deadReckoningOnly", "value": 1 },
+        { "name": "fix2d",             "value": 2 },
+        { "name": "fix3d",             "value": 3 },
+        { "name": "gnssDeadReckoning", "value": 4 },
+        { "name": "timeOnly",          "value": 5 }
+      ]
+    },
+    "flags": {
+      "field": "flags",
+      "bits": [
+        { "bit": 0, "name": "gnssFixOk",   "description": "NAV-PVT flags.gnssFixOK: the fix is within the receiver's DOP and accuracy masks." },
+        { "bit": 1, "name": "parseError",  "description": "The node's UBX parser dropped at least one message (Fletcher checksum, length or class/ID error) since the previous block." },
+        { "bit": 2, "name": "uartOverflow", "description": "The node's UART receive buffer overflowed at least once since the previous block; bytes were lost." },
+        { "bit": 3, "name": "reserved" },
+        { "bit": 4, "name": "reserved" },
+        { "bit": 5, "name": "reserved" },
+        { "bit": 6, "name": "reserved" },
+        { "bit": 7, "name": "reserved" }
+      ]
+    },
+    "fields": [
+      { "name": "version",         "offset": 0,  "size": 1, "type": "uint8",  "description": "GPS block format version, 1." },
+      { "name": "seq",             "offset": 1,  "size": 1, "type": "uint8",  "description": "Rolling 0-255 counter, see `sequenceRule`." },
+      { "name": "deviceTimeMs",    "offset": 2,  "size": 4, "type": "uint32", "description": "Node clock in ms when the NAV-PVT message was complete, see `timeRule`." },
+      { "name": "groundSpeed",     "offset": 6,  "size": 4, "type": "int32",  "description": "Ground speed (2-D), mm/s, see `scale.speed`." },
+      { "name": "headingOfMotion", "offset": 10, "size": 4, "type": "int32",  "description": "Heading of motion (2-D), 1e-5 deg, see `scale.heading`." },
+      { "name": "speedAccuracy",   "offset": 14, "size": 4, "type": "uint32", "description": "Speed accuracy estimate, mm/s, see `scale.speed`." },
+      { "name": "headingAccuracy", "offset": 18, "size": 4, "type": "uint32", "description": "Heading accuracy estimate (motion and vehicle), 1e-5 deg, see `scale.heading`." },
+      { "name": "fixType",         "offset": 22, "size": 1, "type": "uint8",  "description": "GNSS fix type, see `fixType`." },
+      { "name": "numSv",           "offset": 23, "size": 1, "type": "uint8",  "description": "Satellites used in the navigation solution." },
+      { "name": "flags",           "offset": 24, "size": 1, "type": "uint8",  "description": "See `gpsBlock.flags`." },
+      { "name": "reserved",        "offset": 25, "size": 1, "type": "uint8",  "description": "Always 0." }
     ]
   }
 }

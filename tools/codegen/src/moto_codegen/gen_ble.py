@@ -1,9 +1,10 @@
 """BLE packet schema (`ble/ble_schema.json`, D-061): checks, C macros, Python and Dart.
 
-The JSON is the single source for the telemetry packet (versions 2, 3, 4), the IMU block and
-the GATT layout. Consumers (conn, moto-mobile, moto-server) use the generated code instead of
-keeping copies. The C output is offset/size macros only: packed structs are a compiler
-extension, so conn's own structs `static_assert` against these macros (misra/README.md).
+The JSON is the single source for the telemetry packet (versions 2, 3, 4), the IMU block, the
+GPS block (D-060) and the GATT layout. Consumers (conn, moto-mobile, moto-server) use the
+generated code instead of keeping copies. The C output is offset/size macros only: packed
+structs are a compiler extension, so conn's own structs `static_assert` against these macros
+(misra/README.md).
 """
 
 from __future__ import annotations
@@ -38,7 +39,10 @@ _DART_RESERVED = frozenset(
     "new null of on operator part required rethrow return sealed set show static super "
     "switch sync this throw true try typedef var void when while with yield".split()
 )
-_UNIT_NAMES = {"g": "G", "deg/s": "Dps"}  # unit -> identifier part (C upper-cases it)
+_UNIT_NAMES = {"g": "G", "deg/s": "Dps", "m/s": "Mps", "deg": "Deg"}  # C upper-cases them
+# D-060 item 3 / invariant 7: no position leaves conn. A GPS field name that looks like one
+# is refused (lat, lon, height, altitude, hMSL, ECEF, position).
+_POSITION_NAME = re.compile(r"lat|lon|height|alt|hmsl|ecef|pos", re.IGNORECASE)
 
 
 def load_schema(path: Path | str = config.BLE_SCHEMA) -> dict[str, Any]:
@@ -242,11 +246,59 @@ def _check_imu(schema: dict[str, Any], errors: list[str]) -> None:
             errors.append(f"ble: imuBlock.scale.{sensor}.unit {scale.get('unit')!r} unknown")
 
 
+def _check_values(label: str, values: Any, errors: list[str]) -> None:
+    """Named uint8 enum values: lowerCamel names and values unique."""
+    if not isinstance(values, list) or not values:
+        errors.append(f"ble: {label}: no values")
+        return
+    names: set[str] = set()
+    numbers: set[int] = set()
+    for v in values:
+        name, value = v.get("name"), v.get("value")
+        where = f"ble: {label}: {name!r}"
+        if not isinstance(name, str) or not _NAME.fullmatch(name) or name in _DART_RESERVED:
+            errors.append(f"{where}: name must be lowerCamel and not a Dart reserved word")
+        elif name in names:
+            errors.append(f"{where}: duplicate name")
+        names.add(name)
+        if not _is_int(value) or not 0 <= value <= 0xFF or value in numbers:
+            errors.append(f"{where}: value must be a unique integer 0..255")
+        else:
+            numbers.add(value)
+
+
+def _check_gps(schema: dict[str, Any], errors: list[str]) -> None:
+    gps = schema.get("gpsBlock", {})
+    for key in ("version", "totalBytes", "notifyPeriodMs"):
+        if not _is_int(gps.get(key)) or gps[key] <= 0:
+            errors.append(f"ble: gpsBlock.{key} must be a positive integer")
+            return
+    fields = gps.get("fields")
+    _check_layout("gpsBlock.fields", fields, gps["totalBytes"], errors)
+    for f in fields or []:
+        if isinstance(f.get("name"), str) and _POSITION_NAME.search(f["name"]):
+            errors.append(
+                f"ble: gpsBlock.fields: {f['name']!r} looks like a position; latitude, "
+                "longitude and height never leave the node (D-060, invariant 7)"
+            )
+    if gps.get("characteristic") not in schema.get("gatt", {}).get("characteristics", {}):
+        errors.append("ble: gpsBlock.characteristic must name a gatt characteristic")
+    _check_bits("gpsBlock.flags.bits", gps.get("flags", {}).get("bits"), errors)
+    _check_values("gpsBlock.fixType.values", gps.get("fixType", {}).get("values"), errors)
+    for quantity in ("speed", "heading"):
+        scale = gps.get("scale", {}).get(quantity, {})
+        lsb = scale.get("lsbPerUnit")
+        if not _is_int(lsb) or lsb <= 0:
+            errors.append(f"ble: gpsBlock.scale.{quantity}.lsbPerUnit must be a positive integer")
+        elif scale.get("unit") not in _UNIT_NAMES:
+            errors.append(f"ble: gpsBlock.scale.{quantity}.unit {scale.get('unit')!r} unknown")
+
+
 def _check_gatt(schema: dict[str, Any], errors: list[str]) -> None:
     gatt = schema.get("gatt", {})
     uuids = {"serviceUuid": gatt.get("serviceUuid")}
     chars = gatt.get("characteristics", {})
-    for name in ("telemetry", "imu", "telematicsRx"):
+    for name in ("telemetry", "imu", "gps", "telematicsRx"):
         uuids[f"characteristics.{name}.uuid"] = chars.get(name, {}).get("uuid")
     for label, uuid in uuids.items():
         if not isinstance(uuid, str) or not _UUID.fullmatch(uuid):
@@ -263,6 +315,7 @@ def check_schema(schema: dict[str, Any]) -> list[str]:
     for section, check in (
         ("telemetry", _check_telemetry),
         ("imu", _check_imu),
+        ("gps", _check_gps),
         ("gatt", _check_gatt),
     ):
         try:
@@ -412,6 +465,27 @@ def generate_c(schema: dict[str, Any]) -> dict[str, str]:
     layout("BLE_IMU_HEADER", imu["headerFields"], f"IMU header ({imu['headerBytes']} bytes)")
     layout("BLE_IMU_SAMPLE", imu["sampleFields"], f"IMU sample ({imu['sampleBytes']} bytes)")
     bits("BLE_IMU_FLAG", imu["flags"]["bits"], "IMU header `flags` bits")
+
+    gps = schema["gpsBlock"]
+    h += [
+        "/* GPS block (characteristic `gps`, D-060): speed and heading only; latitude,",
+        " * longitude and height never leave the node. */",
+        f"#define BLE_GPS_BLOCK_VERSION {u(gps['version'])}",
+        f"#define BLE_GPS_TOTAL_BYTES {u(gps['totalBytes'])}",
+        f"#define BLE_GPS_NOTIFY_PERIOD_MS {u(gps['notifyPeriodMs'])}",
+        "/* GPS raw scale: physical = raw / LSB_PER_<unit>. */",
+    ]
+    for quantity in ("speed", "heading"):
+        scale = gps["scale"][quantity]
+        unit = _unit_part(scale["unit"]).upper()
+        h.append(f"#define BLE_GPS_{quantity.upper()}_LSB_PER_{unit} {u(scale['lsbPerUnit'])}")
+    h.append("")
+    layout("BLE_GPS", gps["fields"], f"GPS block ({gps['totalBytes']} bytes)")
+    h.append("/* GPS `fixType` values (UBX-NAV-PVT fixType) */")
+    for v in gps["fixType"]["values"]:
+        h.append(f"#define BLE_GPS_FIX_TYPE_{_upper_snake(v['name'])} {u(v['value'])}")
+    h.append("")
+    bits("BLE_GPS_FLAG", gps["flags"]["bits"], "GPS block `flags` bits")
     h += ["#endif /* BLE_SCHEMA_H */", ""]
     return {"ble_schema.h": "\n".join(h)}
 
@@ -461,6 +535,9 @@ def generate_python(schema: dict[str, Any]) -> str:
         "# Current layouts by version; the low-MTU fallback is FALLBACK_VERSION.",
         "TOTAL_BYTES_BY_VERSION = {" + ", ".join(f"{v}: {t}" for v, t in totals.items()) + "}",
         f"FALLBACK_TOTAL_BYTES = {schema['lowMtuFallback']['totalBytes']}",
+        "# D-060 GPS block (characteristic `gps`): speed and heading only, no position.",
+        f"GPS_BLOCK_VERSION = {schema['gpsBlock']['version']}",
+        f"GPS_TOTAL_BYTES = {schema['gpsBlock']['totalBytes']}",
         "",
         "",
         "def telemetry_fields(version: int) -> list[dict]:",
@@ -470,6 +547,11 @@ def generate_python(schema: dict[str, Any]) -> str:
         "    if version not in TOTAL_BYTES_BY_VERSION:",
         '        raise ValueError(f"no telemetry layout for version {version}")',
         '    return [f for f in SCHEMA["fields"] if f.get("sinceVersion", 3) <= version]',
+        "",
+        "",
+        "def gps_fields() -> list[dict]:",
+        '    """Field table of the GPS block (D-060)."""',
+        '    return SCHEMA["gpsBlock"]["fields"]',
         "",
     ]
     return "\n".join(lines)
@@ -631,6 +713,38 @@ def generate_dart(schema: dict[str, Any]) -> dict[str, str]:
             )
         )
     cls("BleImuScale", "IMU raw scale (D-032, provisional sensor).", members)
+
+    gps = schema["gpsBlock"]
+    cls(
+        "BleGpsBlock",
+        "GPS block format (characteristic `gps`, D-060): speed and heading only, no position.",
+        [
+            ("int", "version", str(gps["version"]), ""),
+            ("int", "totalBytes", str(gps["totalBytes"]), ""),
+            ("int", "notifyPeriodMs", str(gps["notifyPeriodMs"]), ""),
+        ],
+    )
+    for key, kind in (("offset", "Offsets"), ("size", "Sizes")):
+        offsets("BleGps" + kind, f"GPS block: byte {key} of each field.", gps["fields"], key)
+    cls(
+        "BleGpsFixType",
+        "GPS `fixType` values (UBX-NAV-PVT fixType).",
+        [("int", v["name"], str(v["value"]), "") for v in gps["fixType"]["values"]],
+    )
+    flag_bits("BleGpsFlagBits", "GPS block `flags` bit masks.", gps["flags"]["bits"])
+    cls(
+        "BleGpsScale",
+        "GPS raw scale: physical = raw / this value.",
+        [
+            (
+                "int",
+                f"{q}LsbPer{_unit_part(gps['scale'][q]['unit'])}",
+                str(gps["scale"][q]["lsbPerUnit"]),
+                f"physical ({gps['scale'][q]['unit']}) = raw / this value.",
+            )
+            for q in ("speed", "heading")
+        ],
+    )
 
     pubspec = (
         "# GENERATED by moto-vehicle-defs tools/codegen from ble/ble_schema.json. DO NOT EDIT.\n"

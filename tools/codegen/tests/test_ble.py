@@ -156,7 +156,57 @@ def _mutate_bus_state_duplicate(s):
     s["canHealth"]["busState"]["values"][1]["value"] = 0
 
 
+def _gps_field(s, name):
+    return next(f for f in s["gpsBlock"]["fields"] if f["name"] == name)
+
+
+def _mutate_gps_gap(s):
+    _gps_field(s, "groundSpeed")["offset"] += 1
+
+
+def _mutate_gps_total(s):
+    s["gpsBlock"]["totalBytes"] = 27
+
+
+def _mutate_gps_latitude(s):
+    _gps_field(s, "reserved").update(name="latitude", size=4, type="int32")
+    s["gpsBlock"]["totalBytes"] = 29
+
+
+def _mutate_gps_height(s):
+    _gps_field(s, "reserved")["name"] = "hMsl"
+
+
+def _mutate_gps_fix_type_duplicate(s):
+    s["gpsBlock"]["fixType"]["values"][1]["value"] = 0
+
+
+def _mutate_gps_flag_duplicate(s):
+    s["gpsBlock"]["flags"]["bits"][2]["bit"] = 1
+
+
+def _mutate_gps_unit(s):
+    s["gpsBlock"]["scale"]["speed"]["unit"] = "km/h"
+
+
+def _mutate_gps_characteristic(s):
+    del s["gatt"]["characteristics"]["gps"]
+
+
+def _mutate_gps_uuid_duplicate(s):
+    s["gatt"]["characteristics"]["gps"]["uuid"] = s["gatt"]["characteristics"]["imu"]["uuid"]
+
+
 MUTATIONS = [
+    (_mutate_gps_gap, "gpsBlock.fields"),
+    (_mutate_gps_total, "gpsBlock.fields: fields end at 26, but the declared total is 27"),
+    (_mutate_gps_latitude, "'latitude' looks like a position"),
+    (_mutate_gps_height, "'hMsl' looks like a position"),
+    (_mutate_gps_fix_type_duplicate, "gpsBlock.fixType.values"),
+    (_mutate_gps_flag_duplicate, "gpsBlock.flags.bits: bit 1"),
+    (_mutate_gps_unit, "gpsBlock.scale.speed.unit 'km/h' unknown"),
+    (_mutate_gps_characteristic, "gatt.characteristics.gps.uuid"),
+    (_mutate_gps_uuid_duplicate, "UUIDs must be unique"),
     (_mutate_overlap, "overlaps"),
     (_mutate_gap, "leaves a gap"),
     (_mutate_size, "does not match type"),
@@ -316,6 +366,48 @@ def test_imu_flags_gatt_and_sentinels_agree(real, outputs):
     assert f"'{real['gatt']['serviceUuid']}'" in dart
 
 
+# D-060 item 3: the GPS block as decided, and nothing that locates the rider.
+GPS_LAYOUT = [
+    ("version", 0, 1), ("seq", 1, 1), ("deviceTimeMs", 2, 4), ("groundSpeed", 6, 4),
+    ("headingOfMotion", 10, 4), ("speedAccuracy", 14, 4), ("headingAccuracy", 18, 4),
+    ("fixType", 22, 1), ("numSv", 23, 1), ("flags", 24, 1), ("reserved", 25, 1),
+]  # fmt: skip
+
+
+def test_gps_block_agrees_in_c_python_and_dart(real, outputs):
+    c, dart, py = outputs
+    macros = _c_macros(c)
+    fields = py["gps_fields"]()
+    assert [(f["name"], f["offset"], f["size"]) for f in fields] == GPS_LAYOUT
+    dart_off = _dart_class(dart, "BleGpsOffsets")
+    dart_size = _dart_class(dart, "BleGpsSizes")
+    for f in fields:
+        snake = gen_ble._upper_snake(f["name"])
+        assert macros[f"BLE_GPS_{snake}_OFFSET"] == dart_off[f["name"]] == f["offset"]
+        assert macros[f"BLE_GPS_{snake}_SIZE"] == dart_size[f["name"]] == f["size"]
+    assert macros["BLE_GPS_TOTAL_BYTES"] == py["GPS_TOTAL_BYTES"] == 26
+    assert _dart_class(dart, "BleGpsBlock")["totalBytes"] == 26
+    assert macros["BLE_GPS_BLOCK_VERSION"] == py["GPS_BLOCK_VERSION"] == 1
+    assert macros["BLE_GPS_SPEED_LSB_PER_MPS"] == 1000
+    assert macros["BLE_GPS_HEADING_LSB_PER_DEG"] == 100000
+    assert _dart_class(dart, "BleGpsScale") == {"speedLsbPerMps": 1000, "headingLsbPerDeg": 100000}
+    assert macros["BLE_GPS_FIX_TYPE_FIX3D"] == _dart_class(dart, "BleGpsFixType")["fix3d"] == 3
+    assert _dart_class(dart, "BleGpsFlagBits") == {
+        "gnssFixOk": 1,
+        "parseError": 2,
+        "uartOverflow": 4,
+    }
+    gps_uuid = real["gatt"]["characteristics"]["gps"]["uuid"]
+    assert f'"{gps_uuid}"' in c and f"'{gps_uuid}'" in dart
+
+
+def test_no_position_anywhere_in_the_gps_block(real):
+    """D-060 item 3 / invariant 7: latitude, longitude and height never leave conn."""
+    names = [f["name"] for f in real["gpsBlock"]["fields"]]
+    assert not [n for n in names if gen_ble._POSITION_NAME.search(n)]
+    assert real["gpsBlock"]["totalBytes"] == 26
+
+
 def test_dart_package_files(real):
     files = gen_ble.generate_dart(real)
     assert set(files) == {"pubspec.yaml", "lib/ble_schema.dart", "lib/moto_defs.dart"}
@@ -342,6 +434,9 @@ def test_header_compiles_strict_and_values_hold(tmp_path):
         "           == BLE_TELEMETRY_V4_TOTAL_BYTES) ? 1u : 0u;\n"
         "    ok &= ((BLE_TELEMETRY_FLAG_IMU_ACTIVE\n"
         "            & BLE_TELEMETRY_FLAG_RPM_VALID) == 0u) ? 1u : 0u;\n"
+        "    ok &= (BLE_GPS_RESERVED_OFFSET + BLE_GPS_RESERVED_SIZE\n"
+        "           == BLE_GPS_TOTAL_BYTES) ? 1u : 0u;\n"
+        "    ok &= (BLE_GPS_HEADING_LSB_PER_DEG == 100000u) ? 1u : 0u;\n"
         "    return (ok == 1u) ? 0 : 1;\n}\n",
         encoding="utf-8",
     )
