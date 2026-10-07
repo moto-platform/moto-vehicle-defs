@@ -62,6 +62,96 @@ def request_allowed(policy: dict[str, Any], payload: list[int] | bytes) -> bool:
     return False
 
 
+def frame_allowed(vehicle: dict[str, Any], frame: list[int] | bytes) -> bool:
+    """Python twin of the generated vehicle_cl250_frame_allowed() (D-020, D-059)."""
+    if len(frame) < 2:
+        return False
+    if frame[0] & 0xF0 == 0:  # Single Frame request
+        length = frame[0] & 0x0F
+        if length == 0 or length > 7 or length + 1 > len(frame):
+            return False
+        return request_allowed(vehicle["tester_policy"], frame[1 : length + 1])
+    return bytes(frame) == config.vehicle_fc_frame(vehicle["transport"])
+
+
+def single_frame(vehicle: dict[str, Any], payload: list[int]) -> bytes:
+    """The padded Single Frame the tester sends for `payload`."""
+    transport = vehicle["transport"]
+    pad = [transport["padding_byte"]] * (transport["frame_dlc"] - 1 - len(payload))
+    return bytes([len(payload), *payload, *pad])
+
+
+# D-059: the generated scan table holds requests of up to this many bytes.
+SCAN_REQUEST_MAX = 3
+SCAN_BITMAP_IDS = 0x20  # ids per 4-byte support bitmap
+
+
+def check_discovery(data: dict[str, Any]) -> list[str]:
+    """D-059: every discovery request passes tester_policy and the frame gate; bitmap
+    chains and `after` references are consistent."""
+    errors: list[str] = []
+    scan = data.get("discovery_scan")
+    if not isinstance(scan, dict) or not isinstance(scan.get("requests"), list):
+        return ["vehicle: discovery_scan.requests missing (D-059)"]
+    entries = scan["requests"]
+    if not 0 < len(entries) < 0xFF:
+        errors.append("vehicle: discovery_scan needs 1..254 requests (0xFF = no `after`)")
+    seen: dict[str, dict[str, Any]] = {}
+    requests: set[tuple[int, ...]] = set()
+    for item in entries:
+        name = item.get("name")
+        label = f"vehicle: discovery {name or '?'}"
+        req = item.get("request")
+        if not name or name in seen:
+            errors.append(f"{label}: name missing or duplicate")
+        if (
+            not isinstance(req, list)
+            or not 1 <= len(req) <= SCAN_REQUEST_MAX
+            or not all(type(b) is int and 0 <= b <= 0xFF for b in req)
+        ):
+            errors.append(f"{label}: request must be 1..{SCAN_REQUEST_MAX} bytes")
+            continue
+        if tuple(req) in requests:
+            errors.append(f"{label}: request {req} listed twice")
+        requests.add(tuple(req))
+        if not request_allowed(data["tester_policy"], req):
+            errors.append(f"{label}: request {req} violates tester_policy (D-020)")
+        elif not frame_allowed(data, single_frame(data, req)):
+            errors.append(f"{label}: request {req} refused by the frame gate (D-059)")
+        if item.get("bitmap", False) is not False:
+            if item["bitmap"] is not True or len(req) < 2 or req[-1] % SCAN_BITMAP_IDS != 0:
+                errors.append(f"{label}: a bitmap request ends in a multiple of 0x20")
+        after = item.get("after")
+        if after is not None:
+            ref = seen.get(after.get("name")) if isinstance(after, dict) else None
+            if ref is None or ref.get("bitmap") is not True:
+                errors.append(f"{label}: after must name an earlier bitmap request")
+            else:
+                base = ref["request"][-1]
+                if not base < after.get("id", -1) <= base + SCAN_BITMAP_IDS:
+                    errors.append(f"{label}: after.id outside {after['name']}'s bitmap")
+        if item.get("bitmap") is True and len(req) >= 2 and req[-1] % SCAN_BITMAP_IDS == 0:
+            base = req[-1]
+            # "while the previous bitmap's last bit says supported" (D-059 item 2)
+            prev = [
+                e
+                for e in seen.values()
+                if e.get("bitmap") is True and e["request"] == [*req[:-1], base - SCAN_BITMAP_IDS]
+            ]
+            if base > 0 and (
+                not prev
+                or after is None
+                or after.get("name") != prev[0]["name"]
+                or after.get("id") != base
+            ):
+                errors.append(
+                    f"{label}: a chained bitmap is gated by the previous bitmap's last bit"
+                )
+        if name:
+            seen[name] = item
+    return errors
+
+
 def _evidence_ok(item: dict[str, Any]) -> bool:
     ev = item.get("evidence")
     return isinstance(ev, list) and len(ev) > 0 and all(":" in str(e) for e in ev)
@@ -197,7 +287,7 @@ def did_fault_gap_bounds(
 def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[str]:
     errors: list[str] = []
     for key in ("schema_version", "source", "bus", "addressing", "transport",
-                "tester_policy", "session", "timing", "dids"):  # fmt: skip
+                "tester_policy", "discovery_scan", "session", "timing", "dids"):  # fmt: skip
         if key not in data:
             errors.append(f"vehicle: missing top-level key '{key}'")
     if errors:
@@ -220,6 +310,8 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
                     f"vehicle: tester_policy allows 0x{sid:02X} 0x{sub:02X} (forbidden, D-020)"
                 )
     errors += [f"vehicle: {e}" for e in config.policy_d020_errors(policy)]
+    errors += [f"vehicle: {e}" for e in config.flow_control_d059_errors(data["transport"])]
+    errors += check_discovery(data)
     listed_forbidden = set(policy.get("forbidden", []))
     if listed_forbidden != set(config.FORBIDDEN_VEHICLE_SERVICES):
         errors.append("vehicle: tester_policy.forbidden differs from the D-020 list")

@@ -10,6 +10,37 @@ const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[VEHICLE_CL250_FUNC
     { 0x18DB33F1u, true },
 };
 
+const uint8_t vehicle_cl250_fc_cts[VEHICLE_CL250_FRAME_DLC] = {
+    0x30u, 0x00u, 0x00u, 0xAAu, 0xAAu, 0xAAu, 0xAAu, 0xAAu
+};
+
+const vehicle_cl250_scan_t vehicle_cl250_discovery_scan[VEHICLE_CL250_SCAN_COUNT] = {
+    { { 0x01u, 0x00u, 0x00u }, 2u, 2u, VEHICLE_CL250_SCAN_NONE, 0x00u }, /* OBD_PIDS_01_20 */
+    { { 0x01u, 0x20u, 0x00u }, 2u, 2u, 0u, 0x20u }, /* OBD_PIDS_21_40 */
+    { { 0x01u, 0x40u, 0x00u }, 2u, 2u, 1u, 0x40u }, /* OBD_PIDS_41_60 */
+    { { 0x01u, 0x60u, 0x00u }, 2u, 2u, 2u, 0x60u }, /* OBD_PIDS_61_80 */
+    { { 0x01u, 0x80u, 0x00u }, 2u, 2u, 3u, 0x80u }, /* OBD_PIDS_81_A0 */
+    { { 0x01u, 0xA0u, 0x00u }, 2u, 2u, 4u, 0xA0u }, /* OBD_PIDS_A1_C0 */
+    { { 0x01u, 0xC0u, 0x00u }, 2u, 2u, 5u, 0xC0u }, /* OBD_PIDS_C1_E0 */
+    { { 0x01u, 0xE0u, 0x00u }, 2u, 2u, 6u, 0xE0u }, /* OBD_PIDS_E1_FF */
+    { { 0x09u, 0x00u, 0x00u }, 2u, 2u, VEHICLE_CL250_SCAN_NONE, 0x00u }, /* OBD_INFOTYPES_01_20 */
+    { { 0x09u, 0x02u, 0x00u }, 2u, 0u, 8u, 0x02u }, /* OBD_VIN */
+    { { 0x09u, 0x04u, 0x00u }, 2u, 0u, 8u, 0x04u }, /* OBD_CALID */
+    { { 0x09u, 0x06u, 0x00u }, 2u, 0u, 8u, 0x06u }, /* OBD_CVN */
+    { { 0x09u, 0x08u, 0x00u }, 2u, 0u, 8u, 0x08u }, /* OBD_IPT */
+    { { 0x09u, 0x0Au, 0x00u }, 2u, 0u, 8u, 0x0Au }, /* OBD_ECU_NAME */
+    { { 0x19u, 0x01u, 0xFFu }, 3u, 0u, VEHICLE_CL250_SCAN_NONE, 0x00u }, /* DTC_COUNT */
+    { { 0x19u, 0x02u, 0xFFu }, 3u, 0u, VEHICLE_CL250_SCAN_NONE, 0x00u }, /* DTC_LIST */
+    { { 0x22u, 0xF4u, 0x00u }, 3u, 3u, VEHICLE_CL250_SCAN_NONE, 0x00u }, /* DID_F401_F420 */
+    { { 0x22u, 0xF4u, 0x20u }, 3u, 3u, 16u, 0x20u }, /* DID_F421_F440 */
+    { { 0x22u, 0xF4u, 0x40u }, 3u, 3u, 17u, 0x40u }, /* DID_F441_F460 */
+    { { 0x22u, 0xF4u, 0x60u }, 3u, 3u, 18u, 0x60u }, /* DID_F461_F480 */
+    { { 0x22u, 0xF4u, 0x80u }, 3u, 3u, 19u, 0x80u }, /* DID_F481_F4A0 */
+    { { 0x22u, 0xF4u, 0xA0u }, 3u, 3u, 20u, 0xA0u }, /* DID_F4A1_F4C0 */
+    { { 0x22u, 0xF4u, 0xC0u }, 3u, 3u, 21u, 0xC0u }, /* DID_F4C1_F4E0 */
+    { { 0x22u, 0xF4u, 0xE0u }, 3u, 3u, 22u, 0xE0u }, /* DID_F4E1_F4FF */
+};
+
 const vehicle_cl250_did_t vehicle_cl250_dids[VEHICLE_CL250_DID_COUNT] = {
     { VEHICLE_CL250_DID_ENGINE_SPEED, 2u, VEHICLE_CL250_PRIORITY_NORMAL, 110u, 330u, 1, 4, 0, 0.0f, 16383.75f, true },
     { VEHICLE_CL250_DID_VEHICLE_SPEED, 1u, VEHICLE_CL250_PRIORITY_HIGH, 110u, 300u, 1, 1, 0, 0.0f, 255.0f, true },
@@ -109,9 +140,9 @@ bool vehicle_cl250_frame_allowed(const uint8_t *frame, size_t size)
 {
     bool ok = false; /* fail-closed default */
 
-    if ((frame == NULL) || (size < 2u) || ((frame[0] & 0xF0u) != 0u)) {
-        ok = false; /* not a Single Frame */
-    } else {
+    if ((frame == NULL) || (size < 2u)) {
+        ok = false;
+    } else if ((frame[0] & 0xF0u) == 0u) { /* Single Frame request */
         size_t len = (size_t)(frame[0] & 0x0Fu);
 
         if ((len == 0u) || (len > 7u) || ((len + 1u) > size)) {
@@ -119,6 +150,17 @@ bool vehicle_cl250_frame_allowed(const uint8_t *frame, size_t size)
         } else {
             ok = vehicle_cl250_request_allowed(&frame[1], len);
         }
+    } else if (size == VEHICLE_CL250_FRAME_DLC) { /* D-059: only the one FC.CTS, byte for byte */
+        size_t i;
+
+        ok = true;
+        for (i = 0u; i < VEHICLE_CL250_FRAME_DLC; i++) {
+            if (frame[i] != vehicle_cl250_fc_cts[i]) {
+                ok = false;
+            }
+        }
+    } else {
+        ok = false; /* FF, CF, any other FC or size */
     }
     return ok;
 }

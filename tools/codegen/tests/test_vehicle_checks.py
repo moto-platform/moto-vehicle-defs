@@ -7,7 +7,9 @@ from moto_codegen.yaml_checks import (
     check_vehicle,
     did_fault_gap_bounds,
     did_sample_gap_bounds,
+    frame_allowed,
     request_allowed,
+    single_frame,
 )
 
 
@@ -372,3 +374,124 @@ def test_a_bool_did_period_is_refused(vehicle, platform_db, key):
     vehicle["dids"][0][key] = True
     errs = check_vehicle(vehicle, platform_db)
     assert any("poll_period_ms and stale_after_ms must be positive integers" in e for e in errs)
+
+
+# --- D-059: the one FC.CTS (golden copy) and the discovery scan ---
+
+
+def test_current_flow_control_and_scan_pass(vehicle, platform_db):
+    errs = check_vehicle(vehicle, platform_db)
+    assert not [e for e in errs if "flow_control" in e or "discovery" in e], errs
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("flow_status", 0x1, "ContinueToSend"),  # WAIT
+        ("flow_status", 0x2, "ContinueToSend"),  # OVFLW
+        ("block_size", 8, "one FC per reception"),
+        ("st_min_ms", 0xF1, "0..127"),  # 100 us units
+        ("st_min_ms", True, "0..127"),
+        ("padding_byte", 0x00, "a byte equal to transport.padding_byte"),
+        ("max_ff_dl", 4096, "8..4095"),  # 32-bit FF_DL escape
+        ("max_ff_dl", 7, "8..4095"),  # fits a Single Frame
+        ("flow_status", False, "ContinueToSend"),  # YAML bool, not an int
+        ("block_size", False, "one FC per reception"),
+        ("padding_byte", True, "a byte equal to transport.padding_byte"),
+        ("padding_byte", 0x1AA, "a byte equal to transport.padding_byte"),
+    ],
+)
+def test_flow_control_outside_the_golden_copy_fails(vehicle, platform_db, key, value, message):
+    vehicle["transport"]["flow_control"][key] = value
+    errs = check_vehicle(vehicle, platform_db)
+    assert any(message in e for e in errs), errs
+    with pytest.raises(ValueError):
+        config.vehicle_fc_frame(vehicle["transport"])
+
+
+def test_missing_flow_control_fails(vehicle, platform_db):
+    del vehicle["transport"]["flow_control"]
+    assert any("flow_control missing" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_generator_refuses_a_widened_flow_control(vehicle):
+    from moto_codegen import gen_c
+
+    vehicle["transport"]["flow_control"]["block_size"] = 1
+    with pytest.raises(ValueError):
+        gen_c.generate_vehicle_c(vehicle)
+
+
+def test_generator_refuses_a_bad_scan_entry(vehicle):
+    from moto_codegen import gen_c
+
+    vehicle["discovery_scan"]["requests"].append({"name": "CLEAR", "request": [0x04]})
+    with pytest.raises(ValueError):
+        gen_c.generate_vehicle_c(vehicle)
+
+
+def test_cf_burst_follows_max_ff_dl(vehicle):
+    assert config.vehicle_fc_max_cf_burst(vehicle["transport"]) == 36  # ceil(249 / 7)
+    for ff_dl, burst in ((8, 1), (13, 1), (14, 2), (4095, 585)):
+        vehicle["transport"]["flow_control"]["max_ff_dl"] = ff_dl
+        assert config.vehicle_fc_max_cf_burst(vehicle["transport"]) == burst
+
+
+def test_fc_frame_is_byte_exact(vehicle):
+    assert config.vehicle_fc_frame(vehicle["transport"]) == bytes([0x30, 0, 0] + [0xAA] * 5)
+
+
+def test_frame_gate_twin_passes_only_sf_requests_and_the_fc(vehicle):
+    fc = config.vehicle_fc_frame(vehicle["transport"])
+    assert frame_allowed(vehicle, fc)
+    assert not frame_allowed(vehicle, fc[:7])
+    assert not frame_allowed(vehicle, bytes([0x10, 0x14]) + fc[2:])  # First Frame
+    assert not frame_allowed(vehicle, bytes([0x21]) + fc[1:])  # Consecutive Frame
+    assert frame_allowed(vehicle, single_frame(vehicle, [0x09, 0x02]))
+    assert not frame_allowed(vehicle, single_frame(vehicle, [0x04]))  # OBD clear DTCs
+
+
+def test_scan_has_the_d059_requests(vehicle):
+    reqs = [e["request"] for e in vehicle["discovery_scan"]["requests"]]
+    assert [0x01, 0x00] in reqs and [0x09, 0x00] in reqs and [0x09, 0x02] in reqs
+    assert [0x19, 0x01, 0xFF] in reqs and [0x19, 0x02, 0xFF] in reqs
+    assert [0x22, 0xF4, 0x00] in reqs and [0x22, 0xF4, 0x20] in reqs
+
+
+@pytest.mark.parametrize(
+    "request_bytes",
+    [[0x04], [0x14, 0xFF, 0xFF, 0xFF][:3], [0x2E, 0xF4, 0x00], [0x10, 0x02], [0x31, 0x01, 0x00]],
+)
+def test_scan_request_outside_the_policy_fails(vehicle, platform_db, request_bytes):
+    vehicle["discovery_scan"]["requests"].append({"name": "BAD", "request": request_bytes})
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("discovery BAD" in e and "tester_policy" in e for e in errs), errs
+
+
+def test_scan_request_too_long_fails(vehicle, platform_db):
+    vehicle["discovery_scan"]["requests"].append({"name": "LONG", "request": [0x22, 0xF4, 0x0C, 0]})
+    assert any("discovery LONG" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_scan_duplicate_request_fails(vehicle, platform_db):
+    vehicle["discovery_scan"]["requests"].append({"name": "DUP", "request": [0x09, 0x02]})
+    assert any("listed twice" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_scan_chained_bitmap_needs_the_previous_last_bit(vehicle, platform_db):
+    entries = vehicle["discovery_scan"]["requests"]
+    second = next(e for e in entries if e["request"] == [0x01, 0x20])
+    del second["after"]
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("previous bitmap's last bit" in e for e in errs), errs
+
+
+def test_scan_after_must_name_an_earlier_bitmap(vehicle, platform_db):
+    entries = vehicle["discovery_scan"]["requests"]
+    vin = next(e for e in entries if e["request"] == [0x09, 0x02])
+    vin["after"] = {"name": "DTC_COUNT", "id": 0x02}
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("earlier bitmap request" in e for e in errs), errs
+    vin["after"] = {"name": "OBD_INFOTYPES_01_20", "id": 0x21}
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("outside OBD_INFOTYPES_01_20" in e for e in errs), errs

@@ -4,6 +4,20 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+Planned as v0.7.0 (MINOR): the D-059 frame-gate widening and the discovery scan list (Q-020 resolved). `tester_policy`'s services are unchanged; the golden D-020 copy gains the one Flow Control frame and nothing else. No DBC, DID, VSS or BLE change. The gate file `vehicle_cl250.{h,c}` changes in conn, hil_sim and rt_core; rt-core keeps v0.5.x until its next defs bump (D-059 item 5), and its vehicle link must check the link state before it sends any FC.
+
+### Added
+- `uds/vehicle_cl250.yaml` `transport.flow_control` (D-059 item 1): FC.CTS with `block_size` 0 (one FC per reception), `st_min_ms` 0, `padding_byte` 0xAA (= the transport padding) and `max_ff_dl` 255 (the largest segmented answer the client accepts; anything longer gets no FC). Platform choices, not legacy values.
+- codegen golden copy (`config.py`, D-059): only ContinueToSend, BS 0, STmin 0..127 ms, padding equal to the transport padding, FF_DL 8..4095 (12-bit). `moto-codegen check` and `generate_vehicle_c()` refuse anything else (YAML booleans included); `generate_vehicle_c()` also re-checks the scan list.
+- `uds/vehicle_cl250.yaml` `discovery_scan` (D-059 item 2): 24 one-shot requests: OBD 0x01 PID-support bitmaps 0x00..0xE0 (each after the previous bitmap's last bit), 0x09 0x00 and infotypes 0x02/0x04/0x06/0x08/0x0A (each if reported), 0x19 0x01 0xFF and 0x19 0x02 0xFF, and the 0x22 0xF400..0xF4E0 support DIDs (chained the same way). codegen checks every request against `tester_policy` and the frame gate (as a padded Single Frame), names and requests unique, `after` names an earlier bitmap and an id inside it, and each chained bitmap is gated by the previous one's last bit.
+- `gen/c/*/vehicle_cl250.h`: `VEHICLE_CL250_FC_BLOCK_SIZE`, `_FC_ST_MIN_MS`, `_MAX_FF_DL`, `_FC_MAX_CF_BURST` (36: CFs back to back at STmin 0, for sizing the receiver's RX queue; safety-reviewer MAJOR-1), `vehicle_cl250_fc_cts[8]` (the frame the client sends), `VEHICLE_CL250_SCAN_*` and `vehicle_cl250_discovery_scan[]` (`vehicle_cl250_scan_t`: request, size, bitmap offset, `after` index and id).
+- `gen/python/moto_defs/vehicle_cl250.py`: `FC_CTS_FRAME`, `MAX_FF_DL`, `FC_MAX_CF_BURST`, `DISCOVERY_SCAN`.
+- `uds/vehicle_cl250.yaml` comments: the client's rules around the FC (after an unanswered FF no request for `response_timeout_max_ms` and no DID timeout; abort a reception on an N_Cr timeout, a sequence gap or a lost frame) and the default-session retry for OBD 0x01/0x09.
+- tests: the gate-equivalence program's reference gains the FC branch (built from the YAML independently of codegen) and a pass over every pair of byte positions from the FC frame, every size; FC frame cases (WAIT, OVFLW, other BS/STmin/padding, 7/9 bytes) in `test_c_code.py`; the C gate equals the Python twin `yaml_checks.frame_allowed()`; the C scan table equals the YAML and every request passes the C gate; each golden-copy and scan check fails on a mutated copy.
+
+### Changed
+- `vehicle_cl250_frame_allowed()` (D-059, widens the D-020 frame gate): besides a Single Frame whose payload passes `vehicle_cl250_request_allowed()`, it passes exactly the 8-byte `vehicle_cl250_fc_cts[]`, byte for byte. First and Consecutive Frames, any other FC and any other size stay refused. Still stateless and single-exit.
+
 ## [0.6.0] — 2026-10-03
 
 BLE packet schema moves into defs and gets telemetry version 4 (decisions D-061, D-058; Q-017 resolved). No DBC, DID, VSS, `tester_policy` or D-020 golden-copy change, and no existing generated file changes except the module list comment in `gen/python/moto_defs/__init__.py`. The consumers of the new files (moto-connectivity-node, moto-mobile, moto-server) switch together: each bumps its pin and drops its own copy of the schema.
