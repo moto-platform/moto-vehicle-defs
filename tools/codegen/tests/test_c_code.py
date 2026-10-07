@@ -9,7 +9,7 @@ import pytest
 from cantools.database.can.c_source import camel_to_snake_case
 
 from moto_codegen import config, e2e
-from moto_codegen.yaml_checks import request_allowed
+from moto_codegen.yaml_checks import frame_allowed, request_allowed, single_frame
 
 CC = shutil.which("gcc") or shutil.which("cc")
 pytestmark = pytest.mark.skipif(CC is None, reason="no C compiler")
@@ -300,10 +300,72 @@ def test_request_allow_list_is_exactly_d020(lib):
         (b"\x00\x22\xf4\x0c\x00\x00\x00\x00", False),  # SF length 0
         (b"\x08\x22\xf4\x0c\x00\x00\x00\x00", False),  # SF length > 7
         (b"\x07\x22\xf4", False),  # length beyond the buffer
+        # D-059: the one FC.CTS, byte for byte; any other FC refused
+        (b"\x30\x00\x00" + b"\xaa" * 5, True),
+        (b"\x31\x00\x00" + b"\xaa" * 5, False),  # FC.WAIT
+        (b"\x32\x00\x00" + b"\xaa" * 5, False),  # FC.OVFLW
+        (b"\x30\x01\x00" + b"\xaa" * 5, False),  # other BS
+        (b"\x30\x00\x0a" + b"\xaa" * 5, False),  # other STmin
+        (b"\x30\x00\xf1" + b"\xaa" * 5, False),  # STmin in 100 us units
+        (b"\x30\x00\x00" + b"\xaa" * 4 + b"\x00", False),  # other padding
+        (b"\x30\x00\x00" + b"\x00" * 5, False),  # unpadded
+        (b"\x30\x00\x00" + b"\xaa" * 4, False),  # 7 bytes
+        (b"\x30\x00\x00" + b"\xaa" * 6, False),  # 9 bytes
+        (b"\x30\x00", False),  # short FC
     ],
 )
 def test_frame_allowed(lib, frame, allowed):
     assert lib.vehicle_cl250_frame_allowed(frame, len(frame)) is allowed
+
+
+def test_fc_cts_array_is_the_frame_the_gate_passes(lib, vehicle):
+    """The client sends vehicle_cl250_fc_cts[]; it is the YAML frame and passes."""
+    fc = (ctypes.c_uint8 * 8).in_dll(lib, "vehicle_cl250_fc_cts")
+    frame = bytes(fc)
+    assert frame == config.vehicle_fc_frame(vehicle["transport"])
+    assert lib.vehicle_cl250_frame_allowed(frame, len(frame))
+
+
+def test_frame_gate_matches_python_twin(lib, vehicle):
+    """yaml_checks.frame_allowed() (used to check the scan list) equals the C gate."""
+    rng = random.Random(59)
+    fc = config.vehicle_fc_frame(vehicle["transport"])
+    frames = [fc, fc[:7], fc + b"\xaa"]
+    frames += [fc[:i] + bytes([b]) + fc[i + 1 :] for i in range(8) for b in range(256)]
+    frames += [bytes(rng.randrange(256) for _ in range(rng.randrange(2, 10))) for _ in range(20000)]
+    for pci in range(16):
+        for sid in range(256):
+            frames.append(bytes([pci, sid, 0x00]) + b"\xaa" * 5)
+    for frame in frames:
+        expected = frame_allowed(vehicle, frame)
+        assert lib.vehicle_cl250_frame_allowed(frame, len(frame)) == expected, frame
+
+
+class ScanEntry(ctypes.Structure):
+    _fields_ = [
+        ("request", ctypes.c_uint8 * 3),
+        ("size", ctypes.c_uint8),
+        ("bitmap_offset", ctypes.c_uint8),
+        ("after", ctypes.c_uint8),
+        ("after_id", ctypes.c_uint8),
+    ]
+
+
+def test_discovery_table_matches_yaml_and_passes_the_gate(lib, vehicle):
+    """D-059 item 2: the generated table is the YAML list, and every request, sent as a
+    padded Single Frame, passes the C gate."""
+    entries = vehicle["discovery_scan"]["requests"]
+    table = (ScanEntry * len(entries)).in_dll(lib, "vehicle_cl250_discovery_scan")
+    index = {e["name"]: i for i, e in enumerate(entries)}
+    for e, row in zip(entries, table, strict=True):
+        req = bytes(row.request[: row.size])
+        assert list(req) == e["request"], e["name"]
+        assert row.bitmap_offset == (len(req) if e.get("bitmap") else 0), e["name"]
+        after = e.get("after")
+        assert row.after == (index[after["name"]] if after else 0xFF), e["name"]
+        assert row.after_id == (after["id"] if after else 0), e["name"]
+        frame = single_frame(vehicle, e["request"])
+        assert lib.vehicle_cl250_frame_allowed(frame, len(frame)), e["name"]
 
 
 @pytest.mark.parametrize(
