@@ -263,6 +263,22 @@ Function proposals not previously in the pool. Most achievable with existing har
 | V6 | Data collection and labeling pipeline | 60-120 | V1 | T | CVAT, Label Studio |
 | V7 | Camera-IMU-CAN synchronization | 30-50 | V1, D4 | K,T | — |
 | V8 | Traffic sign recognition | 60-100 | V3 | T | GTSRB dataset |
+| V9 | Rear-End Collision Warning (RCW) & tail strobe | 40-70 | V4, STM32G0 | K,T,U | TTC engine, 4Hz brake pulse |
+| V10 | Crowdsourced pothole & road quality map | 60-90 | V1, D4 | K,T,U | OpenCV + IMU $a_z$ + PostGIS |
+| V11 | Multi-source speed limit assurance & voice query | 50-80 | V8, GPS | U | YOLO-Nano + OSM + CAN 0xF40D |
+| V12 | AR cornering apex guide & anti-target-fixation dot | 60-90 | V2, EKF | K,T,U | Lean kinematics + Visor AR |
+| V13 | Automated telemetry video overlay & highlight reels | 30-50 | V7 | U | FFmpeg/Cairo + 40° lean trigger |
+| V14 | Low-light night vision (Sony Starvis IMX462) | 40-60 | V1 | T,U | NIR 850nm + YOLO pedestrian |
+| V15 | Dual cockpit HMI (Nextion UART + low-latency RTSP) | 35-50 | V1 | U | Nextion serial + WebRTC/DSI |
+| V16 | SMIDSY conspicuity light modulator (4 Hz high-beam) | 30-45 | V3, STM32G0 | K,T,U | DOT 49 CFR 571.108 S7.9.4 |
+| V17 | Kamm friction circle curve-braking envelope & haptics | 50-80 | EKF, IMU | K,T,U | Kamm circle, grip margin reserve |
+| V18 | Tank-slapper (speed wobble) 6-9 Hz resonance detector | 40-60 | IMU-1, Gyro | K,T,U | 2nd-order IIR bandpass, audio SOS |
+| V19 | Rapid tire blowout early warning (UN ECE R141) | 25-40 | BLE TPMS | K,T,U | $dP/dt < -0.15\text{ bar/s}$, hazard pulse |
+| V20 | Urban lane-filtering "dooring" optical flow predictor | 50-80 | V1 | T,U | Optical flow lateral delta ($>10\text{ cm}$) |
+| V21 | Telemetry-driven cognitive fatigue & hypothermia index | 40-70 | CAN, DIDs | T,U | Throttle micro-jitter + wind-chill |
+| V22 | Post-crash fuel/ignition isolation & cellular eCall SOS | 35-50 | STM32G0, 4G | K,T,U | $70^\circ$ lean + 3g shock + fuel relay |
+| V23 | Sentry guard mode (parked IMU wake + 4G video push) | 30-50 | V1, 4G | U | Ultra-low-power IMU + 1080p clip |
+| V24 | Remote cloud immobilizer & starter circuit inhibit | 20-35 | STM32G0, 4G | U | Zero-speed check + starter relay |
 
 ---
 
