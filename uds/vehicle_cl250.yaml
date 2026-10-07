@@ -77,14 +77,19 @@ transport:
   # OVFLW, another BS/STmin/padding), a First or a Consecutive Frame stays refused.
   # The gate is stateless: the client sends it only while it receives the answer to
   # its own allowed request, and only for a First Frame with FF_DL <= max_ff_dl
-  # (anything longer gets no FC; the ECU then times out on N_Bs). Platform choices,
-  # not legacy values: the golden copy in tools/codegen config.py bounds them.
+  # (anything longer gets no FC; the ECU then times out on N_Bs). After a First Frame
+  # it did not answer with an FC, the client sends no request for
+  # response_timeout_max_ms and does not count it as a DID timeout; a reception whose
+  # next CF does not arrive within response_timeout_base_ms (N_Cr), whose sequence
+  # number skips, or during which the receiver lost a frame, is aborted. Platform
+  # choices, not legacy values: the golden copy in tools/codegen config.py bounds them.
   flow_control:
     decision: D-059
     flow_status: 0x0          # ContinueToSend only; WAIT and OVFLW are never sent
     block_size: 0             # one FC per reception: the ECU sends every CF after it
     # 0 = no gap between CFs, as our own servers advertise (uds/dids.yaml). The
-    # receiver must therefore hold a burst of ceil((max_ff_dl - 6) / 7) CFs.
+    # receiver must therefore hold a burst of ceil((max_ff_dl - 6) / 7) CFs
+    # (generated as VEHICLE_CL250_FC_MAX_CF_BURST, 36 here; about 10 ms at 500 kbps).
     st_min_ms: 0
     padding_byte: 0xAA        # same as padding_byte above; the FC is always 8 bytes
     max_ff_dl: 255            # largest segmented answer the client accepts (bytes)
@@ -109,7 +114,9 @@ tester_policy:
 # timeouts above. Standard requests (SAE J1979 / ISO 15031-5, ISO 14229-1), not
 # vehicle signals; what they find enters this file only through /signal-change with
 # `verified: false`. codegen checks every request against tester_policy and the frame
-# gate (as a padded Single Frame) and generates the table in table order.
+# gate (as a padded Single Frame) and generates the table in table order. Some ECUs
+# answer OBD 0x01/0x09 only in the default session: the probe may retry them after
+# 0x10 0x01 (allowed by tester_policy).
 # - bitmap: true = the positive response carries a 4-byte support bitmap right after
 #   the echo of the request (offset = request length): bit 7 of its first byte is
 #   id base+1, bit 0 of its last byte is id base+0x20, base = the last request byte.

@@ -127,21 +127,33 @@ def flow_control_d059_errors(transport: dict) -> list[str]:
     if not isinstance(fc, dict):
         return ["transport.flow_control missing (D-059)"]
     errors = []
-    if transport.get("frame_dlc") != 8:
+
+    def is_int(value: object) -> bool:
+        return type(value) is int
+
+    if transport.get("frame_dlc") != 8 or not is_int(transport.get("frame_dlc")):
         errors.append("transport.frame_dlc must be 8: the FC is a full classic CAN frame")
-    if fc.get("flow_status") != VEHICLE_FC_FLOW_STATUS:
+    if not is_int(fc.get("flow_status")) or fc["flow_status"] != VEHICLE_FC_FLOW_STATUS:
         errors.append("transport.flow_control.flow_status must be 0 (ContinueToSend, D-059)")
-    if fc.get("block_size") != VEHICLE_FC_BLOCK_SIZE:
+    if not is_int(fc.get("block_size")) or fc["block_size"] != VEHICLE_FC_BLOCK_SIZE:
         errors.append("transport.flow_control.block_size must be 0 (one FC per reception, D-059)")
     st_min = fc.get("st_min_ms")
     if type(st_min) is not int or not 0 <= st_min <= VEHICLE_FC_ST_MIN_MAX_MS:
         errors.append("transport.flow_control.st_min_ms must be an integer 0..127 (D-059)")
-    if fc.get("padding_byte") != transport.get("padding_byte"):
-        errors.append("transport.flow_control.padding_byte must equal transport.padding_byte")
+    pad = fc.get("padding_byte")
+    if not is_int(pad) or not 0 <= pad <= 0xFF or pad != transport.get("padding_byte"):
+        errors.append(
+            "transport.flow_control.padding_byte must be a byte equal to transport.padding_byte"
+        )
     max_ff_dl = fc.get("max_ff_dl")
     if type(max_ff_dl) is not int or not 8 <= max_ff_dl <= VEHICLE_FC_MAX_FF_DL:
         errors.append("transport.flow_control.max_ff_dl must be an integer 8..4095 (D-059)")
     return errors
+
+
+def vehicle_fc_max_cf_burst(transport: dict) -> int:
+    """CFs the ECU may send back to back after the FC: ceil((max_ff_dl - 6) / 7)."""
+    return -(-(transport["flow_control"]["max_ff_dl"] - 6) // 7)
 
 
 def vehicle_fc_frame(transport: dict) -> bytes:

@@ -60,6 +60,7 @@ def generate_vehicle_py(vehicle: dict[str, Any]) -> str:
     lines.append("# D-059: the one Flow Control frame the tester may send (FC.CTS, byte-exact)")
     lines.append(f"FC_CTS_FRAME = {_py_bytes(list(config.vehicle_fc_frame(vehicle['transport'])))}")
     lines.append(f"MAX_FF_DL = {fc['max_ff_dl']}")
+    lines.append(f"FC_MAX_CF_BURST = {config.vehicle_fc_max_cf_burst(vehicle['transport'])}")
     lines.append("# D-059 discovery scan: (name, request, bitmap, after_name, after_id)")
     lines.append("DISCOVERY_SCAN = (")
     for e in vehicle["discovery_scan"]["requests"]:

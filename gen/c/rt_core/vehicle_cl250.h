@@ -42,6 +42,7 @@ extern const vehicle_cl250_watch_id_t vehicle_cl250_functional_watch[VEHICLE_CL2
 #define VEHICLE_CL250_FC_BLOCK_SIZE (0u) /* one FC per reception */
 #define VEHICLE_CL250_FC_ST_MIN_MS (0u)
 #define VEHICLE_CL250_MAX_FF_DL (255u) /* bytes */
+#define VEHICLE_CL250_FC_MAX_CF_BURST (36u) /* CFs back to back at STmin 0: size the RX queue for it */
 extern const uint8_t vehicle_cl250_fc_cts[VEHICLE_CL250_FRAME_DLC];
 
 #define VEHICLE_CL250_SESSION_SID (0x10u)

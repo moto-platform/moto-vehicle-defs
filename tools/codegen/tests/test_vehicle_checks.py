@@ -392,9 +392,13 @@ def test_current_flow_control_and_scan_pass(vehicle, platform_db):
         ("block_size", 8, "one FC per reception"),
         ("st_min_ms", 0xF1, "0..127"),  # 100 us units
         ("st_min_ms", True, "0..127"),
-        ("padding_byte", 0x00, "must equal transport.padding_byte"),
+        ("padding_byte", 0x00, "a byte equal to transport.padding_byte"),
         ("max_ff_dl", 4096, "8..4095"),  # 32-bit FF_DL escape
         ("max_ff_dl", 7, "8..4095"),  # fits a Single Frame
+        ("flow_status", False, "ContinueToSend"),  # YAML bool, not an int
+        ("block_size", False, "one FC per reception"),
+        ("padding_byte", True, "a byte equal to transport.padding_byte"),
+        ("padding_byte", 0x1AA, "a byte equal to transport.padding_byte"),
     ],
 )
 def test_flow_control_outside_the_golden_copy_fails(vehicle, platform_db, key, value, message):
@@ -416,6 +420,21 @@ def test_generator_refuses_a_widened_flow_control(vehicle):
     vehicle["transport"]["flow_control"]["block_size"] = 1
     with pytest.raises(ValueError):
         gen_c.generate_vehicle_c(vehicle)
+
+
+def test_generator_refuses_a_bad_scan_entry(vehicle):
+    from moto_codegen import gen_c
+
+    vehicle["discovery_scan"]["requests"].append({"name": "CLEAR", "request": [0x04]})
+    with pytest.raises(ValueError):
+        gen_c.generate_vehicle_c(vehicle)
+
+
+def test_cf_burst_follows_max_ff_dl(vehicle):
+    assert config.vehicle_fc_max_cf_burst(vehicle["transport"]) == 36  # ceil(249 / 7)
+    for ff_dl, burst in ((8, 1), (13, 1), (14, 2), (4095, 585)):
+        vehicle["transport"]["flow_control"]["max_ff_dl"] = ff_dl
+        assert config.vehicle_fc_max_cf_burst(vehicle["transport"]) == burst
 
 
 def test_fc_frame_is_byte_exact(vehicle):

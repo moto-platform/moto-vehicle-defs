@@ -11,6 +11,7 @@ PADDING_BYTE = 0xAA
 # D-059: the one Flow Control frame the tester may send (FC.CTS, byte-exact)
 FC_CTS_FRAME = bytes([0x30, 0x00, 0x00, 0xAA, 0xAA, 0xAA, 0xAA, 0xAA])
 MAX_FF_DL = 255
+FC_MAX_CF_BURST = 36
 # D-059 discovery scan: (name, request, bitmap, after_name, after_id)
 DISCOVERY_SCAN = (
     ("OBD_PIDS_01_20", bytes([0x01, 0x00]), True, None, None),
