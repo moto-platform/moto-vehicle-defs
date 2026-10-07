@@ -126,14 +126,51 @@ Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is
 
 | Measurement | Why | How with this build |
 |---|---|---|
-| Tester step gap | D-053 assumes `client_step_max_ms` = 10 ms; conn's step is unbounded (conn README) | D-058 item 2: the poller's step-gap max and over-10-ms count in BLE telemetry v4 (server report); the G0.1 serial report still gives the per-module `loop()` durations; scope on `GPIO8` |
-| ECU round trip | D-029, A-4 polling budget (assumed 20 ms) | D-058 item 1: per DID min/max/sum/count and 0x78 count, one rotating record per BLE telemetry v4 packet (server report) |
-| Passive broadcast traffic | Q-001 (VWP §5.5 step 1: 5 min listen-only) | D-058 item 4: flash the `esp32-s3-devkitc-1-listen-only` env (no TX at all), log USB serial for 5 min with the ignition on, then flash the tester env again. Record the result on Q-001 |
+| Tester step gap | D-053 assumes `client_step_max_ms` = 10 ms; conn's step is unbounded (conn README) | D-058 item 2: the poller's step-gap max and over-10-ms count in BLE telemetry v4 (server report, §7.2); the G0.1 serial report still gives the per-module `loop()` durations; scope on `GPIO8` |
+| ECU round trip | D-029, A-4 polling budget (assumed 20 ms) | D-058 item 1: per DID min/max/sum/count and 0x78 count, one rotating record per BLE telemetry v4 packet (server report, §7.2) |
+| Passive broadcast traffic | Q-001 (VWP §5.5 step 1: 5 min listen-only) | D-058 item 4: flash the `esp32-s3-devkitc-1-listen-only` env (no TX at all), log USB serial for 5 min with the ignition on, then flash the tester env again (§7.1). Record the result on Q-001 |
 | PID support, vehicle info, DTCs | A-4: MAP, fuel trim, wheel speed | D-059: flash the `esp32-s3-devkitc-1-probe` env once (0x01 bitmaps, 0x09, 0x19, 0x22 0xF4xx support DIDs, segmented answers with one FC.CTS); the serial output goes into defs with `/signal-change`, `verified: false`. Never commit the VIN |
 | Sleep current | VWP §4.3, < 1 mA | Multimeter or INA226 in series, ignition off |
 | Engine-on noise | VWP §4.2 | The same idle recording with the engine stopped and running; compare CAN error counters and IMU noise |
 | IMU zero and axis offset | VWP §3.4, §5.4 | Upright on flat ground, then a known tilt (side stand) |
 | BLE loss | D-045 | Server report: seq and tick gaps per session |
+
+### 7.1 Listen-only capture (Q-001, D-058 item 4)
+
+Nothing else on the DLC (no scan tool, no tester build). From `moto-connectivity-node`, with `platformio_local.ini` in place:
+
+```bash
+pio run -e esp32-s3-devkitc-1-listen-only -t upload
+# 921600 baud. Write the log outside every repo (D-033); stop it after the FINAL lines (300 s).
+mkdir -p "$MOTO_DATA_DIR/captures"
+pio device monitor -e esp32-s3-devkitc-1-listen-only | tee "$MOTO_DATA_DIR/captures/q001-$(date +%Y%m%d-%H%M).csv"
+# afterwards, back to the tester:
+pio run -e esp32-s3-devkitc-1 -t upload
+```
+
+Run it once with the ignition on and the engine off, and once idling. Line format (conn `src/CanCaptureCore.h`): `F,<t_us>,<id>,<S|X>,<dlc>,<data>` per frame; `S,…` per-ID rows (count, min/max period in ms, `W` = an OBD functional request ID, D-040) every 10 s; `S,END,…,frames=,ids=,overflow=,lost=,dropped=`; the same once as `FINAL,…` after 300 s.
+
+| FINAL shows | Means | Record on Q-001 |
+|---|---|---|
+| `frames=0` | No passive broadcast on the DLC | "none found", with the date and ignition/engine state |
+| Rows with a steady period | Broadcast frames: ID, DLC, period | IDs and periods; they go into `dbc/cl250.dbc` only through `/signal-change` |
+| One frame repeated back to back | Its sender gets no ACK (conn never ACKs in listen-only): the ECU broadcasts with nobody else on the bus | The ID; a finding too (D-058 item 4) |
+| A `W` row | Another tester is on the bus | Stop: remove it before any tester session (§8) |
+| `lost` or `dropped` > 0 | The capture missed frames or serial lines | Repeat; note the counts |
+
+The capture never transmits: no `twai_transmit` in its image, and the listen-only errata workaround keeps the controller error passive so it sends no error flag either (CI checks both). Still to verify on the bench: a CRC-corrupted frame from the HIL with a scope on the bus, and a 10-minute run without a watchdog reset.
+
+### 7.2 Tester statistics (BLE telemetry v4, D-058 items 1-2)
+
+Record a normal session with the tester env (V0/V1), upload or import it, then:
+
+```bash
+uv run moto-server report <session_id>
+```
+
+`tester_stats` in the report:
+- `step_gap_max_ms`, `step_gap_over_count`: since-boot maximum gap between two poller steps and the count of gaps above `client_step_max_ms` (10 ms). A count above 0 means the D-053 assumption does not hold for conn; compare with the G0.1 serial report to find the slow module.
+- `rtt["0xXXXX"]`: per DID `min_ms`, `max_ms`, `avg_ms`, `count`, `nrc78_count`, from the last record seen for that DID. One step is included in every sample. Requests answered after 0x78, and requests sent within `response_timeout_max_ms` (2 s) after a timeout, give no sample. Compare `max_ms` with `assumed_round_trip_ms` (20 ms); a larger value changes the D-029 budget (A-4).
 
 ## 8. Safety rules on the bike
 
