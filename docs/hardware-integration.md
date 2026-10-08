@@ -73,11 +73,12 @@ Rules from `vehicle-work-plan.md` §3.2, §3.3 and §4; vehicle bus facts from D
 | Ground | Directly to the battery negative, not the chassis |
 | Sleep current | Target < 1 mA with the ignition off, verified by measurement (§7, T0); above that, switch the supply with the ignition |
 
-### 3.3 IMU and display wiring
+### 3.3 IMU, display and GPS wiring
 
 - IMU on I2C: SDA `GPIO1`, SCL `GPIO2`, address `0x68`, 400 kHz. Keep the I2C wires short, inside the enclosure.
 - Nextion (optional): UART2 TX `GPIO17`, RX `GPIO18`, 115200 8N1.
 - `GPIO8` pulses high for each `loop()` pass (scope probe for the step time, §6).
+- GPS (D-060): NEO-M8N on UART1, module TX → `GPIO15` (conn RX), module RX → `GPIO16` (conn TX), common GND. **CONFIRM**: candidate pins of the `esp32-s3-devkitc-1-gps` env, confirmed by the procedure in §7.3. The module's UART must be 3.3 V logic.
 
 ## 4. Mechanical integration
 
@@ -97,6 +98,7 @@ Rules from `vehicle-work-plan.md` §3.2, §3.3 and §4; vehicle bus facts from D
 | Step | Command / action | Repo |
 |---|---|---|
 | Build + flash (real CAN) | `pio run -e esp32-s3-devkitc-1 -t upload` (needs `platformio_local.ini` with `AP_PASSWORD`) | moto-connectivity-node |
+| GPS bring-up (until the pins are confirmed) | `pio run -e esp32-s3-devkitc-1-gps -t upload`, procedure in §7.3 | moto-connectivity-node |
 | Desk test without the bike | `pio run -e esp32-s3-devkitc-1-mock -t upload` (synthetic telemetry) | moto-connectivity-node |
 | Host tests before every flash | `scripts/native_tests.sh` (or `pio test -e native`) | moto-connectivity-node |
 | Phone | Install the `moto-mobile` APK, pair with `Honda-CL250-Telemetry` | moto-mobile |
@@ -134,6 +136,7 @@ Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is
 | Engine-on noise | VWP §4.2 | The same idle recording with the engine stopped and running; compare CAN error counters and IMU noise |
 | IMU zero and axis offset | VWP §3.4, §5.4 | Upright on flat ground, then a known tilt (side stand) |
 | BLE loss | D-045 | Server report: seq and tick gaps per session |
+| GPS rate, BLE path and the step gap with GPS notify | D-060 item 2 (10 Hz; step gap measured with the GPS running), D-062, D-063 | §7.3: serial `[GPS]` report at the desk, a bonded phone session uploaded to the laptop, then the step gap on the bike |
 
 ### 7.1 Listen-only capture (Q-001, D-058 item 4)
 
@@ -172,6 +175,62 @@ uv run moto-server report <session_id>
 - `step_gap_max_ms`, `step_gap_over_count`: since-boot maximum gap between two poller steps and the count of gaps above `client_step_max_ms` (10 ms). A count above 0 means the D-053 assumption does not hold for conn; compare with the G0.1 serial report to find the slow module.
 - `rtt["0xXXXX"]`: per DID `min_ms`, `max_ms`, `avg_ms`, `count`, `nrc78_count`, from the last record seen for that DID. One step is included in every sample. Requests answered after 0x78, and requests sent within `response_timeout_max_ms` (2 s) after a timeout, give no sample. Compare `max_ms` with `assumed_round_trip_ms` (20 ms); a larger value changes the D-029 budget (A-4).
 
+### 7.3 GPS bring-up and the step gap with GPS notify (D-060, D-062, D-063)
+
+Steps 1-4 run at the desk (no bike). Step 5 turns the result into the pin confirmation, and step 6 runs on the bike with the build CI checks.
+
+**1. Wiring.** As in §3.3: module TX → `GPIO15`, module RX → `GPIO16`, common GND, the module powered as its breakout board specifies (3.3 V logic on its UART). The antenna needs a clear sky view (outdoors or at a window); a cold start can take minutes to the first fix.
+
+**2. Serial report.** With `CONN_GPS_PINS_CONFIRMED=0` the firmware never installs the UART, so set it to `1` in the `esp32-s3-devkitc-1-gps` env **in your local copy only**, then from `moto-connectivity-node`:
+
+```bash
+pio run -e esp32-s3-devkitc-1-gps -t upload
+pio device monitor -e esp32-s3-devkitc-1-gps
+# afterwards: git checkout platformio.ini   (the confirmed pins arrive through a PR, step 5)
+```
+
+conn first tries 38400 baud, then the factory 9600 with a CFG-PRT that moves the receiver to 38400, and configures UBX only with NAV-PVT at 10 Hz (RAM only; conn sends no CFG-GNSS, so the receiver's default GNSS set applies). Every 10 s it prints one line with the rate, fix and error counters only, never speed, heading or position:
+
+`[GPS] link=<state> pvt/s=<rate> fix=<type> sv=<count> ck_err=<n> len_err=<n> ovf=<n> lost=<n>`
+
+| Field | Pass | If not |
+|---|---|---|
+| `link` | `OK` | `PENDING`: not configured yet, wait. `NO_RECEIVER`: no valid UBX at 38400 or 9600; check TX/RX crossed, GND, supply. `(UART install failed)`: the driver did not install on these pins |
+| `pvt/s` | `10.0` on every line for ≥ 5 min with `fix=3` | Record the value and `sv`: the receiver does not hold 10 Hz with its default GNSS set (D-060 item 2 asks for 10 Hz; VWP §3.5 needs ≥ 5 Hz). A decision, not a code fix |
+| `fix` | `3` (3D) after the first fix | Stays `0`-`2`: sky view or antenna |
+| `sv` | Record it | — |
+| `ck_err`, `len_err` | `0` and not rising | Noise or a baud mismatch on the wires |
+| `ovf` | `0` | The UART driver's buffer overflowed: the GPS task was starved |
+| `lost` | `0` | The receiver went silent for 3 s; check power and the connector |
+
+**3. Phone, bonding and the `gps` subscription (Android).** Install the moto-mobile APK (v0.2.0 or later) and connect to `Honda-CL250-Telemetry`. The app starts pairing on connect (Just Works, no passkey); telemetry and IMU work without it, the `gps` characteristic does not (D-062). Record a session of ≥ 5 min and check:
+- the session has a non-empty `gps.csv` next to `telemetry.csv` and `imu.csv`;
+- after a disconnect and reconnect, GPS rows arrive again: conn clears the subscription on every connect, so the app must subscribe again (D-062 item 1).
+
+iOS: moto-mobile has no iOS project yet (§10 item 8).
+
+**4. Upload to the laptop and the report.** On the laptop:
+
+```bash
+export MOTO_API_TOKEN=…        # same token in the app's Settings
+uv run moto-server serve       # listens on 0.0.0.0:8000
+ipconfig getifaddr en0         # the laptop's LAN IP (macOS, Wi-Fi)
+scutil --get LocalHostName     # its mDNS name, add ".local"
+```
+
+In the app's Settings set the server URL to `http://<LAN IP>:8000` (or `http://<name>.local:8000` if the phone resolves it), phone and laptop on the same Wi-Fi; allow incoming connections if the macOS firewall asks. Then:
+- upload the session; it must succeed (D-063 allows a private address or a `.local` name);
+- set a non-local URL (for example `https://example.com`) and upload again: the app must refuse before any network call, naming D-063; set the local URL back;
+- `uv run moto-server report <session_id>`. The GPS lines read `GPS: N block(s), L lost or MTU-skipped (p%), effective rate R Hz, usable for the speed check U%` and the fix types.
+
+Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 with the phone next to the unit; no decode error, parse error, UART overflow or app/server mismatch. Many lost or skipped blocks with a good serial rate mean radio loss or an MTU too small for the GPS block (the node advances `seq` for a block it skips, D-062 item 2).
+
+**5. Confirm the pins.** Once steps 2-4 pass, the pins go into §3.3 without **CONFIRM**, conn sets `CONN_GPS_PINS_CONFIRMED=1`, GPS moves into the main tester env and the `-gps` env is removed (conn `platformio.ini` comment), each through a PR.
+
+**6. Step gap with GPS notify on (bike).** D-060 item 2 measures the step gap of D-058 with the GPS running. With the main tester env from step 5 and the phone bonded and subscribed to `gps` for the whole session, record ≥ 5 min at V0 (ignition on, engine off) and at V1 (idling, closed area, §8). The baseline is a V0/V1 session under the same conditions with the tester env before step 5 (no GPS). Read `step_gap_max_ms` and `step_gap_over_count` in each report (§7.2): the difference is the cost of the GPS task and its notify. An over count above 0 is a measurement for D-053 and rt-core, recorded with the session conditions, not a reason to change the tester.
+
+**What to record.** The pins used; `pvt/s`, `sv` and the fix time from step 2; the phone model and Android version, whether pairing, the reconnect and the D-063 refusal behaved as described; the report's GPS line; the step-gap pairs of step 6. Numbers only: `gps.csv`, sessions and screenshots never go into a repo or an issue (D-033, D-060 item 5).
+
 ## 8. Safety rules on the bike
 
 - **One tester only, and it only reads** (D-037). Never connect a scan tool, another dongle or a second build while conn is on the DLC. conn latches off if it sees one, but the rule is to not let it happen.
@@ -182,10 +241,10 @@ uv run moto-server report <session_id>
 
 ## 9. Data handling
 
-- **Session = one ride.** Files per `moto-mobile/docs/session-format.md`: `meta.json`, `telemetry.csv`, `events.csv`, `summary.json`, `imu.csv`.
+- **Session = one ride.** Files per `moto-mobile/docs/session-format.md`: `meta.json`, `telemetry.csv`, `events.csv`, `summary.json`, `imu.csv`, and `gps.csv` when the GPS block is subscribed.
 - Fill the metadata of the Phase 0 plan §3.2 / VWP §6.2: ambient temperature and weather, tyre pressures, fuel level, rider weight and load, vehicle configuration, condition label (healthy / fault type), route type, notes. Add the unit and IMU mounting (§4).
 - **Never commit ride data to any repo** (all repos are public, D-033). Sessions live under `$MOTO_DATA_DIR` on the server machine, with a second copy off the laptop.
-- **GPS (D-060):** a u-blox NEO-M8N on a conn UART (UBX-NAV-PVT, 10 Hz; pins **CONFIRM**). Only ground speed, heading, their accuracies, fix type and satellite count leave conn, on the BLE GPS block; latitude, longitude and height never do. The phone writes them to `gps.csv`, which goes to the server with the session. A speed + heading series can rebuild the route's shape, so sessions stay on your own machine and never in a repo.
+- **GPS (D-060):** a u-blox NEO-M8N on a conn UART (UBX-NAV-PVT, 10 Hz; pins **CONFIRM**, §7.3). Only ground speed, heading, their accuracies, fix type and satellite count leave conn, on the BLE GPS block; latitude, longitude and height never do. The phone writes them to `gps.csv`, which goes to the server with the session. A speed + heading series can rebuild the route's shape, so sessions stay on your own machine and never in a repo; moto-mobile uploads a session with `gps.csv` only to a local server (D-063).
 
 ## 10. Open items (fill in, then move facts into the sections above)
 
@@ -195,9 +254,10 @@ uv run moto-server report <session_id>
 | 2 | Parts actually on hand (every **CONFIRM** in §2) | Build start |
 | 3 | Ignition-switched tap point on the CL250 harness | §3.2 |
 | 4 | IMU bracket location and axis directions | §4, metadata |
-| 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** | T1 speed check, §9 |
+| 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** (procedure §7.3) | T1 speed check, §9 |
 | 6 | ~~Listen-only capture tool for Q-001~~ decided in D-058 item 4 (conn `-listen-only` env) | §7 |
 | 7 | ~~ECU round-trip instrumentation~~ decided in D-058 items 1-3 (BLE telemetry v4) | D-029, A-4 |
+| 8 | moto-mobile has no iOS project yet (Android only), so the D-062 bonding check on iOS waits for one | §7.3 step 3 on iOS |
 
 ## 11. Later: moving to rt-core
 
