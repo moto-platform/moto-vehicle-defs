@@ -4,6 +4,9 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Fixed
+- `ble/ble_schema.json` `gpsBlock.sequenceRule` contradicted `mtuRule`: it said `seq` counts blocks sent, while `mtuRule` says an MTU suspension shows up as a `seq` gap. `seq` now advances for every block that is sent or skipped because MTU - 3 < 26, and the error flags cover the interval since the previous block, sent or skipped. Wording only: layout, scale and flags are unchanged; `gen/python/moto_defs/ble.py` carries the rule text (no tag needed, PATCH with the next release).
+
 ## [0.8.0] — 2026-10-07
 
 MINOR: the GPS block of D-060 (BLE schema, D-061). Additive: a new characteristic and its layout; telemetry v4, the IMU block, every DBC, DID, VSS path, `tester_policy` and the D-020 golden copy are unchanged. Consumers: conn sends the block (UBX NAV-PVT parser), moto-mobile records it to the session's `gps.csv`, moto-server stores it; they take the new pin together (D-061 item 3).

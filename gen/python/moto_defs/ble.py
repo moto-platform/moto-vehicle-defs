@@ -209,7 +209,7 @@ SCHEMA = {
         "privacy": "Latitude, longitude and height never leave the node: not on BLE, not on the phone, not on the server (D-060 item 3, invariant 7). codegen refuses a GPS field whose name looks like a position (lat, lon, height, altitude, ECEF, position). A speed + heading series can still rebuild the route's shape by dead reckoning (D-060 item 5, accepted residual risk): sessions stay on the user's machine and are never committed (D-033).",
         "timeRule": "deviceTimeMs is the node clock (the same clock as the telemetry and IMU `deviceTimeMs`) when the last byte of the NAV-PVT message was received, so CAN, IMU and GPS samples can be aligned offline. GPS time and date are not sent.",
         "mtuRule": "A block is sent only when MTU - 3 >= totalBytes (26); otherwise GPS notifications are suspended and the loss shows up as a `seq` gap. It is never truncated.",
-        "sequenceRule": "seq is a rolling 0-255 counter incremented once per GPS block sent; receivers count lost blocks as (seq - prev.seq - 1) mod 256.",
+        "sequenceRule": "seq is a rolling 0-255 counter incremented once per GPS block that is sent or skipped because MTU - 3 < totalBytes (`mtuRule`), so a suspension shows up as a gap; receivers count lost blocks as (seq - prev.seq - 1) mod 256. The error flags (`flags` bits 1-2) cover the interval since the previous block, sent or skipped.",
         "scale": {
             "speed": {"lsbPerUnit": 1000, "unit": "m/s", "rule": "groundSpeed and speedAccuracy: m/s = raw / 1000 (raw in mm/s, as in NAV-PVT)"},
             "heading": {"lsbPerUnit": 100000, "unit": "deg", "rule": "headingOfMotion and headingAccuracy: deg = raw / 100000 (raw in 1e-5 deg, as in NAV-PVT)"},
