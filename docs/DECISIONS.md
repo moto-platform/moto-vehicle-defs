@@ -423,6 +423,11 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 3. A layout change is a defs change with a version bump; conn, moto-mobile and moto-server take it together.
 - Why: the user chose codegen over keeping the copies for v4.
 
+**D-062 — GPS block over BLE: bonded link to subscribe; seq counts MTU-skipped blocks** (2026-10-08, user; D-060 items 4-5, D-061, G4.2)
+1. **Bonded link (option: bonded required).** Subscribing to the `gps` characteristic needs a bonded, encrypted link, like the G4.2 telematics RX write: its CCCD accepts only encrypted writes and its value only encrypted reads. conn clears the CCCD on every connect, so a subscription never carries over to the next peer. Telemetry and IMU stay open.
+2. **Sequence rule (option: fix the defs wording).** `gpsBlock.seq` advances for every block that is sent or skipped because MTU - 3 < `totalBytes`, so an MTU suspension shows up as a seq gap (the old `sequenceRule` said "sent" and contradicted `mtuRule`); the error flags cover the interval since the previous block, sent or skipped. Wording only, no layout change (defs#44, no tag).
+- Why: speed + heading rebuild the route's shape by dead reckoning (D-060 item 5); the bond limits that stream to the paired phone. The seq rule follows `mtuRule`, which already promised the gap.
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
