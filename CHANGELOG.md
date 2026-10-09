@@ -4,6 +4,16 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.9.0] — 2026-10-09
+
+MINOR: the CLAMPED range of rt-core's EKF lean (D-065 item 3). Additive: one provisional limit; every DBC message, DID, VSS path, BLE layout, `tester_policy` and the D-020 golden copy are unchanged. `platform_limits.h` changes for rt_core, safety and hil_sim; rt-core uses the value with its 0x020 glue (D-065 PR 3), safety-node needs no change to stay safe (CLAMPED stays usable and reads RED, D-041); an optional plausibility check against the value is open (Q-029).
+
+### Added
+- `limits/platform_limits.yaml` `cornering.lean_angle_clamp_max_deg` = 55.0 (provisional, user 2026-10-09): |roll| above it is sent as ±55.00 deg with `LEAN_ANGLE_STATE`=CLAMPED.
+- codegen checks (D-065, safety-reviewer): tan(value) > k_red · `friction_coeff_clamp_max` (43.83 deg today), so a clamped lean always reads RED and clamping can never lower the D-041 warning level (the decision is monotone in |lean|, RED is its top); atan(`friction_coeff_clamp_max`) < value (50.19 deg; steady leans are not clamped, an availability rule); value < the `LEAN_ANGLE` maximum of 90 deg and on its 0.01 deg scale. Raising `friction_coeff_clamp_max` above tan(55°) = 1.43 makes the check fail until the clamp is raised too. rt-core clamps its output only, after its INVALID checks (non-finite, innovation gate, variance, speed age).
+- `gen/c/{rt_core,safety,hil_sim}/platform_limits.h`: `PLATFORM_LIMIT_LEAN_ANGLE_CLAMP_MAX_DEG`; `gen/python/moto_defs/limits.py`: `lean_angle_clamp_max_deg`.
+- tests (`test_limits.py`): the committed value, the RED condition at 43.8/43.9 deg, values at/below the ceiling, at/above 90, non-finite and non-numeric values, the check following a raised friction ceiling, and the DBC scale.
+
 ### Fixed
 - `ble/ble_schema.json` `gpsBlock.sequenceRule` contradicted `mtuRule`: it said `seq` counts blocks sent, while `mtuRule` says an MTU suspension shows up as a `seq` gap. `seq` now advances for every block that is sent or skipped because MTU - 3 < 26, and the error flags cover the interval since the previous block, sent or skipped. Wording only: layout, scale and flags are unchanged; `gen/python/moto_defs/ble.py` carries the rule text (no tag needed, PATCH with the next release).
 
