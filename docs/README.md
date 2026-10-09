@@ -19,26 +19,26 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `legacy-telemetry-notes.md` | Reference (short) | Legacy HondaCl250_Telemetry facts per D-023: UDS state machine, NRC table, bus-off backoff, ISO-TP first-frame pitfall, ESP32-S3 pin map, discrepancies, accepted security risks, legacy test coverage |
 | `archive/tr/*` | Turkish originals + the two advisor documents (D-038) | **Not read by Claude.** Ç1-Ç8 are in `ARCHITECTURE.md` §9 |
 
-## hardware-architecture.md (859 lines)
+## hardware-architecture.md (861 lines)
 
 | Lines | Section |
 |---|---|
 | 13-95 | §1-5 philosophy, 5 units, chip choices, CAN rules, latency (bus topology: see ARCHITECTURE §3) |
 | 96-191 | §5b.0-0c context classification, conditioning factors, context bus |
 | 192-242 | §5b.1 blind spot monitoring (BSM) |
-| 243-286 | §5b.2 cornering safety (3 layers) |
-| 287-332 | §5b.3 io-node: immobilizer, park mode, power board |
-| 333-378 | §5b.4 display / LED ring / profile pages |
-| 379-451 | §5b.5 lane departure warning (LDW) |
-| 452-470 | §5b.6 voice commands (ESP-SR) |
-| 471-529 | §5b.7 moto-mcp, privacy |
-| 530-581 | §5b.8 linux-node SDV layer, Raspi power/thermal |
-| 582-629 | §5b.9 anomaly model + validation protocol |
-| 630-649 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |
-| 650-685 | §6-7 module vs chip, staged rollout |
-| 686-747 | §8-9 repo structure, dependency direction, setup order |
-| 748-817 | §9b HIL bench |
-| 818-859 | §10 Phase 2, eliminated items, open notes |
+| 243-288 | §5b.2 cornering safety (3 layers) |
+| 289-334 | §5b.3 io-node: immobilizer, park mode, power board |
+| 335-380 | §5b.4 display / LED ring / profile pages |
+| 381-453 | §5b.5 lane departure warning (LDW) |
+| 454-472 | §5b.6 voice commands (ESP-SR) |
+| 473-531 | §5b.7 moto-mcp, privacy |
+| 532-583 | §5b.8 linux-node SDV layer, Raspi power/thermal |
+| 584-631 | §5b.9 anomaly model + validation protocol |
+| 632-651 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |
+| 652-687 | §6-7 module vs chip, staged rollout |
+| 688-749 | §8-9 repo structure, dependency direction, setup order |
+| 750-819 | §9b HIL bench |
+| 820-861 | §10 Phase 2, eliminated items, open notes |
 
 ## vehicle-work-plan.md (672 lines)
 

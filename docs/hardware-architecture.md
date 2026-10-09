@@ -272,6 +272,8 @@ Layer 3 — ML adaptation (moto-rt-core, together with the context model, option
 
 **Input data (Layer 2, in moto-rt-core):** IMU (lean angle, angular velocity), GPS (turn radius, speed), CAN (speed, acceleration). Lean angle is the EKF output, shared via the context bus (5b.0c) with the display LED ring (5b.4), lane-tracking correction (5b.5), and the safety-node alike.
 
+**Lean estimator (D-065).** A 2-state EKF [roll, gyro bias] measuring roll from tan(roll) = v · yaw rate / g, in its own task above the comms task; wait-free triple buffers carry the speed (with its stamp) in and the lean out, and the comms pass sends 0x020. No usable speed (limits `vehicle_speed`) or no converged filter → INVALID (there is no default lean, D-029); the CLAMPED range is a defs limit. The EKF's alive supervision makes rt-core's heartbeat DEGRADED (D-064 item 4).
+
 **Output — two channels:**
 - **Round LED ring** (either side of the gauge, defined in 5b.4, driven by `moto-safety-node` or the I/O node — the owner is open, Q-026; never by rt-core, D-042): green→yellow→red, instantaneous lean state; DEGRADED / UNAVAILABLE patterns per D-042
 - **Audio/HMI warning** (if the threshold is exceeded): on the main-screen profile (visible in the "sport" profile) + if needed, a fixed warning phrase from the voice command system (5b.6)
