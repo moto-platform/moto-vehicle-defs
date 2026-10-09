@@ -15,6 +15,7 @@
 #define PLATFORM_LIMIT_FRICTION_COEFF_CLAMP_MIN (0.1f) /* provisional */
 #define PLATFORM_LIMIT_FRICTION_COEFF_CLAMP_MAX (1.2f) /* provisional */
 /* lean_angle_default: none by design (provisional), see the YAML rule. */
+#define PLATFORM_LIMIT_LEAN_ANGLE_CLAMP_MAX_DEG (55.0f) /* provisional */
 #define PLATFORM_LIMIT_TOTAL_MASS_DEFAULT_KG (252.0f) /* provisional */
 #define PLATFORM_LIMIT_K_YELLOW (0.6f) /* provisional */
 #define PLATFORM_LIMIT_K_RED (0.8f) /* provisional */

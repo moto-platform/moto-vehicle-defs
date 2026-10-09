@@ -1,6 +1,7 @@
 """limits/platform_limits.yaml and provisional poll periods (D-029)."""
 
 import copy
+import math
 
 import pytest
 
@@ -23,6 +24,48 @@ def test_there_is_no_default_lean_angle(limits, vehicle, platform_db):
     assert any(
         "lean_angle_default must be null" in e for e in check_limits(limits, vehicle, platform_db)
     )
+
+
+def test_lean_clamp_is_55_deg_above_the_friction_ceiling(limits):
+    v = limit_values(limits)
+    assert v["lean_angle_clamp_max_deg"] == 55.0  # D-065 item 3, user 2026-10-09
+    assert v["lean_angle_clamp_max_deg"] > math.degrees(math.atan(v["friction_coeff_clamp_max"]))
+
+
+@pytest.mark.parametrize(
+    "clamp", [50.19, 45.0, 0.0, -55.0, 90.0, 95.0, float("nan"), float("inf"), True, "55", None]
+)  # atan(1.2) = 50.194 deg; DBC LEAN_ANGLE max 90
+def test_lean_clamp_range(limits, vehicle, platform_db, clamp):
+    limits["cornering"]["lean_angle_clamp_max_deg"]["value"] = clamp
+    assert any("lean_angle_clamp_max_deg" in e for e in check_limits(limits, vehicle, platform_db))
+
+
+def test_lean_clamp_follows_the_friction_ceiling(limits, vehicle, platform_db):
+    # Raising the mu ceiling raises the steepest reachable lean: atan(1.5) = 56.3 deg > 55.
+    limits["cornering"]["friction_coeff_clamp_max"]["value"] = 1.5
+    assert any(
+        "atan(friction_coeff_clamp_max)" in e for e in check_limits(limits, vehicle, platform_db)
+    )
+    limits["cornering"]["lean_angle_clamp_max_deg"]["value"] = 57.0
+    assert check_limits(limits, vehicle, platform_db) == []
+
+
+def test_lean_clamp_on_the_dbc_scale(limits, vehicle, platform_db):
+    limits["cornering"]["lean_angle_clamp_max_deg"]["value"] = 55.004  # LEAN_ANGLE is 0.01 deg
+    assert any(
+        "not representable in LEAN_ANGLE" in e for e in check_limits(limits, vehicle, platform_db)
+    )
+
+
+@pytest.mark.parametrize(("clamp", "reads_red"), [(43.8, False), (43.9, True), (55.0, True)])
+def test_a_clamped_lean_reads_red_at_the_friction_ceiling(
+    limits, vehicle, platform_db, clamp, reads_red
+):
+    # safety-reviewer MINOR-4: checked directly, tan(clamp) > k_red * mu_max = 0.8 * 1.2
+    # (atan 0.96 = 43.83 deg), not only through the stricter atan(mu_max) floor.
+    limits["cornering"]["lean_angle_clamp_max_deg"]["value"] = clamp
+    errors = check_limits(limits, vehicle, platform_db)
+    assert any("must read RED" in e for e in errors) is not reads_red
 
 
 def test_friction_default_inside_clamp_range(limits, vehicle, platform_db):
