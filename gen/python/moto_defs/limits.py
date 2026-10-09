@@ -7,6 +7,7 @@ LIMITS = {
     "friction_coeff_clamp_min": (0.1, "provisional"),
     "friction_coeff_clamp_max": (1.2, "provisional"),
     "lean_angle_default": (None, "provisional"),
+    "lean_angle_clamp_max_deg": (55.0, "provisional"),
     "total_mass_default_kg": (252, "provisional"),
     "k_yellow": (0.6, "provisional"),
     "k_red": (0.8, "provisional"),

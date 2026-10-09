@@ -57,6 +57,25 @@ cornering:
     rule: >-
       No default lean angle exists. When the EKF cannot estimate lean, rt-core sends
       LEAN_ANGLE_STATE=INVALID; value 2 is reserved and treated as INVALID.
+  lean_angle_clamp_max_deg:
+    value: 55.0
+    status: provisional
+    rule: >-
+      The lean range of rt-core's EKF output (D-065 item 3). rt-core first sends INVALID for a
+      non-finite roll, a failed innovation gate, a large variance or an unusable speed; only
+      then, when |roll| exceeds this value, it sends LEAN_ANGLE = +-value (sign kept) with
+      LEAN_ANGLE_STATE=CLAMPED. It clamps the output only, never the EKF state. safety-node
+      uses CLAMPED like ESTIMATED (D-041). Clamping lowers the lean, but the D-041 decision is
+      monotone in |lean| and RED is its highest level, so a clamp that already reads RED at
+      every mu_eff <= friction_coeff_clamp_max can never lower the warning: codegen requires
+      tan(value) > k_red * friction_coeff_clamp_max (43.83 deg today). It also keeps the value
+      above atan(friction_coeff_clamp_max) (50.19 deg), the steepest steady-turn lean the
+      software friction ceiling allows, so steady leans are not clamped, and below the DBC
+      maximum of LEAN_ANGLE (90 deg), on its 0.01 deg scale.
+    rationale: >-
+      About 5 deg above atan(friction_coeff_clamp_max) (user, 2026-10-09). The headroom is for
+      availability and log fidelity (transients, tyre-width roll, estimator noise), not for
+      safety, which the RED condition above covers. Revisited with the T1/T4 lean measurements.
   total_mass_default_kg:
     value: 252
     status: provisional

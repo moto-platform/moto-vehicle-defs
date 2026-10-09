@@ -457,6 +457,7 @@ LIMIT_KEYS = {
         "friction_coeff_clamp_min",
         "friction_coeff_clamp_max",
         "lean_angle_default",
+        "lean_angle_clamp_max_deg",
         "total_mass_default_kg",
         "k_yellow",
         "k_red",
@@ -550,6 +551,7 @@ def check_limits(data: dict[str, Any], vehicle: dict[str, Any], platform_db: Dat
         errors.append("limits: total_mass_default_kg not representable in TOTAL_MASS")
     if v["lean_angle_default"] is not None:
         errors.append("limits: lean_angle_default must be null (no safe default lean, D-029)")
+    errors += _check_lean_clamp(v, _signal(platform_db, "EkfLean", "LEAN_ANGLE"))
     k_yellow, k_red = v["k_yellow"], v["k_red"]
     if not all(_is_real(k) for k in (k_yellow, k_red)) or not 0 < k_yellow < k_red < 1:
         errors.append("limits: need 0 < k_yellow < k_red < 1 (D-041)")
@@ -577,6 +579,35 @@ def check_limits(data: dict[str, Any], vehicle: dict[str, Any], platform_db: Dat
     if not _is_real(margin) or not 0 < margin <= 20:
         errors.append("limits: vehicle_speed_accel_margin_mps2 must be in (0, 20]")
     return errors
+
+
+def _check_lean_clamp(v: dict[str, Any], lean) -> list[str]:
+    """D-065 item 3: the CLAMPED range never lowers the D-041 warning level.
+
+    Clamping lowers the lean. The decision is monotone in |lean| and RED is its highest
+    level, so the clamp is safe when it already reads RED at every mu_eff up to the ceiling:
+    tan(clamp) > k_red * friction_coeff_clamp_max (checked directly, so it survives a k_red
+    change, Q-022). The clamp also stays above atan(friction_coeff_clamp_max), the steepest
+    steady-turn lean, so steady leans are never clamped (availability, not safety)."""
+    clamp = v["lean_angle_clamp_max_deg"]
+    mu_max = v["friction_coeff_clamp_max"]
+    k_red = v["k_red"]
+    if not all(_is_real(x) for x in (clamp, mu_max, k_red)):
+        return ["limits: lean_angle_clamp_max_deg must be a number"]
+    if not 0 < clamp < 90 or not math.tan(math.radians(clamp)) > k_red * mu_max:
+        return [
+            "limits: lean_angle_clamp_max_deg must read RED at the friction ceiling: "
+            f"tan(value) > k_red * friction_coeff_clamp_max = {k_red * mu_max:.3f} (D-065)"
+        ]
+    floor = math.degrees(math.atan(mu_max))
+    if not floor < clamp < lean.maximum:
+        return [
+            f"limits: lean_angle_clamp_max_deg must be above atan(friction_coeff_clamp_max) "
+            f"= {floor:.2f} deg and below the LEAN_ANGLE maximum {lean.maximum} deg (D-065)"
+        ]
+    if not _fits(lean, clamp) or not _fits(lean, -clamp):
+        return ["limits: lean_angle_clamp_max_deg not representable in LEAN_ANGLE"]
+    return []
 
 
 def _is_pos_int(value: Any) -> bool:
