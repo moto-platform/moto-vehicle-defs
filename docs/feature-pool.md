@@ -270,13 +270,13 @@ Function proposals not previously in the pool. Most achievable with existing har
 | V13 | Automated telemetry video overlay & highlight reels | 30-50 | V7 | U | FFmpeg/Cairo + 40° lean trigger |
 | V14 | Low-light night vision (Sony Starvis IMX462) | 40-60 | V1 | T,U | NIR 850nm + YOLO pedestrian |
 | V15 | Dual cockpit HMI (Nextion UART + low-latency RTSP) | 35-50 | V1 | U | Nextion serial + WebRTC/DSI |
-| V16 | SMIDSY conspicuity light modulator (4 Hz high-beam) | 30-45 | V3, STM32G0 | K,T,U | DOT 49 CFR 571.108 S7.9.4 |
+| V16 | SMIDSY conspicuity light modulator (4 Hz high-beam) | 30-45 | V3, STM32G0 | K,T,U | DOT 49 CFR 571.108 S7.9.4 (US; in the EU and Turkey UN R53 applies) |
 | V17 | Kamm friction circle curve-braking envelope & haptics | 50-80 | EKF, IMU | K,T,U | Kamm circle, grip margin reserve |
 | V18 | Tank-slapper (speed wobble) 6-9 Hz resonance detector | 40-60 | IMU-1, Gyro | K,T,U | 2nd-order IIR bandpass, audio SOS |
 | V19 | Rapid tire blowout early warning (UN ECE R141) | 25-40 | BLE TPMS | K,T,U | $dP/dt < -0.15\text{ bar/s}$, hazard pulse |
 | V20 | Urban lane-filtering "dooring" optical flow predictor | 50-80 | V1 | T,U | Optical flow lateral delta ($>10\text{ cm}$) |
 | V21 | Telemetry-driven cognitive fatigue & hypothermia index | 40-70 | CAN, DIDs | T,U | Throttle micro-jitter + wind-chill |
-| V22 | Post-crash fuel/ignition isolation & cellular eCall SOS | 35-50 | STM32G0, 4G | K,T,U | $70^\circ$ lean + 3g shock + fuel relay |
+| V22 | Post-crash fuel/ignition isolation & cellular eCall SOS | 35-50 | STM32G0, 4G | K,T,U | $70^\circ$ lean + 3g shock; the fuel relay is out of pool (§15, invariant 6) |
 | V23 | Sentry guard mode (parked IMU wake + 4G video push) | 30-50 | V1, 4G | U | Ultra-low-power IMU + 1080p clip |
 | V24 | Remote cloud immobilizer & starter circuit inhibit | 20-35 | STM32G0, 4G | U | Zero-speed check + starter relay |
 

@@ -1,8 +1,31 @@
 # Model Context Protocol (MCP) Server: Architecture, Scenarios & AI Agent Capabilities
 
-> **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07). Nothing here overrides `DECISIONS.md` or moto-mcp's read-only scope. Not yet reviewed against invariant 7 (the LLM never does its own math, raw GPS never goes to the cloud) and D-060 (no position leaves conn).
+> **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07; reviewed against `DECISIONS.md`, `ARCHITECTURE.md` and the platform invariants on 2026-10-09). Nothing here overrides `DECISIONS.md` or moto-mcp's read-only scope (ARCHITECTURE: "moto-linux-node → moto-mcp (localhost, read-only) → cloud LLM"). The recorded tool set is the six tools of hardware-architecture §5b.7 (`get_live_snapshot`, `get_recent_stats`, `get_event_log`, `get_anomaly_status`, `get_maintenance_status`, `query_ride_history`); the other tools here are candidates.
+>
+> **Review (2026-10-09).** Verdicts as in `can-data-expansion.md`: CONTRADICTS (forbidden as written), EDIT (compatible once corrected), DECIDE (needs a decision or the named open question).
+>
+> | Item | Verdict | Basis |
+> |---|---|---|
+> | Rule 1 (no actuation or write tools), rule 2 (pre-computed statistics), rule 4 (VSS abstraction) | compatible | Invariant 1 and the read-only repo map (rule 1 cites D-020, which is the vehicle-bus allow-list, not an MCP rule); invariant 7: tools return computed values, never raw time series; D-028 |
+> | Dual-brain voice assistant | compatible | D-044, D-047. Which assistant (templates, a local LLM or the hybrid cloud path) and what may reach a cloud LLM: Q-028 |
+> | "System 1: JEV / TinyML reflex engine" | EDIT | "JEV" is not defined anywhere in the platform; the deterministic layer is rt-core / safety-node firmware (EKF, cornering decision), renamed in the diagram. "D-029 Autoencoder Gating" is wrong: D-029 is the polling budget |
+> | "ISO 26262 ASIL-D" claims (document header, §5) | CONTRADICTS | D-046: no ASIL has been assigned yet (no HARA) |
+> | Fuel pump / ignition isolation (§1 diagram, scenario 5.2) | CONTRADICTS | Invariant 6, feature-pool §15 |
+> | Remote `LOCKED_ARMED` immobilizer (5.1) | CONTRADICTS | Invariant 6 (unlocked default, hidden bypass, 10 s unlock); reading the state is fine |
+> | Coordinates to the cloud or a cloud LLM: 3.2 (CDN), 5.1, 5.2; crowd data of `query_road_hazards` | CONTRADICTS | Invariant 7 and ARCHITECTURE ("raw GPS is never sent"); in Phase 0 latitude and longitude never leave conn (D-060 item 3) |
+> | Local position-derived tools: `estimate_range_and_efficiency(destination)`, rule 3 semantic geofencing; the group-mesh hazard position (6.1) | DECIDE (Q-028) | In Phase 0 only conn has a position (D-060 item 3); where position-derived values could be computed is Q-028 item 3. Sharing positions with other riders has no decision |
+> | Scenario 5.2: the LLM dispatches to 112 with medical data | CONTRADICTS | An LLM must not trigger emergency actions; medical data is personal data (D-033); no eCall or cellular decision |
+> | Signals not in defs (`MAP_kPa`, `IAT`, tire pressure, odometer, engine hours, rev-limiter strikes, slip ratio, `IMU_CHASSIS_FFT_PEAKS`, `CRASH_LATCH`, `0x380 PACK_HAZARD`) | CONTRADICTS | Invariant 2: only the defs DIDs and VSS paths exist (5 polled DIDs today); new ones go through `/signal-change` |
+> | Resale passport (VIN, blockchain, cloud logs; 7.1) | CONTRADICTS | The VIN is never committed, the probe prints the WMI only (D-059, D-033); the data it audits does not exist |
+> | Diagnostic triage (1.1) | EDIT | DTC read (0x19) is allowed, clear (0x14) is not (D-020). `safe_to_continue` / `max_recommended_speed_kmh` are safety advice: only deterministic modules may produce them, never the LLM or ML (invariants 3, 7) |
+> | Wear, RUL, clutch-slip and brake-pad models (4.1, 4.2), coaching (3.1) | DECIDE | Each needs a deterministic upstream module (invariant 7); friction circle: Q-022 |
+> | Acoustic / vibration diagnostics (1.2) | DECIDE (Q-025) | D-044: no raw audio or vibration on CAN or VSS |
+> | Pre-ride briefing (2.1): TPMS, weather, the rider's name | DECIDE | TPMS is a pool item; weather is an external source; names are personal data (D-033) |
+> | Highlight-reel generation and CDN publishing (3.2); any actuator tool | DECIDE (Q-027) | Producing or publishing artifacts and peripheral actuator writes go beyond today's read-only scope; hardware-architecture §10.2 lists approval-gated peripheral writes for Phase 2 |
+> | Exposure to Claude, GPT and other third-party clients | DECIDE (Q-028) | hardware-architecture §5b.7: home-demo mode needs TLS + auth; which telemetry may reach a cloud LLM is open |
+> | §5 commercial summary (SaaS pricing) | removed | Commercial planning stays outside the public repo (D-033; user, 2026-10-09) |
 
-**Document:** `moto-platform/MCP_SCENARIOS_AND_AGENT_ARCHITECTURE.md`  
+**Document:** `docs/ideas/mcp-scenarios.md` (originally `MCP_SCENARIOS_AND_AGENT_ARCHITECTURE.md` at the workspace root)  
 **Target Repository:** `moto-mcp` (Exposed to Claude, GPT, and Local LLMs)  
 **Standard Compliance:** Anthropic Model Context Protocol (MCP) v1.0, COVESA Vehicle Signal Specification (VSS v4.0), ISO 14229 (UDS), ISO 26262 ASIL-D Safe Read-Only Boundary.
 
@@ -19,7 +42,7 @@ The `moto-mcp` service transforms the motorcycle from an opaque mechanical asset
 [ VEHICLE EDGE SENSORS & CAN NETWORK (FDCAN1 / FDCAN2) ]
 ========================================================================================
            │
-           ├──► [ SYSTEM 1: JEV / TinyML REFLEX ENGINE (<10 ms, Deterministic) ]
+           ├──► [ SYSTEM 1: DETERMINISTIC REFLEX LAYER, rt-core / safety-node (<10 ms) ]
            │      ├── Real-Time Roll/Pitch Lean Angle (EKF @ 100 Hz)
            │      ├── Tank-Slapper / Resonance Bandpass Filter (6–9 Hz)
            │      ├── Fast-Gate Anomaly Triage (D-029 Autoencoder Gating)
@@ -363,7 +386,6 @@ async def get_pre_ride_briefing(planned_distance_km: float) -> dict:
 
 ---
 
-## 5. Summary: Commercial and Academic Impact
+## 5. Summary: Academic Impact
 
 1. **For the Academic Thesis:** Demonstrates a groundbreaking bridge between hard real-time ISO 26262 automotive systems and cloud-native Large Language Models via modern open protocols (MCP).
-2. **For the Commercial SaaS:** Eliminates driver confusion, builds brand loyalty, transforms passive telemetry into a viral social and performance coaching engine, and provides recurring subscription revenue ($7.99–$14.99/mo) from motorcyclists worldwide.

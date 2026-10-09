@@ -503,10 +503,10 @@ AT HOME/AFTERWARDS (demo, bonus)
 
 **Privacy and encryption (updated — result of discussion):**
 
-- **General context packet:** Raw GPS coordinates are never sent to the cloud LLM/context packet; instead, a locally computed, irreversible summary goes out (e.g. "rural area," "12 km from home," "known route") — a natural extension of the offline map cache (5b.8), not extra work.
-- **Special calls requiring coordinates (navigation, etc.):** Raw GPS is sent ONLY for that specific tool call, and is never mixed into the general context packet. For location-independent questions like "how did I ride today," GPS never goes to the LLM at all.
+- **General context packet:** Raw GPS coordinates are never sent to the cloud LLM/context packet; instead, a locally computed, irreversible summary goes out (e.g. "rural area," "12 km from home," "known route") — a natural extension of the offline map cache (5b.8). Such summaries need a position, which in Phase 0 only conn has (D-060 item 3); where they could be computed is open (Q-028).
+- **Special calls requiring coordinates (navigation, etc.):** superseded by invariant 7 and D-060 item 3: latitude and longitude never leave conn, so no tool call carries coordinates. For location-independent questions like "how did I ride today," GPS never goes to the LLM at all.
 - **Encryption — used in the right place, not in general context transmission:** HTTPS/TLS already exists on every cloud API call (nothing extra needed). Encryption's real added value is in two places: (1) `moto-mcp`'s "home demo" externally-exposed mode — TLS + authentication (API key/token) mandatory, protects all telemetry (not just GPS); (2) historical GPS data stored on `moto-server` — storage-level encryption (disk/DB level), preventing easy reading of location history on physical access.
-- **Note:** This decision may change later (once the real usage/threat model is clearer) — this is the default for now.
+- **Note:** This decision may change later (once the real usage/threat model is clearer) — this is the default for now. The assistant type (templates, a local LLM or this cloud path) and what may reach a cloud LLM are open as Q-028.
 
 **Additional sensors (added to the core for this subsystem + the anomaly model):**
 
@@ -523,7 +523,7 @@ AT HOME/AFTERWARDS (demo, bonus)
 - **OVMS** (openvehicles/Open-Vehicle-Monitoring-System-3) — the warning that LLMs learn patterns rather than reasoning, and that current AI tools produce confidently-wrong results without disclosing their limitations → the rationale for the "the LLM must not do its own math" rule.
 - **Connected-Car-AI-Support-Agent** — the operator-approval-gate pattern (ISO 26262 compliance) before actuator/OTA operations — not applied for now since this project is read-only, a reference for if actuators are added later.
 
-**Phase 2 — Actuator-LLM Connection (write capability, approval-gated):** Currently, all Moto-MCP tools are read-only. In Phase 2, the LLM could be given the authority to trigger **only the peripheral actuators we ourselves added** (lights, heated-grip control, camera trigger — F17 class, not touching engine control). It will never be extended to engine/ECU control. Every write call passes through an **operator approval gate**, as in the Connected-Car-AI-Support-Agent pattern (no actuator triggers without voice/HMI confirmation) — the LLM directly changing something is a categorically different risk class from it performing a read, and that distinction is preserved.
+**Phase 2 — Actuator-LLM Connection (write capability, approval-gated):** Currently, all Moto-MCP tools are read-only. In Phase 2, the LLM could be given the authority to trigger **only the peripheral actuators we ourselves added** (lights, heated-grip control, camera trigger — F17 class, not touching engine control). It will never be extended to engine/ECU control. Every write call passes through an **operator approval gate**, as in the Connected-Car-AI-Support-Agent pattern (no actuator triggers without voice/HMI confirmation) — the LLM directly changing something is a categorically different risk class from it performing a read, and that distinction is preserved. Pending Q-027: until it is decided, moto-mcp stays read-only (ARCHITECTURE).
 
 ---
 
@@ -836,7 +836,7 @@ All items below are gathered into **a single "next stage" pool** — not split i
 | SOME/IP | Moves the H7↔ESP32 bridge to the automotive middleware standard | Replaces the current simple messaging |
 | DoIP | Carrying UDS over Ethernet (next-gen diagnostic protocol) | Via the Raspi's native Ethernet interface |
 | Deep-learning LDW upgrade (UFLD/Fast-CenLaneNet) | Robustness in hard scenes (night, faint lines) | Low priority — the user won't prioritize lane tracking heavily, classic CV seems sufficient |
-| Moto-MCP actuator-write capability (approval-gated) | The LLM being able to trigger its own added peripheral actuators (lights, heating, camera) | Never extended to engine/ECU control; operator approval gate mandatory |
+| Moto-MCP actuator-write capability (approval-gated) | The LLM being able to trigger its own added peripheral actuators (lights, heating, camera) | Never extended to engine/ECU control; operator approval gate mandatory. Pending Q-027 (read-only until then) |
 | NFC cryptographic upgrade (MIFARE DESFire) | Clone resistance | PN532 hardware supports it, needs an additional library (software) |
 | Nextion → LVGL+ESP32/round display | Enrichment of the main screen | References: moto2000, opencluster, DIY-dash-5, evj55-dashboard |
 | Raspi 5 dedicated carrier/power PCB | **Not a function, a standardization step** — production maturation | Last on the list, done once the design settles |
