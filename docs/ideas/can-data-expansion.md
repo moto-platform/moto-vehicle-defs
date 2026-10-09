@@ -1,16 +1,33 @@
 # Field Data Expansion Plan and Technical Necessity Analysis
 
-> **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07). Nothing here overrides `DECISIONS.md`; an item becomes work only through a recorded decision. The task rows V9-V24 are also listed in `../feature-pool.md` §10.
-> Known conflicts to evaluate before any of it is used:
-> - §2 is stale: speed/RPM poll at 110 ms since D-053 (budget 0.514 today, D-059), and the proposed 0.900 exceeds the D-029 ceiling of 0.8 on an unmeasured RTT (D-058 measures it). The sum is ECU request-slot occupancy of the one-in-flight tester, not CAN bus load.
-> - §3 Step 1/3 are superseded by D-059 (discovery list in defs, checked against the gate; one byte-exact padded FC.CTS; Q-020 resolved).
-> - V-14.2 (fuel pump / ignition cut) conflicts with invariant 6 and can stop the engine while riding on a false crash detection; V-14.4 sends GPS coordinates off conn (invariant 7, D-060).
-> - V-16 (cloud immobilizer) lacks the hidden bypass / 10 s unlock of invariant 6 and makes a critical function depend on a slow, remotely reachable channel (invariant 4).
-> - V-01 / V-08 (brake-lamp and headlamp modulation) cite US FMVSS 108; in the EU and Turkey UN R53 applies. V-10.4 actuates a steering damper (safety-critical actuator).
-> - The original §5 (B2C monetization) was commercial planning and was removed before commit (public repo, D-033); it is kept outside the repo.
+> **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07; reviewed against `DECISIONS.md` and the platform invariants on 2026-10-09). Nothing here overrides `DECISIONS.md`; an item becomes work only through a recorded decision. Tasks V-01..V-16 are rows V9-V24 of `../feature-pool.md` §10 (V-01 = V9, V-03..V-06 = V10..V13, V-07 = V14, V-02 = V15, V-08 = V16, V-09..V-16 = V17..V24).
+>
+> **Review (2026-10-09).** CONTRADICTS: a recorded decision or invariant forbids it as written; drop or rewrite it before any use. EDIT: compatible once the stale text is corrected. DECIDE: no recorded decision covers it; it needs one (or the named open question) before any work.
+>
+> | Item | Verdict | Basis |
+> |---|---|---|
+> | §2 budget tables ("current" 0.750, proposed 0.900, 50/100 ms periods, "bus load") | EDIT | Speed/RPM poll at 110 ms since D-053, and every period must be ≥ base timeout + step (D-053); the budget is 0.514 today (D-059 item 4) against the 0.8 ceiling at the provisional 20 ms RTT (D-029), which D-058 measures. The sum is the ECU request-slot occupancy of the one-in-flight tester, not CAN bus load. New DIDs enter only from the bike's measured discovery output via `/signal-change` with `verified: false` (D-059 item 4); the DIDs of §1/§2 are candidates |
+> | §1 VIN 0xF190 as a session tag | EDIT | WMI only, the VIN is never committed (D-059, D-033) |
+> | §3 Steps 1 and 3 | EDIT (superseded) | D-059: the discovery list lives in defs and is checked against the gate; the Flow Control is one byte-exact padded 8-byte `30 00 00 AA AA AA AA AA`, not 3 bytes; Q-020 is resolved |
+> | Hand-picked CAN IDs 0x240-0x242 (V-01, V-08, V-09) | CONTRADICTS | Invariant 2: IDs come only from `dbc/platform.dbc` via `/signal-change` |
+> | V-01, V-08 brake-lamp / headlamp modulation | DECIDE | No decision covers lamp modulation. The text cites US FMVSS 108; in the EU and Turkey UN R53 applies. V-01.5 must not make a blind-spot decision outside io-node (invariant 3) |
+> | V-02, V-04, V-07, V-12 camera, visor HUD, Nextion, YOLO | DECIDE | No camera or HUD decision; output informational only (invariants 3, 4). The Nextion driver on conn is temporary (D-023) |
+> | V-03 crowdsourced pothole map | CONTRADICTS | GPS + images to a cloud PostGIS: invariant 7, D-060 items 3 and 5 |
+> | V-05, V-09 friction-circle guide / braking envelope | DECIDE (Q-022, Q-026) | D-041 v1 is lateral only; the thresholds are D-048's k_yellow 0.6 / k_red 0.8 (D-041 item 2), not 85 %; must not become a second cornering decision |
+> | V-06 video overlay | EDIT | B2C wording removed; a GPS route overlay would hit D-060; sharing stays user-initiated (D-063) |
+> | V-10.1-10.3 wobble detector | EDIT | Informational output only; a steering-head IMU is new hardware |
+> | V-10.4 steering-damper actuation | DECIDE | Safety-critical actuator with no decision; needs safety-reviewer |
+> | V-11 BLE TPMS + automatic hazard flashers | DECIDE | No decision |
+> | V-13 fatigue index | EDIT | "Widen the thresholds by 30 %" must mean warn earlier: ML may only tighten (invariant 3) |
+> | V-14.1, V-14.3 crash latch + abort window | DECIDE | New safety-adjacent function (invariant 8) and a helmet button; no decision |
+> | V-14.2 fuel pump / ignition cut | CONTRADICTS | Invariant 6, hardware-architecture §5b.3 (the ignition/fuel-pump/ECU line is never touched), feature-pool §15; a false crash detection would stop the engine while riding |
+> | V-14.4 GPS coordinates over 4G | CONTRADICTS | Invariant 7, D-060 item 3; no cellular decision exists |
+> | V-15 sentry mode (4G, video push, < 2 mA) | DECIDE | No cellular or camera decision; bystander video is personal data (D-033); io-node owns park mode |
+> | V-16 cloud immobilizer | CONTRADICTS | Lacks the unlocked default, hidden bypass and 10 s unlock of invariant 6; a remote, slow channel for a critical function (invariant 4) |
+> | Original §5 (B2C monetization) and the "SaaS" wording in §4 | removed | Commercial planning stays outside the public repo (D-033; user, 2026-10-09) |
 
 **Target Platform:** Honda CL250 (Keihin Powertrain ECU)  
-**Location:** `moto-platform/CAN_DATA_EXPANSION_TODO.md`  
+**Location:** `docs/ideas/can-data-expansion.md` (originally `CAN_DATA_EXPANSION_TODO.md` at the workspace root)  
 **Purpose:** Pre-deployment checklist and necessity analysis for expanding CAN/UDS telemetry channels prior to Phase 0 data logging. Ensures no critical training features are omitted from the baseline dataset.
 
 ---
@@ -98,7 +115,7 @@ This checklist must be executed on Day 1 of physical vehicle connection prior to
 
 ## 4. Active Safety, Vision & Cockpit Telemetry Engineering Tasks
 
-To evolve from a telemetry logger into a commercial Software-Defined Vehicle (SDV) SaaS platform, the following perception, cockpit HMI, and active safety modules are defined as actionable engineering tasks:
+Beyond the telemetry logger, the following perception, cockpit HMI, and active safety modules are listed as candidate tasks (see the review table above):
 
 ### 4.1. Task V-01: Rear-End Collision Warning (RCW) & Tail Strobe Actuation
 * **Target Hardware:**
@@ -148,7 +165,7 @@ To evolve from a telemetry logger into a commercial Software-Defined Vehicle (SD
   - [ ] **V-05.4 Traction Boundary Warning:** If live lean angle exceeds $85\%$ of the road surface friction limit ($\mu$), shift the guide arc from green to flashing amber and emit haptic handlebar rumble.
 
 ### 4.6. Task V-06: Autonomous Telemetry Video Overlay & Viral Highlight Reels
-* **Value Proposition:** Consumer delight and viral organic marketing for the B2C SaaS platform.
+* **Value Proposition:** Ride review and user-initiated sharing for the rider.
 * **Engineering Checklist:**
   - [ ] **V-06.1 Time-Synchronized Telemetry-Video Pipeline:** Timestamp raw video frames from USB/CSI camera with microsecond platform-bus GPS clock ($T_{\text{sync}}$).
   - [ ] **V-06.2 Dynamic Graphic Telemetry Burner:** Use FFmpeg with Cairo/OpenGL filter graph to render professional telemetry graphics:
@@ -220,7 +237,7 @@ To evolve from a telemetry logger into a commercial Software-Defined Vehicle (SD
 * **Engineering Checklist:**
   - [ ] **V-14.1 Crash Latch Classifier:** Trigger `CRASH_LATCH` state in `rt-core` when roll angle $>70^\circ$, 3-axis deceleration $|a| > 3.0\text{ g}$, and wheel speed drops to 0 within 500 ms.
   - [ ] **V-14.2 Hardware Fire Isolation:** `moto-io-node` (STM32G0) de-energizes fuel pump relay and main ignition circuit within 10 ms to isolate fuel spray and sparks.
-  - [ ] **V-14.3 15-Second eCall Abort Window:** Display emergency SOS countdown on Visor HUD and pulse handlebar haptics. Sürücü kask butonuna basarak yanlış alarmı iptal edebilir.
+  - [ ] **V-14.3 15-Second eCall Abort Window:** Display emergency SOS countdown on Visor HUD and pulse handlebar haptics. The rider can cancel a false alarm by pressing the helmet button.
   - [ ] **V-14.4 Cellular SOS Dispatch:** If countdown expires, `moto-connectivity-node` (4G LTE Cat-1) transmits emergency packet via SMS and HTTPS to `moto-server` containing: GPS coordinates, crash speed, impact G-force vector, and medical info.
 
 ### 4.15. Task V-15: Tesla-Style Sentry Guard Mode (Ultra-Low-Power Wakeup & 4G Video Push)
@@ -232,9 +249,9 @@ To evolve from a telemetry logger into a commercial Software-Defined Vehicle (SD
   - [ ] **V-15.4 High-Priority Cloud Push Alert:** `moto-connectivity-node` uploads video slice via 4G LTE Cat-1 to `moto-server` and dispatches immediate push notification to the rider's smartphone with live video preview.
 
 ### 4.16. Task V-16: Remote Cloud Immobilizer & Starter Inhibit (Anti-Theft Protection)
-* **Özet (TR):** Motor çalındığı anda telefon uygulamasından tek tuşla `moto-io-node` (STM32G0) üzerindeki marş rölesi kilitlenir. Hırsız kontağı kırsa veya düz kontak yapsa bile marş motoru asla dönmez.
+* **Summary:** When the bike is stolen, one tap in the phone app locks the starter relay on `moto-io-node` (STM32G0). Even if the thief breaks the ignition lock or hotwires it, the starter motor never cranks.
 * **Scenario:** Vehicle theft prevention, recovery, and remote anti-theft immobilization.
-* **Safety Rule Compliance:** Strict adherence to safety policy (D-020 / DECISIONS.md): **NEVER cut fuel or ignition while engine is running**; only the starter relay circuit is locked out to prevent engine cranking.
+* **Safety Rule Compliance:** Strict adherence to invariant 6 (hardware-architecture §5b.3): **NEVER cut fuel or ignition while engine is running**; only the starter relay circuit is locked out to prevent engine cranking.
 * **Engineering Checklist:**
   - [ ] **V-16.1 Authenticated Cloud Command:** `moto-server` issues a cryptographically signed immobilizer command via TLS 1.3 MQTT to `moto-connectivity-node` (ESP32-S3).
   - [ ] **V-16.2 Zero-Speed Interlock Verification:** `rt-core` (STM32H7) validates that engine is stopped (`0xF40C == 0`) and wheel speed is 0 (`0xF40D == 0`) before permitting the lock command to transition to the hardware actuator.
