@@ -451,6 +451,16 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Why: the docs set 0x020's fields and the speed rules but not the estimator. The user chose the simplest verifiable filter (ISO 26262-6 §8), a lock-free exchange that keeps the EKF's timing free of the comms task (architecture-guard BLOCKERs: a speed snapshot carrying an age instead of a stamp, and a seqlock read by the higher-priority task), and a clamp from defs instead of a hand-picked number (invariant 2).
 - Implementation (2026-10-09, v0.9.0, item 0 of the PR order): `lean_angle_clamp_max_deg` = 55.0 deg, provisional (user). safety-reviewer: no blocker. The D-041 decision is monotone in |lean| and RED is its top level, so codegen requires tan(clamp) > k_red · `friction_coeff_clamp_max` (43.83 deg): a clamped lean always reads RED and clamping never lowers the warning. It also keeps the clamp above atan(`friction_coeff_clamp_max`) = 50.19 deg (steady leans unclamped; availability, not safety) and below the `LEAN_ANGLE` maximum of 90 deg, on its 0.01 deg scale. rt-core (PR 3, MAJOR-1) sends INVALID for a non-finite roll, a failed innovation gate, a large variance or an unusable speed before it clamps, and clamps the output only, never the EKF state. A safety-node plausibility check on CLAMPED/ESTIMATED against this value is open (Q-029).
 - Amendment (2026-10-10, user; tightens item 2; architecture-guard + safety-reviewer on rt-core#27): **0x020 fails closed without a registered EKF alive counter.** rt-core registers the EKF's `services/alive` counter with `app/comms` (`comms_ekf_register()`) before the scheduler starts; while `comms_ekf_registered()` is false the comms pass never opens 0x020, so a missing registration cannot leave the heartbeat blind to the EKF (NODE_MODE NORMAL) while 0x020 is on the bus. The receiver sees the 0x020 timeout (D-042 fallback) instead of a plausible-looking frame. Implemented in PR (3) with a host/SIL test.
+- Implementation (2026-10-10, rt-core#28, item 4 PR (2), pure lean core `features/cornering/lean_core`; architecture-guard + safety-reviewer: no blocker, findings applied). The measurement compares the body z gyro with h = (g/v)·sin(roll), which is item 1's coordinated-turn relation at pitch 0 since r = ψ̇·cos(roll). Two user choices refine item 1:
+  - **Gate window.** A gate reject run of up to 100 ms keeps ESTIMATED, with QUALITY capped at 50 %. A longer run means the filter diverged: INVALID and reinit. A single reject is often a steering transient; a diverged filter shows as a sustained run (architecture-guard MAJOR-1).
+  - **Speed in the measurement.** It uses the speed's upper bound, sample + age × `vehicle_speed_accel_margin_mps2`, so a stale speed makes the lean err high, the side on which D-041 warns earlier, at the cost of over-reading while braking. The margin also stays in the measurement noise (safety-reviewer MAJOR-3).
+  
+  Further safety-reviewer findings, all provisional until T1/T4:
+  - The turn-in lag enters the measurement noise, and the gyro bias is frozen above 10°/s of roll rate and for 600 ms after.
+  - |roll| ≥ 90° restarts the filter.
+  - Without a speed, the roll falls back to its prior.
+
+  The core never produces CLAMPED. PR (3) clamps the output copy.
 
 ## Open questions (awaiting decision)
 
