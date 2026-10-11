@@ -197,7 +197,77 @@ def _mutate_gps_uuid_duplicate(s):
     s["gatt"]["characteristics"]["gps"]["uuid"] = s["gatt"]["characteristics"]["imu"]["uuid"]
 
 
+def _vsig(s):
+    return s["vehicleSignalBlock"]
+
+
+def _vsig_record(s, name):
+    return next(f for f in _vsig(s)["recordFields"] if f["name"] == name)
+
+
+def _mutate_vsig_record_gap(s):
+    _vsig_record(s, "raw")["offset"] += 1
+
+
+def _mutate_vsig_record_bytes(s):
+    _vsig(s)["recordBytes"] = 10
+
+
+def _mutate_vsig_header_order(s):
+    header = _vsig(s)["headerFields"]
+    header[4]["name"], header[5]["name"] = header[5]["name"], header[4]["name"]
+
+
+def _mutate_vsig_raw_type(s):
+    _vsig_record(s, "raw").update(type="uint16", size=2)
+    _vsig(s)["recordBytes"] = 7
+
+
+def _mutate_vsig_did_missing(s):
+    _vsig_record(s, "did")["name"] = "index"
+
+
+def _mutate_vsig_total_max(s):
+    _vsig(s)["totalBytesMax"] = 182
+
+
+def _mutate_vsig_max_records(s):
+    _vsig(s)["maxRecordsPerBlock"] = 18
+    _vsig(s)["totalBytesMax"] = 172
+
+
+def _mutate_vsig_default_mtu(s):
+    # A 12-byte header plus a 9-byte record no longer fits the default MTU payload of 20.
+    header = _vsig(s)["headerFields"]
+    header[-1].update(type="uint16", size=2)
+    header.append({"name": "spare", "offset": 11, "size": 1, "type": "uint8"})
+    _vsig(s).update(headerBytes=12, maxRecordsPerBlock=18, totalBytesMax=174)
+
+
+def _mutate_vsig_state_duplicate(s):
+    _vsig(s)["state"]["values"][2]["value"] = 1
+
+
+def _mutate_vsig_characteristic(s):
+    del s["gatt"]["characteristics"]["vehicleSignals"]
+
+
+def _mutate_vsig_period(s):
+    _vsig(s)["notifyPeriodMs"] = 0
+
+
 MUTATIONS = [
+    (_mutate_vsig_record_gap, "vehicleSignalBlock.recordFields"),
+    (_mutate_vsig_record_bytes, "recordFields: fields end at 9, but the declared total is 10"),
+    (_mutate_vsig_header_order, "headerFields must start with"),
+    (_mutate_vsig_raw_type, "'raw' must be a uint32"),
+    (_mutate_vsig_did_missing, "'did' must be a uint16"),
+    (_mutate_vsig_total_max, "vehicleSignalBlock.totalBytesMax 182"),
+    (_mutate_vsig_max_records, "maxRecordsPerBlock 18 != the records that fit"),
+    (_mutate_vsig_default_mtu, "does not fit the default ATT MTU payload"),
+    (_mutate_vsig_state_duplicate, "vehicleSignalBlock.state.values"),
+    (_mutate_vsig_characteristic, "gatt.characteristics.vehicleSignals.uuid"),
+    (_mutate_vsig_period, "vehicleSignalBlock.notifyPeriodMs must be a positive integer"),
     (_mutate_gps_gap, "gpsBlock.fields"),
     (_mutate_gps_total, "gpsBlock.fields: fields end at 26, but the declared total is 27"),
     (_mutate_gps_latitude, "'latitude' looks like a position"),
@@ -408,6 +478,100 @@ def test_no_position_anywhere_in_the_gps_block(real):
     assert real["gpsBlock"]["totalBytes"] == 26
 
 
+VSIG_HEADER = [
+    ("version", 0, 1), ("seq", 1, 1), ("deviceTimeMs", 2, 4), ("totalRecords", 6, 1),
+    ("firstRecord", 7, 1), ("recordCount", 8, 1), ("reserved", 9, 1),
+]  # fmt: skip
+VSIG_RECORD = [("did", 0, 2), ("state", 2, 1), ("ageMs", 3, 2), ("raw", 5, 4)]
+VSIG_STATES = {"neverReceived": 0, "valid": 1, "stale": 2, "skipped": 3, "negativeResponse": 4}
+
+
+def test_vehicle_signal_block_agrees_in_c_python_and_dart(real, outputs):
+    """D-066 item 4 layout as the user confirmed it (2026-10-11)."""
+    c, dart, py = outputs
+    macros = _c_macros(c)
+    vs = real["vehicleSignalBlock"]
+    for part, fields, expected in (
+        ("Header", vs["headerFields"], VSIG_HEADER),
+        ("Record", vs["recordFields"], VSIG_RECORD),
+    ):
+        assert [(f["name"], f["offset"], f["size"]) for f in fields] == expected
+        dart_off = _dart_class(dart, f"BleVehicleSignal{part}Offsets")
+        dart_size = _dart_class(dart, f"BleVehicleSignal{part}Sizes")
+        for f in fields:
+            n = f"BLE_VSIG_{part.upper()}_{gen_ble._upper_snake(f['name'])}"
+            assert macros[f"{n}_OFFSET"] == dart_off[f["name"]] == f["offset"]
+            assert macros[f"{n}_SIZE"] == dart_size[f["name"]] == f["size"]
+    block = _dart_class(dart, "BleVehicleSignalBlock")
+    assert block == {
+        "version": 1, "headerBytes": 10, "recordBytes": 9, "maxRecordsPerBlock": 19,
+        "totalBytesMax": 181, "notifyPeriodMs": 200, "maxBlocksPerPeriod": 3,
+    }  # fmt: skip
+    assert macros["BLE_VSIG_BLOCK_VERSION"] == py["VSIG_BLOCK_VERSION"] == 1
+    assert macros["BLE_VSIG_HEADER_BYTES"] == py["VSIG_HEADER_BYTES"] == 10
+    assert macros["BLE_VSIG_RECORD_BYTES"] == py["VSIG_RECORD_BYTES"] == 9
+    assert macros["BLE_VSIG_TOTAL_BYTES_MAX"] == 181
+    assert macros["BLE_VSIG_MAX_RECORDS_PER_BLOCK"] == 19
+    assert _dart_class(dart, "BleVehicleSignalState") == VSIG_STATES
+    assert {v: k for k, v in py["VSIG_STATES"].items()} == VSIG_STATES
+    for name, value in VSIG_STATES.items():
+        assert macros[f"BLE_VSIG_STATE_{gen_ble._upper_snake(name)}"] == value
+    uuid = real["gatt"]["characteristics"]["vehicleSignals"]["uuid"]
+    assert f'"{uuid}"' in c and f"'{uuid}'" in dart
+
+
+def test_vehicle_signal_block_fits_both_mtus(real):
+    """The requested MTU carries the full block; the default MTU (23) still carries a record."""
+    vs = real["vehicleSignalBlock"]
+    mtu = real["gatt"]["mtu"]["requested"]
+    assert vs["totalBytesMax"] <= mtu - 3
+    assert vs["headerBytes"] + vs["recordBytes"] <= 23 - 3
+
+
+def _vsig_block(records, version=1, total=None, first=0):
+    head = bytes([version, 7]) + (123456).to_bytes(4, "little")
+    head += bytes([total if total is not None else len(records), first, len(records), 0])
+    body = b"".join(
+        did.to_bytes(2, "little") + bytes([state]) + age.to_bytes(2, "little")
+        + raw.to_bytes(4, "little")
+        for did, state, age, raw in records
+    )  # fmt: skip
+    return head + body
+
+
+def test_python_decodes_a_vehicle_signal_block(outputs):
+    _, _, py = outputs
+    data = _vsig_block([(0xF40C, 1, 40, 0x1F40), (0xF404, 4, 65535, 0x31)], total=7, first=5)
+    block = py["decode_vehicle_signal_block"](data)
+    assert block["version"] == 1 and block["seq"] == 7 and block["deviceTimeMs"] == 123456
+    assert (block["totalRecords"], block["firstRecord"], block["recordCount"]) == (7, 5, 2)
+    assert block["records"] == [
+        {"did": 0xF40C, "state": 1, "ageMs": 40, "raw": 0x1F40},
+        {"did": 0xF404, "state": 4, "ageMs": 65535, "raw": 0x31},
+    ]
+    with pytest.raises(ValueError, match="version 2"):
+        py["decode_vehicle_signal_block"](_vsig_block([], version=2))
+    with pytest.raises(ValueError, match="for 2 records"):
+        py["decode_vehicle_signal_block"](data[:-1])
+    with pytest.raises(ValueError, match="header is 10"):
+        py["decode_vehicle_signal_block"](data[:9])
+
+
+def test_vehicle_signal_table_fits_the_block(real):
+    from moto_codegen.yaml_checks import load_yaml
+
+    vehicle = load_yaml(config.VEHICLE_YAML)
+    assert gen_ble.check_vehicle_signal_table(real, vehicle) == []
+    too_long = copy.deepcopy(vehicle)
+    too_long["dids"][0]["length"] = 5
+    assert any("does not fit the record's raw field" in e
+               for e in gen_ble.check_vehicle_signal_table(real, too_long))  # fmt: skip
+    too_many = copy.deepcopy(vehicle)
+    too_many["dids"] = too_many["dids"] * 52  # 260 entries
+    assert any("do not fit totalRecords" in e
+               for e in gen_ble.check_vehicle_signal_table(real, too_many))  # fmt: skip
+
+
 def test_dart_package_files(real):
     files = gen_ble.generate_dart(real)
     assert set(files) == {"pubspec.yaml", "lib/ble_schema.dart", "lib/moto_defs.dart"}
@@ -437,6 +601,11 @@ def test_header_compiles_strict_and_values_hold(tmp_path):
         "    ok &= (BLE_GPS_RESERVED_OFFSET + BLE_GPS_RESERVED_SIZE\n"
         "           == BLE_GPS_TOTAL_BYTES) ? 1u : 0u;\n"
         "    ok &= (BLE_GPS_HEADING_LSB_PER_DEG == 100000u) ? 1u : 0u;\n"
+        "    ok &= (BLE_VSIG_RECORD_RAW_OFFSET + BLE_VSIG_RECORD_RAW_SIZE\n"
+        "           == BLE_VSIG_RECORD_BYTES) ? 1u : 0u;\n"
+        "    ok &= (BLE_VSIG_HEADER_BYTES + (BLE_VSIG_MAX_RECORDS_PER_BLOCK\n"
+        "           * BLE_VSIG_RECORD_BYTES) == BLE_VSIG_TOTAL_BYTES_MAX) ? 1u : 0u;\n"
+        "    ok &= (BLE_VSIG_STATE_NEGATIVE_RESPONSE == 4u) ? 1u : 0u;\n"
         "    return (ok == 1u) ? 0 : 1;\n}\n",
         encoding="utf-8",
     )

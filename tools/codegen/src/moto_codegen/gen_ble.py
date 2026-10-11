@@ -1,10 +1,10 @@
 """BLE packet schema (`ble/ble_schema.json`, D-061): checks, C macros, Python and Dart.
 
 The JSON is the single source for the telemetry packet (versions 2, 3, 4), the IMU block, the
-GPS block (D-060) and the GATT layout. Consumers (conn, moto-mobile, moto-server) use the
-generated code instead of keeping copies. The C output is offset/size macros only: packed
-structs are a compiler extension, so conn's own structs `static_assert` against these macros
-(misra/README.md).
+GPS block (D-060), the vehicle-signal block (D-066) and the GATT layout. Consumers (conn,
+moto-mobile, moto-server) use the generated code instead of keeping copies. The C output is
+offset/size macros only: packed structs are a compiler extension, so conn's own structs
+`static_assert` against these macros (misra/README.md).
 """
 
 from __future__ import annotations
@@ -43,6 +43,15 @@ _UNIT_NAMES = {"g": "G", "deg/s": "Dps", "m/s": "Mps", "deg": "Deg"}  # C upper-
 # D-060 item 3 / invariant 7: no position leaves conn. A GPS field name that looks like one
 # is refused (lat, lon, height, altitude, hMSL, ECEF, position).
 _POSITION_NAME = re.compile(r"lat|lon|height|alt|hmsl|ecef|pos", re.IGNORECASE)
+# The default ATT MTU (Bluetooth Core) minus the 3-byte ATT notification header.
+DEFAULT_ATT_PAYLOAD = 20
+# Vehicle-signal record fields the consumers rely on (D-066 item 4): name -> type. `raw` must
+# hold the longest DID (4 data bytes), `did` a 16-bit UDS DID.
+_VSIG_RECORD_TYPES = {"did": "uint16", "state": "uint8", "ageMs": "uint16", "raw": "uint32"}
+_VSIG_HEADER = [
+    ("version", 0), ("seq", 1), ("deviceTimeMs", 2), ("totalRecords", 6), ("firstRecord", 7),
+    ("recordCount", 8),
+]  # fmt: skip
 
 
 def load_schema(path: Path | str = config.BLE_SCHEMA) -> dict[str, Any]:
@@ -294,11 +303,76 @@ def _check_gps(schema: dict[str, Any], errors: list[str]) -> None:
             errors.append(f"ble: gpsBlock.scale.{quantity}.unit {scale.get('unit')!r} unknown")
 
 
+def _check_vehicle_signals(schema: dict[str, Any], errors: list[str]) -> None:
+    vs = schema.get("vehicleSignalBlock", {})
+    for key in ("version", "headerBytes", "recordBytes", "maxRecordsPerBlock", "totalBytesMax",
+                "notifyPeriodMs", "maxBlocksPerPeriod"):  # fmt: skip
+        if not _is_int(vs.get(key)) or vs[key] <= 0:
+            errors.append(f"ble: vehicleSignalBlock.{key} must be a positive integer")
+            return
+    header, record = vs["headerBytes"], vs["recordBytes"]
+    _check_layout("vehicleSignalBlock.headerFields", vs.get("headerFields"), header, errors)
+    _check_layout("vehicleSignalBlock.recordFields", vs.get("recordFields"), record, errors)
+    head = [(f.get("name"), f.get("offset")) for f in (vs.get("headerFields") or [])]
+    if head[: len(_VSIG_HEADER)] != _VSIG_HEADER:
+        errors.append(
+            "ble: vehicleSignalBlock.headerFields must start with "
+            + ", ".join(f"{n} at {o}" for n, o in _VSIG_HEADER)
+        )
+    types = {f.get("name"): f.get("type") for f in (vs.get("recordFields") or [])}
+    for name, typ in _VSIG_RECORD_TYPES.items():
+        if types.get(name) != typ:
+            errors.append(f"ble: vehicleSignalBlock.recordFields: {name!r} must be a {typ}")
+    expected = header + vs["maxRecordsPerBlock"] * record
+    if vs["totalBytesMax"] != expected:
+        errors.append(
+            f"ble: vehicleSignalBlock.totalBytesMax {vs['totalBytesMax']} != headerBytes + "
+            f"maxRecordsPerBlock * recordBytes = {expected}"
+        )
+    # The requested MTU carries a full block, and the default MTU still carries one record,
+    # so the block is never suspended (mtuRule).
+    mtu = schema.get("gatt", {}).get("mtu", {}).get("requested")
+    if _is_int(mtu) and (mtu - 3 - header) // record != vs["maxRecordsPerBlock"]:
+        errors.append(
+            f"ble: vehicleSignalBlock.maxRecordsPerBlock {vs['maxRecordsPerBlock']} != the records "
+            f"that fit the requested MTU {mtu}: floor((MTU - 3 - headerBytes) / recordBytes) = "
+            f"{(mtu - 3 - header) // record}"
+        )
+    if header + record > DEFAULT_ATT_PAYLOAD:
+        errors.append(
+            f"ble: vehicleSignalBlock: headerBytes + recordBytes = {header + record} does not fit "
+            f"the default ATT MTU payload ({DEFAULT_ATT_PAYLOAD})"
+        )
+    if vs.get("characteristic") not in schema.get("gatt", {}).get("characteristics", {}):
+        errors.append("ble: vehicleSignalBlock.characteristic must name a gatt characteristic")
+    _check_values("vehicleSignalBlock.state.values", vs.get("state", {}).get("values"), errors)
+
+
+def check_vehicle_signal_table(schema: dict[str, Any], vehicle: dict[str, Any]) -> list[str]:
+    """The tester's DID table fits the block: count in a uint8, every DID length in `raw`."""
+    errors: list[str] = []
+    dids = vehicle.get("dids") or []
+    if len(dids) > 0xFF:
+        errors.append(
+            f"ble: vehicleSignalBlock: {len(dids)} DIDs in uds/vehicle_cl250.yaml do not fit "
+            "totalRecords/firstRecord (uint8)"
+        )
+    fields = schema["vehicleSignalBlock"]["recordFields"]
+    raw = next((f for f in fields if f.get("name") == "raw"), None)
+    for d in dids:
+        if raw is None or not _is_int(d.get("length")) or d["length"] > raw["size"]:
+            errors.append(
+                f"ble: vehicleSignalBlock: DID {d.get('name')!r} length {d.get('length')!r} "
+                "does not fit the record's raw field"
+            )
+    return errors
+
+
 def _check_gatt(schema: dict[str, Any], errors: list[str]) -> None:
     gatt = schema.get("gatt", {})
     uuids = {"serviceUuid": gatt.get("serviceUuid")}
     chars = gatt.get("characteristics", {})
-    for name in ("telemetry", "imu", "gps", "telematicsRx"):
+    for name in ("telemetry", "imu", "gps", "vehicleSignals", "telematicsRx"):
         uuids[f"characteristics.{name}.uuid"] = chars.get(name, {}).get("uuid")
     for label, uuid in uuids.items():
         if not isinstance(uuid, str) or not _UUID.fullmatch(uuid):
@@ -316,6 +390,7 @@ def check_schema(schema: dict[str, Any]) -> list[str]:
         ("telemetry", _check_telemetry),
         ("imu", _check_imu),
         ("gps", _check_gps),
+        ("vehicle signals", _check_vehicle_signals),
         ("gatt", _check_gatt),
     ):
         try:
@@ -486,7 +561,31 @@ def generate_c(schema: dict[str, Any]) -> dict[str, str]:
         h.append(f"#define BLE_GPS_FIX_TYPE_{_upper_snake(v['name'])} {u(v['value'])}")
     h.append("")
     bits("BLE_GPS_FLAG", gps["flags"]["bits"], "GPS block `flags` bits")
-    h += ["#endif /* BLE_SCHEMA_H */", ""]
+
+    vs = schema["vehicleSignalBlock"]
+    h += [
+        "/* Vehicle-signal block (characteristic `vehicleSignals`, D-066): one record per DID of",
+        " * the tester's DID table, keyed by DID; raw = the DID's data bytes as an unsigned",
+        " * big-endian number (ble_schema.json `rawRule`). */",
+        f"#define BLE_VSIG_BLOCK_VERSION {u(vs['version'])}",
+        f"#define BLE_VSIG_HEADER_BYTES {u(vs['headerBytes'])}",
+        f"#define BLE_VSIG_RECORD_BYTES {u(vs['recordBytes'])}",
+        f"#define BLE_VSIG_MAX_RECORDS_PER_BLOCK {u(vs['maxRecordsPerBlock'])}",
+        f"#define BLE_VSIG_TOTAL_BYTES_MAX {u(vs['totalBytesMax'])}",
+        f"#define BLE_VSIG_NOTIFY_PERIOD_MS {u(vs['notifyPeriodMs'])}",
+        f"#define BLE_VSIG_MAX_BLOCKS_PER_PERIOD {u(vs['maxBlocksPerPeriod'])}",
+        "",
+    ]
+    layout(
+        "BLE_VSIG_HEADER", vs["headerFields"], f"Vehicle-signal header ({vs['headerBytes']} bytes)"
+    )
+    layout(
+        "BLE_VSIG_RECORD", vs["recordFields"], f"Vehicle-signal record ({vs['recordBytes']} bytes)"
+    )
+    h.append("/* Vehicle-signal record `state` values (stateRule: the first that applies) */")
+    for v in vs["state"]["values"]:
+        h.append(f"#define BLE_VSIG_STATE_{_upper_snake(v['name'])} {u(v['value'])}")
+    h += ["", "#endif /* BLE_SCHEMA_H */", ""]
     return {"ble_schema.h": "\n".join(h)}
 
 
@@ -538,6 +637,16 @@ def generate_python(schema: dict[str, Any]) -> str:
         "# D-060 GPS block (characteristic `gps`): speed and heading only, no position.",
         f"GPS_BLOCK_VERSION = {schema['gpsBlock']['version']}",
         f"GPS_TOTAL_BYTES = {schema['gpsBlock']['totalBytes']}",
+        "# D-066 vehicle-signal block (characteristic `vehicleSignals`): records keyed by DID.",
+        f"VSIG_BLOCK_VERSION = {schema['vehicleSignalBlock']['version']}",
+        f"VSIG_HEADER_BYTES = {schema['vehicleSignalBlock']['headerBytes']}",
+        f"VSIG_RECORD_BYTES = {schema['vehicleSignalBlock']['recordBytes']}",
+        "VSIG_STATES = {"
+        + ", ".join(
+            f"{v['value']}: {json.dumps(v['name'])}"
+            for v in schema["vehicleSignalBlock"]["state"]["values"]
+        )
+        + "}",
         "",
         "",
         "def telemetry_fields(version: int) -> list[dict]:",
@@ -554,7 +663,41 @@ def generate_python(schema: dict[str, Any]) -> str:
         '    return SCHEMA["gpsBlock"]["fields"]',
         "",
     ]
-    return "\n".join(lines)
+    return "\n".join(lines) + _PY_VSIG_DECODER
+
+
+# Appended to gen/python/moto_defs/ble.py: the D-066 block decoder for moto-server.
+_PY_VSIG_DECODER = r'''
+
+def _read_le(data: bytes, field: dict, base: int = 0) -> int:
+    start = base + field["offset"]
+    return int.from_bytes(data[start : start + field["size"]], "little")
+
+
+def decode_vehicle_signal_block(data: bytes) -> dict:
+    """Header fields plus `records` (dicts: did, state, ageMs, raw) of one D-066 block.
+
+    ValueError for another version or a length that does not match recordCount. The raw value
+    becomes a physical one through the vehicle catalog (`decodeRule`).
+    """
+    block = SCHEMA["vehicleSignalBlock"]
+    if len(data) < VSIG_HEADER_BYTES:
+        raise ValueError(f"block of {len(data)} bytes, header is {VSIG_HEADER_BYTES}")
+    header = {f["name"]: _read_le(data, f) for f in block["headerFields"]}
+    if header["version"] != VSIG_BLOCK_VERSION:
+        raise ValueError(f"vehicle-signal block version {header['version']} not accepted")
+    count = header["recordCount"]
+    if len(data) != VSIG_HEADER_BYTES + count * VSIG_RECORD_BYTES:
+        raise ValueError(f"vehicle-signal block of {len(data)} bytes for {count} records")
+    header["records"] = [
+        {
+            f["name"]: _read_le(data, f, VSIG_HEADER_BYTES + i * VSIG_RECORD_BYTES)
+            for f in block["recordFields"]
+        }
+        for i in range(count)
+    ]
+    return header
+'''
 
 
 # --- Dart ------------------------------------------------------------------------------
@@ -743,6 +886,42 @@ def generate_dart(schema: dict[str, Any]) -> dict[str, str]:
                 f"physical ({gps['scale'][q]['unit']}) = raw / this value.",
             )
             for q in ("speed", "heading")
+        ],
+    )
+
+    vs = schema["vehicleSignalBlock"]
+    cls(
+        "BleVehicleSignalBlock",
+        "Vehicle-signal block format (characteristic `vehicleSignals`, D-066), keyed by DID.",
+        [
+            ("int", "version", str(vs["version"]), ""),
+            ("int", "headerBytes", str(vs["headerBytes"]), ""),
+            ("int", "recordBytes", str(vs["recordBytes"]), ""),
+            ("int", "maxRecordsPerBlock", str(vs["maxRecordsPerBlock"]), ""),
+            ("int", "totalBytesMax", str(vs["totalBytesMax"]), ""),
+            ("int", "notifyPeriodMs", str(vs["notifyPeriodMs"]), ""),
+            ("int", "maxBlocksPerPeriod", str(vs["maxBlocksPerPeriod"]), ""),
+        ],
+    )
+    for key, kind in (("offset", "Offsets"), ("size", "Sizes")):
+        offsets(
+            "BleVehicleSignalHeader" + kind,
+            f"Vehicle-signal header: byte {key} of each field.",
+            vs["headerFields"],
+            key,
+        )
+        offsets(
+            "BleVehicleSignalRecord" + kind,
+            f"Vehicle-signal record: byte {key} of each field.",
+            vs["recordFields"],
+            key,
+        )
+    cls(
+        "BleVehicleSignalState",
+        "Vehicle-signal record `state` values (stateRule: the first that applies).",
+        [
+            ("int", v["name"], str(v["value"]), v.get("description", ""))
+            for v in vs["state"]["values"]
         ],
     )
 

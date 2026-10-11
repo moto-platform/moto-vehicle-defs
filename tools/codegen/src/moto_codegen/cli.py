@@ -28,7 +28,11 @@ def run_checks(with_vss: bool = True) -> list[str]:
     errors += check_limits(
         load_yaml(config.LIMITS_YAML), load_yaml(config.VEHICLE_YAML), platform_db
     )
-    errors += gen_ble.check_schema(gen_ble.load_schema())
+    ble = gen_ble.load_schema()
+    ble_errors = gen_ble.check_schema(ble)
+    errors += ble_errors
+    if not ble_errors:
+        errors += gen_ble.check_vehicle_signal_table(ble, load_yaml(config.VEHICLE_YAML))
     errors += gen_catalog.check_catalog(
         load_yaml(config.CANDIDATES_YAML), load_yaml(config.VEHICLE_YAML)
     )

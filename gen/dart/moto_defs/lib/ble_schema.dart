@@ -7,6 +7,7 @@ abstract final class BleGatt {
   static const String telemetryCharacteristicUuid = 'beb5483e-36e1-4688-b7f5-ea07361b26a8';
   static const String imuCharacteristicUuid = 'f62bc083-e25d-46b3-aa0b-2e9e6bc8f1e5';
   static const String gpsCharacteristicUuid = '3c8f9255-ba3f-4bda-90b3-8c30bcbcace1';
+  static const String vehicleSignalsCharacteristicUuid = 'c362c514-72cb-4c05-84a7-ec797efe75cf';
   static const String telematicsRxCharacteristicUuid = '828919fe-e41c-40ee-b4c6-2c974c2d3345';
   /// ATT MTU the central requests.
   static const int requestedMtu = 185;
@@ -545,4 +546,89 @@ abstract final class BleGpsScale {
   static const int speedLsbPerMps = 1000;
   /// physical (deg) = raw / this value.
   static const int headingLsbPerDeg = 100000;
+}
+
+/// Vehicle-signal block format (characteristic `vehicleSignals`, D-066), keyed by DID.
+abstract final class BleVehicleSignalBlock {
+  static const int version = 1;
+  static const int headerBytes = 10;
+  static const int recordBytes = 9;
+  static const int maxRecordsPerBlock = 19;
+  static const int totalBytesMax = 181;
+  static const int notifyPeriodMs = 200;
+  static const int maxBlocksPerPeriod = 3;
+}
+
+/// Vehicle-signal header: byte offset of each field.
+abstract final class BleVehicleSignalHeaderOffsets {
+  /// Vehicle-signal block format version, 1.
+  static const int version = 0;
+  /// Rolling 0-255 counter, see `sequenceRule`.
+  static const int seq = 1;
+  /// Node clock in ms when the block was built, see `timeRule`.
+  static const int deviceTimeMs = 2;
+  /// DIDs in the sender's DID table, see `pagingRule`.
+  static const int totalRecords = 6;
+  /// Table index of this block's first record, see `pagingRule`.
+  static const int firstRecord = 7;
+  /// Records in this block, 1..maxRecordsPerBlock.
+  static const int recordCount = 8;
+  /// Always 0.
+  static const int reserved = 9;
+}
+
+/// Vehicle-signal record: byte offset of each field.
+abstract final class BleVehicleSignalRecordOffsets {
+  /// UDS DID of the record (0xF400 | OBD PID for the CL250 table), see `recordKey`.
+  static const int did = 0;
+  /// See `vehicleSignalBlock.state` and `stateRule`.
+  static const int state = 2;
+  /// Age of the last positive response, see `ageRule`.
+  static const int ageMs = 3;
+  /// Value or NRC, see `rawRule` and `decodeRule`.
+  static const int raw = 5;
+}
+
+/// Vehicle-signal header: byte size of each field.
+abstract final class BleVehicleSignalHeaderSizes {
+  /// Vehicle-signal block format version, 1.
+  static const int version = 1;
+  /// Rolling 0-255 counter, see `sequenceRule`.
+  static const int seq = 1;
+  /// Node clock in ms when the block was built, see `timeRule`.
+  static const int deviceTimeMs = 4;
+  /// DIDs in the sender's DID table, see `pagingRule`.
+  static const int totalRecords = 1;
+  /// Table index of this block's first record, see `pagingRule`.
+  static const int firstRecord = 1;
+  /// Records in this block, 1..maxRecordsPerBlock.
+  static const int recordCount = 1;
+  /// Always 0.
+  static const int reserved = 1;
+}
+
+/// Vehicle-signal record: byte size of each field.
+abstract final class BleVehicleSignalRecordSizes {
+  /// UDS DID of the record (0xF400 | OBD PID for the CL250 table), see `recordKey`.
+  static const int did = 2;
+  /// See `vehicleSignalBlock.state` and `stateRule`.
+  static const int state = 1;
+  /// Age of the last positive response, see `ageRule`.
+  static const int ageMs = 2;
+  /// Value or NRC, see `rawRule` and `decodeRule`.
+  static const int raw = 4;
+}
+
+/// Vehicle-signal record `state` values (stateRule: the first that applies).
+abstract final class BleVehicleSignalState {
+  /// No positive or negative response to this DID since boot (also every record of a node without a running tester).
+  static const int neverReceived = 0;
+  /// Last positive response within the DID's stale_after_ms.
+  static const int valid = 1;
+  /// Last positive response older than the DID's stale_after_ms; show the value as unavailable.
+  static const int stale = 2;
+  /// The sender skips the DID after repeated timeouts (did_skip_cooldown_ms).
+  static const int skipped = 3;
+  /// The DID's last answer was a negative response (not 0x78); raw holds the NRC, e.g. 0x31 requestOutOfRange for an unsupported DID.
+  static const int negativeResponse = 4;
 }

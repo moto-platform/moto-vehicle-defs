@@ -15,6 +15,7 @@
 #define BLE_GATT_TELEMETRY_CHAR_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 #define BLE_GATT_IMU_CHAR_UUID "f62bc083-e25d-46b3-aa0b-2e9e6bc8f1e5"
 #define BLE_GATT_GPS_CHAR_UUID "3c8f9255-ba3f-4bda-90b3-8c30bcbcace1"
+#define BLE_GATT_VEHICLE_SIGNALS_CHAR_UUID "c362c514-72cb-4c05-84a7-ec797efe75cf"
 #define BLE_GATT_TELEMATICS_RX_CHAR_UUID "828919fe-e41c-40ee-b4c6-2c974c2d3345"
 #define BLE_GATT_REQUESTED_MTU (185u)
 
@@ -241,5 +242,49 @@
 #define BLE_GPS_FLAG_GNSS_FIX_OK (1u << 0u) /* NAV-PVT flags.gnssFixOK: the fix is within the receiver's DOP and accuracy masks. */
 #define BLE_GPS_FLAG_PARSE_ERROR (1u << 1u) /* The node's UBX parser dropped at least one message (Fletcher checksum, length or class/ID error) since the previous block. */
 #define BLE_GPS_FLAG_UART_OVERFLOW (1u << 2u) /* The node's UART receive buffer overflowed at least once since the previous block; bytes were lost. */
+
+/* Vehicle-signal block (characteristic `vehicleSignals`, D-066): one record per DID of
+ * the tester's DID table, keyed by DID; raw = the DID's data bytes as an unsigned
+ * big-endian number (ble_schema.json `rawRule`). */
+#define BLE_VSIG_BLOCK_VERSION (1u)
+#define BLE_VSIG_HEADER_BYTES (10u)
+#define BLE_VSIG_RECORD_BYTES (9u)
+#define BLE_VSIG_MAX_RECORDS_PER_BLOCK (19u)
+#define BLE_VSIG_TOTAL_BYTES_MAX (181u)
+#define BLE_VSIG_NOTIFY_PERIOD_MS (200u)
+#define BLE_VSIG_MAX_BLOCKS_PER_PERIOD (3u)
+
+/* Vehicle-signal header (10 bytes) */
+#define BLE_VSIG_HEADER_VERSION_OFFSET (0u) /* uint8 */
+#define BLE_VSIG_HEADER_VERSION_SIZE (1u)
+#define BLE_VSIG_HEADER_SEQ_OFFSET (1u) /* uint8 */
+#define BLE_VSIG_HEADER_SEQ_SIZE (1u)
+#define BLE_VSIG_HEADER_DEVICE_TIME_MS_OFFSET (2u) /* uint32 */
+#define BLE_VSIG_HEADER_DEVICE_TIME_MS_SIZE (4u)
+#define BLE_VSIG_HEADER_TOTAL_RECORDS_OFFSET (6u) /* uint8 */
+#define BLE_VSIG_HEADER_TOTAL_RECORDS_SIZE (1u)
+#define BLE_VSIG_HEADER_FIRST_RECORD_OFFSET (7u) /* uint8 */
+#define BLE_VSIG_HEADER_FIRST_RECORD_SIZE (1u)
+#define BLE_VSIG_HEADER_RECORD_COUNT_OFFSET (8u) /* uint8 */
+#define BLE_VSIG_HEADER_RECORD_COUNT_SIZE (1u)
+#define BLE_VSIG_HEADER_RESERVED_OFFSET (9u) /* uint8 */
+#define BLE_VSIG_HEADER_RESERVED_SIZE (1u)
+
+/* Vehicle-signal record (9 bytes) */
+#define BLE_VSIG_RECORD_DID_OFFSET (0u) /* uint16 */
+#define BLE_VSIG_RECORD_DID_SIZE (2u)
+#define BLE_VSIG_RECORD_STATE_OFFSET (2u) /* uint8 */
+#define BLE_VSIG_RECORD_STATE_SIZE (1u)
+#define BLE_VSIG_RECORD_AGE_MS_OFFSET (3u) /* uint16 */
+#define BLE_VSIG_RECORD_AGE_MS_SIZE (2u)
+#define BLE_VSIG_RECORD_RAW_OFFSET (5u) /* uint32 */
+#define BLE_VSIG_RECORD_RAW_SIZE (4u)
+
+/* Vehicle-signal record `state` values (stateRule: the first that applies) */
+#define BLE_VSIG_STATE_NEVER_RECEIVED (0u)
+#define BLE_VSIG_STATE_VALID (1u)
+#define BLE_VSIG_STATE_STALE (2u)
+#define BLE_VSIG_STATE_SKIPPED (3u)
+#define BLE_VSIG_STATE_NEGATIVE_RESPONSE (4u)
 
 #endif /* BLE_SCHEMA_H */

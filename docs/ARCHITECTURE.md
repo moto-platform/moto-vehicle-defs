@@ -93,7 +93,7 @@ moto-vehicle-defs/
   vss/overlay.vspec     motorcycle extensions (Vehicle.Motorcycle.*) + dbc2vss mappings (from platform.dbc)
   uds/dids.yaml         our platform nodes' UDS servers (IDs, timing, DIDs, DTCs)
   uds/iso14229.yaml     generic ISO 14229-1 codes
-  ble/ble_schema.json   BLE packet schema of conn (telemetry v2/v3/v4, IMU block, GATT; D-061)
+  ble/ble_schema.json   BLE packet schema of conn (telemetry v2/v3/v4, IMU, GPS and vehicle-signal blocks, GATT; D-061)
   tools/codegen/        python: cantools + vss-tools wrapper
         │ make gen  (run before tagging, output is committed)
         ▼
