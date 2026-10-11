@@ -18,6 +18,7 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /dbc/cl250.dbc        → vehicle-bus broadcast frames, only if passive traffic is found (Q-001); skeleton
 /dbc/platform.dbc     → platform bus (our nodes; ID plan in ARCHITECTURE §4; E2E attributes)
 /vss/overlay.vspec    → Vehicle.Motorcycle.* extensions + dbc2vss mappings (kuksa-can-provider format)
+/uds/vehicle_cl250_candidates.yaml → candidate J1979 signals, NOT polled; host-only catalog (D-066)
 /uds/dids.yaml        → per-node UDS servers: IDs, timing, services, DIDs, DTCs
 /uds/iso14229.yaml    → generic ISO 14229-1 codes (names for numbers only)
 /ble/ble_schema.json  → BLE packet schema of conn: telemetry v2/v3/v4, IMU block, GATT UUIDs; single source for conn, moto-mobile, moto-server (D-061)

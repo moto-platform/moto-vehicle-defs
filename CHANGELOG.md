@@ -4,6 +4,16 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.10.0] — 2026-10-11
+
+MINOR: the vehicle signal catalog of D-066. Additive and host-only: two generated files for Python and Dart; every DBC message, polled DID, VSS path, BLE layout, `tester_policy`, the D-020 golden copy and every `gen/c` file are unchanged, so conn, rt-core and hil_sim need no change. Consumers: moto-mobile shows every catalog signal and which ones flow; moto-server can label them.
+
+### Added
+- `uds/vehicle_cl250_candidates.yaml` (D-066 item 1): 35 scalar SAE J1979 mode 0x01 PIDs as candidate DIDs 0xF400 | PID (engine, air, fuel, temperature, torque, diagnostic groups), standard formulas, UI labels; the five polled DIDs get a label and group. Not polled.
+- codegen `gen_catalog`: checks (DID = 0xF400 | PID, no support PID, no poll settings, unique names/DIDs across both files, min/max through the formula, the 0x22 read through `tester_policy` and the frame gate, `polled` keys = the DID table) and the merged catalog.
+- `gen/python/moto_defs/vehicle_catalog.py`: `GROUPS`, `SIGNALS` (status `polled` / `candidate`), `BY_DID`, `decode()`. `gen/dart/moto_defs/lib/vehicle_signals.dart`: `VehicleSignal`, `VehicleSignalStatus`, `vehicleSignalGroups`, `vehicleSignalCatalog`, `VehicleSignalNames`; exported by `moto_defs.dart`.
+- tests (`test_catalog.py`): each check fails on a mutated copy; no `gen/c` file mentions a candidate; the generated Python decodes; the Dart lists every signal.
+
 ## [0.9.0] — 2026-10-09
 
 MINOR: the CLAMPED range of rt-core's EKF lean (D-065 item 3). Additive: one provisional limit; every DBC message, DID, VSS path, BLE layout, `tester_policy` and the D-020 golden copy are unchanged. `platform_limits.h` changes for rt_core, safety and hil_sim; rt-core uses the value with its 0x020 glue (D-065 PR 3), safety-node needs no change to stay safe (CLAMPED stays usable and reads RED, D-041); an optional plausibility check against the value is open (Q-029).
