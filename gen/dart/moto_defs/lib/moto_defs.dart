@@ -2,3 +2,4 @@
 // Regenerate with `make gen`.
 
 export 'ble_schema.dart';
+export 'vehicle_signals.dart';
