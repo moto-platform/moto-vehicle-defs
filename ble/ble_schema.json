@@ -1,16 +1,17 @@
 {
-  "$schemaDescription": "Single source of truth for the BLE notifications sent by moto-connectivity-node to moto-mobile: the telemetry packet (current version 4, top level), its low-MTU fallback (the version 2 layout), the IMU sample block and the GPS block. This file lives in moto-vehicle-defs ble/ (D-061, Q-017 resolved); codegen generates gen/c/conn/ble_schema.h (offset/size macros; moto-connectivity-node's packed structs static_assert against them), gen/python/moto_defs/ble.py (moto-server decodes raw_hex/imu raw bytes driven by SCHEMA) and gen/dart/moto_defs (moto-mobile decoders), so no consumer keeps a copy of this file. Ported from HondaCl250_Telemetry@legacy-final (version 1) per D-023; version 3 and the IMU block per D-032; version 4 per D-058; the GPS block per D-060.",
+  "$schemaDescription": "Single source of truth for the BLE notifications sent by moto-connectivity-node to moto-mobile: the telemetry packet (current version 4, top level), its low-MTU fallback (the version 2 layout), the IMU sample block, the GPS block and the vehicle-signal block. This file lives in moto-vehicle-defs ble/ (D-061, Q-017 resolved); codegen generates gen/c/conn/ble_schema.h (offset/size macros; moto-connectivity-node's packed structs static_assert against them), gen/python/moto_defs/ble.py (moto-server decodes raw_hex/imu raw bytes driven by SCHEMA) and gen/dart/moto_defs (moto-mobile decoders), so no consumer keeps a copy of this file. Ported from HondaCl250_Telemetry@legacy-final (version 1) per D-023; version 3 and the IMU block per D-032; version 4 per D-058; the GPS block per D-060; the vehicle-signal block per D-066.",
   "gatt": {
     "serviceUuid": "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
     "characteristics": {
       "telemetry": { "uuid": "beb5483e-36e1-4688-b7f5-ea07361b26a8", "properties": ["notify"], "carries": "BLETelemetryPacket (version 4, or version 2 at low MTU)" },
       "imu": { "uuid": "f62bc083-e25d-46b3-aa0b-2e9e6bc8f1e5", "properties": ["notify"], "carries": "ImuBlock" },
       "gps": { "uuid": "3c8f9255-ba3f-4bda-90b3-8c30bcbcace1", "properties": ["notify"], "carries": "GpsBlock (D-060)" },
+      "vehicleSignals": { "uuid": "c362c514-72cb-4c05-84a7-ec797efe75cf", "properties": ["notify"], "carries": "VehicleSignalBlock (D-066)" },
       "telematicsRx": { "uuid": "828919fe-e41c-40ee-b4c6-2c974c2d3345", "properties": ["write", "writeWithoutResponse"], "carries": "Phone telematics text (not part of this schema)" }
     },
     "mtu": {
       "requested": 185,
-      "rule": "The central requests an ATT MTU of at least `requested` right after connecting (Android: requestMtu; iOS negotiates on its own). The firmware reads the negotiated MTU and never sends a notification larger than MTU - 3 bytes: it sends the version 4 telemetry layout (`totalBytes`, 57) when MTU - 3 >= 57 (blePayloadLimit(mtu) >= 57), otherwise it falls back to the version 2 layout (`lowMtuFallback`), it shrinks or suspends IMU blocks (`imuBlock.mtuRule`) and suspends GPS blocks below their size (`gpsBlock.mtuRule`). Version 3 (37 bytes) is no longer produced; receivers still decode it for old sessions. It never truncates a packet."
+      "rule": "The central requests an ATT MTU of at least `requested` right after connecting (Android: requestMtu; iOS negotiates on its own). The firmware reads the negotiated MTU and never sends a notification larger than MTU - 3 bytes: it sends the version 4 telemetry layout (`totalBytes`, 57) when MTU - 3 >= 57 (blePayloadLimit(mtu) >= 57), otherwise it falls back to the version 2 layout (`lowMtuFallback`), it shrinks or suspends IMU blocks (`imuBlock.mtuRule`), suspends GPS blocks below their size (`gpsBlock.mtuRule`) and shrinks vehicle-signal blocks down to one record (`vehicleSignalBlock.mtuRule`). Version 3 (37 bytes) is no longer produced; receivers still decode it for old sessions. It never truncates a packet."
     }
   },
   "packetName": "BLETelemetryPacket",
@@ -272,6 +273,55 @@
       { "name": "numSv",           "offset": 23, "size": 1, "type": "uint8",  "description": "Satellites used in the navigation solution." },
       { "name": "flags",           "offset": 24, "size": 1, "type": "uint8",  "description": "See `gpsBlock.flags`." },
       { "name": "reserved",        "offset": 25, "size": 1, "type": "uint8",  "description": "Always 0." }
+    ]
+  },
+  "vehicleSignalBlock": {
+    "packetName": "VehicleSignalBlock",
+    "characteristic": "vehicleSignals",
+    "version": 1,
+    "endianness": "little",
+    "packed": true,
+    "headerBytes": 10,
+    "recordBytes": 9,
+    "maxRecordsPerBlock": 19,
+    "totalBytesMax": 181,
+    "notifyPeriodMs": 200,
+    "maxBlocksPerPeriod": 3,
+    "purpose": "D-066 item 4: one record per DID of the sender's DID table (uds/vehicle_cl250.yaml `dids`, including the five DIDs that telemetry version 4 also carries at fixed offsets), so a DID promoted from the candidate catalog (D-066 item 3) flows to the phone and the server without a layout change in defs, conn, moto-mobile or moto-server. Telemetry version 4 is unchanged.",
+    "recordKey": "A record is keyed by its DID, never by a table or catalog index: the catalog order changes when a candidate is promoted, the DID does not (user, 2026-10-11, D-066 note). Receivers keep the latest record per DID.",
+    "decodeRule": "Receivers look the DID up in the generated vehicle catalog (gen/python/moto_defs/vehicle_catalog.py `BY_DID`, gen/dart/moto_defs `vehicleSignalCatalog`) and take its length, factor and offset: physical = raw * factor_num / factor_den + offset, where raw holds the DID's `length` data bytes read as an unsigned big-endian number. A raw above 2^(8*length) - 1 is malformed and that record is dropped. A DID missing from the receiver's catalog (a sender built from a newer defs) is kept with its raw value and shown as an unknown DID, never dropped silently.",
+    "stateRule": "`state` is the first that applies, in this order: skipped (the sender skips the DID after max_consecutive_timeouts, for did_skip_cooldown_ms, uds/vehicle_cl250.yaml timing); negativeResponse (the DID's last answer was a negative response other than NRC 0x78); valid or stale (a positive response exists: valid while ageMs <= the DID's generated stale_after_ms, else stale); neverReceived.",
+    "rawRule": "valid and stale: the data bytes of the DID's last positive response (`decodeRule`). negativeResponse: the NRC of the last negative response in the low byte, the other bytes 0. neverReceived and skipped: 0.",
+    "ageRule": "`ageMs` follows the top-level `age` rule in every state: milliseconds since the DID's last positive response when the block was built, saturating at 65534; 65535 = no positive response since boot.",
+    "pagingRule": "Records follow the sender's table order. A block carries `recordCount` consecutive records starting at table index `firstRecord`; the next block starts where the previous one ended, and a block ends at the table end (it never wraps), so the next one starts at 0 again. `totalRecords` is the size of the sender's DID table, so receivers can list the DIDs they have not seen yet. A sender whose table is empty sends no blocks.",
+    "mtuRule": "recordsPerBlock = min(maxRecordsPerBlock, floor((MTU - 3 - headerBytes) / recordBytes)). The default ATT MTU of 23 still fits one record (headerBytes + recordBytes = 19 <= 20), so the block is never suspended: a small MTU only refreshes each DID less often. Every notify period the sender sends blocks until it has covered the table once or sent maxBlocksPerPeriod blocks, and the next period continues where it stopped. It never truncates a block.",
+    "sequenceRule": "seq is a rolling 0-255 counter incremented once per block the sender hands to the BLE stack; receivers count lost blocks as (seq - prev.seq - 1) mod 256.",
+    "timeRule": "deviceTimeMs is the node clock (the same clock as the telemetry, IMU and GPS `deviceTimeMs`) when the block was built; a record's last positive response arrived at deviceTimeMs - ageMs while ageMs < 65534.",
+    "versioning": "`version` changes with any change to the header or record layout, to the meaning of a field, or to the set of `state` values; receivers drop any other version. Adding, promoting or removing a DID changes neither the layout nor `version`, only the defs catalog.",
+    "state": {
+      "field": "state",
+      "values": [
+        { "name": "neverReceived",    "value": 0, "description": "No positive or negative response to this DID since boot (also every record of a node without a running tester)." },
+        { "name": "valid",            "value": 1, "description": "Last positive response within the DID's stale_after_ms." },
+        { "name": "stale",            "value": 2, "description": "Last positive response older than the DID's stale_after_ms; show the value as unavailable." },
+        { "name": "skipped",          "value": 3, "description": "The sender skips the DID after repeated timeouts (did_skip_cooldown_ms)." },
+        { "name": "negativeResponse", "value": 4, "description": "The DID's last answer was a negative response (not 0x78); raw holds the NRC, e.g. 0x31 requestOutOfRange for an unsupported DID." }
+      ]
+    },
+    "headerFields": [
+      { "name": "version",      "offset": 0, "size": 1, "type": "uint8",  "description": "Vehicle-signal block format version, 1." },
+      { "name": "seq",          "offset": 1, "size": 1, "type": "uint8",  "description": "Rolling 0-255 counter, see `sequenceRule`." },
+      { "name": "deviceTimeMs", "offset": 2, "size": 4, "type": "uint32", "description": "Node clock in ms when the block was built, see `timeRule`." },
+      { "name": "totalRecords", "offset": 6, "size": 1, "type": "uint8",  "description": "DIDs in the sender's DID table, see `pagingRule`." },
+      { "name": "firstRecord",  "offset": 7, "size": 1, "type": "uint8",  "description": "Table index of this block's first record, see `pagingRule`." },
+      { "name": "recordCount",  "offset": 8, "size": 1, "type": "uint8",  "description": "Records in this block, 1..maxRecordsPerBlock." },
+      { "name": "reserved",     "offset": 9, "size": 1, "type": "uint8",  "description": "Always 0." }
+    ],
+    "recordFields": [
+      { "name": "did",   "offset": 0, "size": 2, "type": "uint16", "description": "UDS DID of the record (0xF400 | OBD PID for the CL250 table), see `recordKey`." },
+      { "name": "state", "offset": 2, "size": 1, "type": "uint8",  "description": "See `vehicleSignalBlock.state` and `stateRule`." },
+      { "name": "ageMs", "offset": 3, "size": 2, "type": "uint16", "description": "Age of the last positive response, see `ageRule`." },
+      { "name": "raw",   "offset": 5, "size": 4, "type": "uint32", "description": "Value or NRC, see `rawRule` and `decodeRule`." }
     ]
   }
 }

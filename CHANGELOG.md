@@ -4,6 +4,17 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.11.0] — 2026-10-11
+
+MINOR: the generic BLE vehicle-signal block of D-066 item 4 (layout confirmed by the user). Additive: a new notify characteristic and block; telemetry v4, the IMU and GPS blocks, every DBC message, polled DID, VSS path, `tester_policy` and the D-020 golden copy are unchanged. Consumers: moto-connectivity-node sends the block (`gen/c/conn/ble_schema.h`), moto-mobile decodes it (`ble_schema.dart` with `vehicle_signals.dart`), moto-server ingests it (`ble.py`). They take it together; until a consumer bumps, it simply does not subscribe or send.
+
+### Added
+- `ble/ble_schema.json` `vehicleSignalBlock` (version 1) and GATT characteristic `vehicleSignals` (`c362c514-72cb-4c05-84a7-ec797efe75cf`): 10-byte header (version, seq, deviceTimeMs, totalRecords, firstRecord, recordCount, reserved) and 9-byte records keyed by DID (did, state, ageMs, raw), notify period 200 ms, at most 3 blocks per period, records per block = floor((MTU - 3 - 10) / 9) (19 at MTU 185, 1 at MTU 23, never suspended). States: neverReceived, valid, stale, skipped, negativeResponse (raw = NRC).
+- codegen checks: header order, record field types (`did` uint16, `raw` uint32 for the longest DID), `totalBytesMax`, `maxRecordsPerBlock` = the records that fit the requested MTU, one record within the default MTU payload, unique state values, a GATT characteristic; cross-file: the DID table fits `totalRecords` (uint8) and every DID length fits `raw`.
+- `gen/c/conn/ble_schema.h` `BLE_VSIG_*`; `gen/python/moto_defs/ble.py` `VSIG_*` and `decode_vehicle_signal_block()`; `gen/dart/moto_defs` `BleVehicleSignalBlock`, `BleVehicleSignalHeader/RecordOffsets/Sizes`, `BleVehicleSignalState`.
+- `docs/DECISIONS.md` D-066 implementation note (DID instead of a catalog index, user).
+- tests (`test_ble.py`): each new check fails on a mutated copy, C/Python/Dart agree with the confirmed layout, both MTUs, the Python decoder, the DID-table cross-check, the C header compiles strictly.
+
 ## [0.10.0] — 2026-10-11
 
 MINOR: the vehicle signal catalog of D-066. Additive and host-only: two generated files for Python and Dart; every DBC message, polled DID, VSS path, BLE layout, `tester_policy`, the D-020 golden copy and every `gen/c` file are unchanged, so conn, rt-core and hil_sim need no change. Consumers: moto-mobile shows every catalog signal and which ones flow; moto-server can label them.
