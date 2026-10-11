@@ -1,6 +1,6 @@
 # Hardware integration — Phase 0 data-collection build (CL250)
 
-**Status:** working guide, started 2026-10-03. **Scope:** the first on-vehicle build that collects data with the code that exists today. It does not change any decision. Authority: `DECISIONS.md` > `ARCHITECTURE.md` > `vehicle-work-plan.md` / `phase0-data-collection-plan.md` > this file. Items marked **CONFIRM** are not documented anywhere yet. Fill them in from the bike or the parts on the desk; never guess them.
+**Status:** working guide, started 2026-10-03; parts on hand and the phone-only display recorded 2026-10-11 (user). **Scope:** the first on-vehicle build that collects data with the code that exists today. It does not change any decision. Authority: `DECISIONS.md` > `ARCHITECTURE.md` > `vehicle-work-plan.md` / `phase0-data-collection-plan.md` > this file. Items marked **CONFIRM** are not documented anywhere yet. Fill them in from the bike or the parts on the desk; never guess them.
 
 ## 1. What this build is
 
@@ -8,7 +8,8 @@
 - **Path:** CL250 ECU → DLC Y-cable → CAN transceiver → ESP32-S3 TWAI → BLE → phone (`moto-mobile`) → session zip → `moto-server` (D-032).
 - **No on-vehicle storage:** conn keeps no local copy. Data lost while the phone is disconnected is accepted, and the server report shows the gaps (D-045). Persistent logging (microSD, safe shutdown) is rt-core's job later, so the Phase 0 plan's microSD and supercapacitor items are not part of this build.
 - **IMU:** an MPU-6050-class IMU on the same ESP32 at 100 Hz, streamed over BLE. It is for offline analysis only: it is not a vehicle signal, not a safety input, and no lean is estimated from it (D-032, D-044).
-- **Not in this build:** rt-core (H7, Q-019), the platform bus, safety-node, io-node, Raspi. GPS joins it per D-060 (see §9).
+- **Display:** the phone (`moto-mobile`) is the only live telemetry view in this build. The Nextion stays unconnected for now (user, 2026-10-11) and comes back in a later prototype; `NextionModule` with nothing on UART2 is harmless.
+- **Not in this build:** rt-core (H7, Q-019), the platform bus, safety-node, io-node, Raspi, the Nextion (for now). GPS joins it per D-060 (see §9).
 
 ```
  CL250 DLC ──Y-cable (CANH, CANL, GND; < 50 cm, twisted)──┐
@@ -19,7 +20,8 @@
                                               │ SN65HVD230 ── GPIO4 TX / GPIO5 RX  │
                                               │ ESP32-S3 DevKitC-1 (conn firmware) │
                                               │ MPU-6050 ── I2C GPIO1 SDA / GPIO2 SCL (0x68, 400 kHz)
-                                              │ Nextion (optional) ── UART2 GPIO17 TX / GPIO18 RX
+                                              │ NEO-M8N ── UART1: module TX → GPIO15 / module RX ← GPIO16 (pins CONFIRM, §7.3)
+                                              │ Nextion (later, unconnected now) ── UART2 GPIO17 TX / GPIO18 RX
                                               └──────────────┬─────────────────────┘
                                                              │ BLE "Honda-CL250-Telemetry"
                                                     phone: moto-mobile ── session zip ──► moto-server (laptop)
@@ -27,13 +29,14 @@
 
 ## 2. Parts list for this build
 
-Sources: `phase0-data-collection-plan.md` §9, `hardware-procurement-list.md` (groups 1-3, 10, "Already On Hand"), `vehicle-work-plan.md` §3.
+Sources: `phase0-data-collection-plan.md` §9, `hardware-procurement-list.md` (groups 1-3, 10, "Already On Hand"), `vehicle-work-plan.md` §3. On hand as of 2026-10-11 (user): ESP32-S3, MPU-6050, SN65HVD230, NEO-M8N; everything else is still to be bought or confirmed.
 
 | Part | Spec | Role | On hand |
 |---|---|---|---|
-| ESP32-S3 DevKitC-1 | WROOM module | conn firmware | listed as "probably": **CONFIRM** |
-| CAN transceiver | SN65HVD230 (3.3 V) | TWAI ↔ vehicle CAN | **CONFIRM** |
-| IMU | MPU-6050 class, must deliver ±8 g / ±500 dps at 100 Hz (D-032) | raw motion data | **CONFIRM** (part provisional, D-032) |
+| ESP32-S3 DevKitC-1 | WROOM module | conn firmware | **on hand** (ESP32-S3); **CONFIRM** it is a DevKitC-1 or a board with the same GPIOs free (1, 2, 4, 5, 8, 15, 16) |
+| CAN transceiver | SN65HVD230 (3.3 V) | TWAI ↔ vehicle CAN | **on hand**; **CONFIRM** whether the breakout carries a 120 Ω termination resistor: it must be removed or left open, since the vehicle line is already terminated (§3.1) |
+| IMU | MPU-6050 class, must deliver ±8 g / ±500 dps at 100 Hz (D-032) | raw motion data | **on hand**: MPU-6050 (its ±8 g / ±500 dps ranges meet D-032; the part stays provisional) |
+| GPS | u-blox NEO-M8N, 3.3 V logic on its UART, own antenna (D-060) | ground speed, heading | **on hand** |
 | DLC Y-cable | Parallel to the OEM connector, no cut | bus access | **CONFIRM** connector type |
 | Fuse + holder | 2 A, blade or glass | input protection | **CONFIRM** |
 | Reverse-polarity protection | Series Schottky or P-MOSFET | input protection | **CONFIRM** |
@@ -43,7 +46,7 @@ Sources: `phase0-data-collection-plan.md` §9, `hardware-procurement-list.md` (g
 | INA226 (optional) | Current/voltage monitor | sleep-current check (§7) | **CONFIRM**, or use a multimeter |
 | Enclosure | ABS or aluminium, ≥ IP54, < 100 × 70 × 30 mm target | protection | **CONFIRM** |
 | Connectors, glands, wrap | Locking connector (one detachable plug), PG7 glands, spiral wrap | assembly | **CONFIRM** |
-| Nextion display | UART2 | optional local display | on hand |
+| Nextion display | UART2 | local display | on hand, **not used in this build** (later prototype) |
 | Phone | Android with the `moto-mobile` APK | BLE receiver, session files | **CONFIRM** |
 | Laptop | `moto-server` (uv or Docker) | ingest + report | on hand (i7 desktop or laptop) |
 
@@ -76,7 +79,7 @@ Rules from `vehicle-work-plan.md` §3.2, §3.3 and §4; vehicle bus facts from D
 ### 3.3 IMU, display and GPS wiring
 
 - IMU on I2C: SDA `GPIO1`, SCL `GPIO2`, address `0x68`, 400 kHz. Keep the I2C wires short, inside the enclosure.
-- Nextion (optional): UART2 TX `GPIO17`, RX `GPIO18`, 115200 8N1.
+- Nextion (later, unconnected in this build): UART2 TX `GPIO17`, RX `GPIO18`, 115200 8N1.
 - `GPIO8` pulses high for each `loop()` pass (scope probe for the step time, §6).
 - GPS (D-060): NEO-M8N on UART1, module TX → `GPIO15` (conn RX), module RX → `GPIO16` (conn TX), common GND. **CONFIRM**: candidate pins of the `esp32-s3-devkitc-1-gps` env, confirmed by the procedure in §7.3. The module's UART must be 3.3 V logic.
 
@@ -121,6 +124,8 @@ What the tester does on its own, with no setting to change (conn README, Q-018, 
 | V1 | Bike, engine idling, **closed area** | First polling session with the engine running (VWP §3.2) | RPM changes with a throttle blip; CAN health clean for ≥ 5 min |
 | V2 | T0 static set | VWP §7 (sleep current, cranking, idle, warm-up from cold) | §7 checks below |
 | V3 | T1 low speed, closed lot, 0-30 km/h (VWP §7.3) | CAN speed against the gear-ratio formula (VWP §2.3); ignition cut mid-session | Deviation explained (speedometer error, VWP §2.3); after the cut the phone keeps the session and the report shows the gap |
+
+Recommended first contact with the bike: the §7.1 listen-only capture, before V0. Its image never transmits, so it is the lowest-risk first connection and it answers Q-001 before the tester polls.
 
 Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is out of scope for this build.
 
@@ -251,7 +256,7 @@ Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 
 | # | Item | Blocks |
 |---|---|---|
 | 1 | CL250 DLC location, connector type and pinout | §3.1, Y-cable |
-| 2 | Parts actually on hand (every **CONFIRM** in §2) | Build start |
+| 2 | Parts actually on hand: ESP32-S3, MPU-6050, SN65HVD230 and NEO-M8N recorded (2026-10-11); the board variant, the transceiver's termination resistor, the Y-cable, the power chain, the enclosure and the phone are still **CONFIRM** (§2) | Build start |
 | 3 | Ignition-switched tap point on the CL250 harness | §3.2 |
 | 4 | IMU bracket location and axis directions | §4, metadata |
 | 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** (procedure §7.3) | T1 speed check, §9 |
