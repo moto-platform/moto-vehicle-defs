@@ -239,6 +239,7 @@ def test_client_subset_names_nothing_outside_d020():
         "UDS_NRC_RESPONSE_PENDING",
         "UDS_NRC_SUBFUNCTION_NOT_SUPPORTED_IN_ACTIVE_SESSION",
         "UDS_NRC_SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION",
+        "UDS_NRC_REQUEST_OUT_OF_RANGE",  # D-068 item 2: stops an unverified DID
     }
 
 

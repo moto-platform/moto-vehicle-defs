@@ -20,8 +20,11 @@ def test_vehicle_yaml_is_consistent(platform_db, vehicle):
     assert check_vehicle(vehicle, platform_db) == []
 
 
-def test_every_vehicle_did_is_verified(vehicle):
-    assert all(d["verified"] for d in vehicle["dids"])
+def test_every_vehicle_did_is_verified_or_a_d068_standard_pid(vehicle):
+    # D-068: unverified DIDs are the standard J1979 PIDs over 0xF400 | PID, no evidence.
+    for d in vehicle["dids"]:
+        if not d["verified"]:
+            assert d["did"] == 0xF400 | d["obd_pid"] and d["evidence"] == []
 
 
 def test_uds_sources_are_consistent(vehicle):

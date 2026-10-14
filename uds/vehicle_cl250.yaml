@@ -348,3 +348,645 @@ dids:
       - src/HondaCANModule.h:80
       - src/HondaCANModule.cpp:260-268
       - CONTEXT.md:59
+
+  # ---- D-068: the D-066 catalog, polled slowly for the data set ---------------------
+  # Standard SAE J1979 formulas over 0xF400 | PID (ISO 14229-1), NOT vehicle facts:
+  # `verified: false` until the CL250 answers them on the bike. They stay at the end of
+  # the table in the normal class, so the five DIDs above keep their worst-case gaps
+  # whatever these do (one read in flight blocks them at most once, D-043, D-052). The
+  # tester reads each one once right after the session starts and stops asking, until
+  # the ECU is lost and found again, for a DID answered with NRC 0x31 or never answered
+  # in max_consecutive_timeouts reads (D-068 item 2). Periods are provisional tiers
+  # (D-068 item 3), to be tuned with the anomaly data: 2000 ms engine/air/fuel dynamics,
+  # 5000 ms slow thermal/pressure/level, 10000 ms counters. stale_after_ms = 3 x period.
+  - did: 0xF404
+    name: ENGINE_LOAD
+    description: Calculated engine load (SAE J1979 PID 0x04).
+    obd_pid: 0x04
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF40E
+    name: TIMING_ADVANCE
+    description: Ignition timing advance before TDC (cylinder 1) (SAE J1979 PID 0x0E).
+    obd_pid: 0x0E
+    length: 1
+    formula: A/2-64
+    factor_num: 1
+    factor_den: 2
+    offset: -64
+    unit: deg
+    min: -64
+    max: 63.5
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF443
+    name: ABSOLUTE_LOAD
+    description: Absolute load value (SAE J1979 PID 0x43).
+    obd_pid: 0x43
+    length: 2
+    formula: (A*256+B)*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 25700
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF445
+    name: RELATIVE_THROTTLE_POS
+    description: Relative throttle position (SAE J1979 PID 0x45).
+    obd_pid: 0x45
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF447
+    name: ABSOLUTE_THROTTLE_POS_B
+    description: Absolute throttle position B (SAE J1979 PID 0x47).
+    obd_pid: 0x47
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF449
+    name: ACCEL_PEDAL_POS_D
+    description: Accelerator pedal (throttle grip) position D (SAE J1979 PID 0x49).
+    obd_pid: 0x49
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF44C
+    name: COMMANDED_THROTTLE
+    description: Commanded throttle actuator (SAE J1979 PID 0x4C).
+    obd_pid: 0x4C
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF45A
+    name: RELATIVE_ACCEL_PEDAL_POS
+    description: Relative accelerator pedal (throttle grip) position (SAE J1979 PID 0x5A).
+    obd_pid: 0x5A
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF40B
+    name: INTAKE_MAP
+    description: Intake manifold absolute pressure (SAE J1979 PID 0x0B).
+    obd_pid: 0x0B
+    length: 1
+    formula: A
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: kPa
+    min: 0
+    max: 255
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF410
+    name: MAF_RATE
+    description: Mass air flow rate (SAE J1979 PID 0x10).
+    obd_pid: 0x10
+    length: 2
+    formula: (A*256+B)/100
+    factor_num: 1
+    factor_den: 100
+    offset: 0
+    unit: g/s
+    min: 0
+    max: 655.35
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF444
+    name: COMMANDED_EQUIV_RATIO
+    description: Commanded air-fuel equivalence ratio (lambda) (SAE J1979 PID 0x44).
+    obd_pid: 0x44
+    length: 2
+    formula: (A*256+B)/32768
+    factor_num: 1
+    factor_den: 32768
+    offset: 0
+    unit: ratio
+    min: 0
+    max: 1.999969482421875
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF406
+    name: SHORT_TERM_FUEL_TRIM_B1
+    description: Short term fuel trim (SAE J1979 PID 0x06).
+    obd_pid: 0x06
+    length: 1
+    formula: A*25/32-100
+    factor_num: 25
+    factor_den: 32
+    offset: -100
+    unit: "%"
+    min: -100
+    max: 99.21875
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF45D
+    name: INJECTION_TIMING
+    description: Fuel injection timing (SAE J1979 PID 0x5D).
+    obd_pid: 0x5D
+    length: 2
+    formula: (A*256+B)/128-210
+    factor_num: 1
+    factor_den: 128
+    offset: -210
+    unit: deg
+    min: -210
+    max: 301.9921875
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF45E
+    name: ENGINE_FUEL_RATE
+    description: Engine fuel rate (SAE J1979 PID 0x5E).
+    obd_pid: 0x5E
+    length: 2
+    formula: (A*256+B)/20
+    factor_num: 1
+    factor_den: 20
+    offset: 0
+    unit: L/h
+    min: 0
+    max: 3276.75
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF461
+    name: DEMAND_TORQUE_PCT
+    description: Driver's demand engine percent torque (SAE J1979 PID 0x61).
+    obd_pid: 0x61
+    length: 1
+    formula: A-125
+    factor_num: 1
+    factor_den: 1
+    offset: -125
+    unit: "%"
+    min: -125
+    max: 130
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF462
+    name: ACTUAL_TORQUE_PCT
+    description: Actual engine percent torque (SAE J1979 PID 0x62).
+    obd_pid: 0x62
+    length: 1
+    formula: A-125
+    factor_num: 1
+    factor_den: 1
+    offset: -125
+    unit: "%"
+    min: -125
+    max: 130
+    poll_period_ms: 2000
+    stale_after_ms: 6000
+    priority: normal
+    verified: false
+    evidence: []
+
+  # D-068 tier B (5000 ms): slow thermal, pressure and level signals.
+  - did: 0xF433
+    name: BAROMETRIC_PRESSURE
+    description: Absolute barometric pressure (SAE J1979 PID 0x33).
+    obd_pid: 0x33
+    length: 1
+    formula: A
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: kPa
+    min: 0
+    max: 255
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF407
+    name: LONG_TERM_FUEL_TRIM_B1
+    description: Long term fuel trim (SAE J1979 PID 0x07).
+    obd_pid: 0x07
+    length: 1
+    formula: A*25/32-100
+    factor_num: 25
+    factor_den: 32
+    offset: -100
+    unit: "%"
+    min: -100
+    max: 99.21875
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF40A
+    name: FUEL_PRESSURE
+    description: Fuel pressure (gauge) (SAE J1979 PID 0x0A).
+    obd_pid: 0x0A
+    length: 1
+    formula: A*3
+    factor_num: 3
+    factor_den: 1
+    offset: 0
+    unit: kPa
+    min: 0
+    max: 765
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF422
+    name: FUEL_RAIL_PRESSURE_REL
+    description: Fuel rail pressure relative to manifold vacuum (SAE J1979 PID 0x22).
+    obd_pid: 0x22
+    length: 2
+    formula: (A*256+B)*79/1000
+    factor_num: 79
+    factor_den: 1000
+    offset: 0
+    unit: kPa
+    min: 0
+    max: 5177.265
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF423
+    name: FUEL_RAIL_PRESSURE_GAUGE
+    description: Fuel rail gauge pressure (SAE J1979 PID 0x23).
+    obd_pid: 0x23
+    length: 2
+    formula: (A*256+B)*10
+    factor_num: 10
+    factor_den: 1
+    offset: 0
+    unit: kPa
+    min: 0
+    max: 655350
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF42E
+    name: COMMANDED_EVAP_PURGE
+    description: Commanded evaporative purge (SAE J1979 PID 0x2E).
+    obd_pid: 0x2E
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF42F
+    name: FUEL_LEVEL
+    description: Fuel tank level input (SAE J1979 PID 0x2F).
+    obd_pid: 0x2F
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF452
+    name: ETHANOL_PERCENT
+    description: Ethanol fuel percentage (SAE J1979 PID 0x52).
+    obd_pid: 0x52
+    length: 1
+    formula: A*100/255
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF40F
+    name: INTAKE_AIR_TEMP
+    description: Intake air temperature (SAE J1979 PID 0x0F).
+    obd_pid: 0x0F
+    length: 1
+    formula: A-40
+    factor_num: 1
+    factor_den: 1
+    offset: -40
+    unit: degC
+    min: -40
+    max: 215
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF43C
+    name: CATALYST_TEMP_B1S1
+    description: Catalyst temperature (SAE J1979 PID 0x3C).
+    obd_pid: 0x3C
+    length: 2
+    formula: (A*256+B)/10-40
+    factor_num: 1
+    factor_den: 10
+    offset: -40
+    unit: degC
+    min: -40
+    max: 6513.5
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF446
+    name: AMBIENT_AIR_TEMP
+    description: Ambient air temperature (SAE J1979 PID 0x46).
+    obd_pid: 0x46
+    length: 1
+    formula: A-40
+    factor_num: 1
+    factor_den: 1
+    offset: -40
+    unit: degC
+    min: -40
+    max: 215
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF45C
+    name: ENGINE_OIL_TEMP
+    description: Engine oil temperature (SAE J1979 PID 0x5C).
+    obd_pid: 0x5C
+    length: 1
+    formula: A-40
+    factor_num: 1
+    factor_den: 1
+    offset: -40
+    unit: degC
+    min: -40
+    max: 215
+    poll_period_ms: 5000
+    stale_after_ms: 15000
+    priority: normal
+    verified: false
+    evidence: []
+
+  # D-068 tier C (10000 ms): counters and constants.
+  - did: 0xF41F
+    name: RUN_TIME_SINCE_START
+    description: Run time since engine start (SAE J1979 PID 0x1F).
+    obd_pid: 0x1F
+    length: 2
+    formula: A*256+B
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: s
+    min: 0
+    max: 65535
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF421
+    name: DISTANCE_WITH_MIL
+    description: Distance traveled with the malfunction indicator lamp on (SAE J1979 PID 0x21).
+    obd_pid: 0x21
+    length: 2
+    formula: A*256+B
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: km
+    min: 0
+    max: 65535
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF430
+    name: WARMUPS_SINCE_CLEAR
+    description: Warm-ups since diagnostic trouble codes were cleared (SAE J1979 PID 0x30).
+    obd_pid: 0x30
+    length: 1
+    formula: A
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: count
+    min: 0
+    max: 255
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF431
+    name: DISTANCE_SINCE_CLEAR
+    description: Distance traveled since diagnostic trouble codes were cleared (SAE J1979 PID 0x31).
+    obd_pid: 0x31
+    length: 2
+    formula: A*256+B
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: km
+    min: 0
+    max: 65535
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF44D
+    name: TIME_WITH_MIL
+    description: Time run with the malfunction indicator lamp on (SAE J1979 PID 0x4D).
+    obd_pid: 0x4D
+    length: 2
+    formula: A*256+B
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: min
+    min: 0
+    max: 65535
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF44E
+    name: TIME_SINCE_CLEAR
+    description: Time since diagnostic trouble codes were cleared (SAE J1979 PID 0x4E).
+    obd_pid: 0x4E
+    length: 2
+    formula: A*256+B
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: min
+    min: 0
+    max: 65535
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []
+
+  - did: 0xF463
+    name: REFERENCE_TORQUE
+    description: Engine reference torque (SAE J1979 PID 0x63).
+    obd_pid: 0x63
+    length: 2
+    formula: A*256+B
+    factor_num: 1
+    factor_den: 1
+    offset: 0
+    unit: Nm
+    min: 0
+    max: 65535
+    poll_period_ms: 10000
+    stale_after_ms: 30000
+    priority: normal
+    verified: false
+    evidence: []

@@ -407,6 +407,25 @@ def check_vehicle(data: dict[str, Any], platform_db: Database | None) -> list[st
             errors.append(f"vehicle: addressing.{name} verified without evidence")
     errors += _check_functional_watch(data["addressing"])
 
+    # D-068 item 1: a DID whose support is not verified (it may time out on every read)
+    # is normal priority and comes after every verified DID, so however many of them are
+    # faulty at once, a verified DID waits for at most one of their reads (the blocking
+    # read of the bounds above), in table order (conn) and in priority order (rt-core).
+    seen_unverified = None
+    for d in data["dids"]:
+        if d.get("verified") is False:
+            seen_unverified = seen_unverified or d.get("name", "?")
+            if d.get("priority") != "normal":
+                errors.append(
+                    f"vehicle: DID {d.get('name', '?')}: unverified DID must be priority "
+                    "normal (D-068)"
+                )
+        elif seen_unverified is not None:
+            errors.append(
+                f"vehicle: DID {d.get('name', '?')}: verified DID after the unverified DID "
+                f"{seen_unverified}; unverified DIDs go at the end of the table (D-068)"
+            )
+
     seen_dids: set[int] = set()
     seen_names: set[str] = set()
     for item in data["dids"]:

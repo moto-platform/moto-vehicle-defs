@@ -9,18 +9,45 @@ from moto_codegen import config, gen_catalog
 from moto_codegen.cli import render_all
 from moto_codegen.yaml_checks import load_yaml
 
+# D-068 polls every committed candidate, so the list is empty; the checks run against
+# two standard PIDs that are not in the table (test data, never generated).
+SAMPLE = [
+    {"obd_pid": 0x2C, "did": 0xF42C, "name": "COMMANDED_EGR", "label": "EGR", "group": "air",
+     "length": 1, "factor_num": 100, "factor_den": 255, "offset": 0, "unit": "%", "min": 0,
+     "max": 100, "description": "Commanded EGR."},
+    {"obd_pid": 0x2D, "did": 0xF42D, "name": "EGR_ERROR", "label": "EGR error", "group": "air",
+     "length": 1, "factor_num": 100, "factor_den": 128, "offset": -100, "unit": "%",
+     "min": -100, "max": 99.21875, "description": "EGR error."},
+]  # fmt: skip
+
 
 @pytest.fixture
-def cand():
+def committed():
     return copy.deepcopy(load_yaml(config.CANDIDATES_YAML))
+
+
+@pytest.fixture
+def cand(committed):
+    committed["candidates"] = copy.deepcopy(SAMPLE)
+    return committed
 
 
 def _errors(cand, vehicle):
     return gen_catalog.check_catalog(cand, vehicle)
 
 
-def test_committed_catalog_is_clean(cand, vehicle):
+def test_committed_catalog_is_clean(committed, vehicle):
+    assert _errors(committed, vehicle) == []
+    assert committed["candidates"] == []  # D-068: every candidate is polled
+
+
+def test_sample_catalog_is_clean(cand, vehicle):
     assert _errors(cand, vehicle) == []
+
+
+def test_candidates_must_be_a_list(committed, vehicle):
+    del committed["candidates"]
+    assert any("must be a list" in e for e in _errors(committed, vehicle))
 
 
 def test_every_candidate_is_an_allowed_0x22_read(cand, vehicle):
@@ -57,7 +84,7 @@ def test_duplicate_name_is_refused(cand, vehicle):
 def test_range_must_follow_the_formula(cand, vehicle):
     cand["candidates"][0]["max"] = cand["candidates"][0]["max"] + 1
     assert any("max" in e and "formula" in e for e in _errors(cand, vehicle))
-    cand = copy.deepcopy(load_yaml(config.CANDIDATES_YAML))
+    cand["candidates"] = copy.deepcopy(SAMPLE)
     cand["candidates"][0]["min"] = 1
     assert any("min" in e and "formula" in e for e in _errors(cand, vehicle))
 
@@ -105,14 +132,15 @@ def test_generated_python_decodes(tmp_path):
     assert mod.decode("SHORT_TERM_FUEL_TRIM_B1", bytes([128])) == 0.0
     assert mod.decode("TIMING_ADVANCE", bytes([128])) == 0.0
     assert mod.decode("INTAKE_AIR_TEMP", bytes([60])) == 20.0
-    assert mod.SIGNALS["INTAKE_MAP"]["status"] == mod.STATUS_CANDIDATE
+    assert mod.SIGNALS["INTAKE_MAP"]["status"] == mod.STATUS_POLLED  # D-068
+    assert mod.SIGNALS["INTAKE_MAP"]["poll_period_ms"] == 2000
     assert mod.SIGNALS["VEHICLE_SPEED"]["status"] == mod.STATUS_POLLED
     assert mod.BY_DID[0xF40B] == "INTAKE_MAP"
 
 
-def test_generated_dart_lists_every_signal(cand, vehicle):
+def test_generated_dart_lists_every_signal(committed, vehicle):
     text = (config.GEN_DIR / "dart" / "moto_defs" / "lib" / "vehicle_signals.dart").read_text()
-    for e in gen_catalog.catalog(cand, vehicle):
+    for e in gen_catalog.catalog(committed, vehicle):
         assert f"name: '{e['name']}'" in text
         assert f"did: 0x{e['did']:04X}" in text
     barrel = (config.GEN_DIR / "dart" / "moto_defs" / "lib" / "moto_defs.dart").read_text()
