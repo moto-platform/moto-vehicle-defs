@@ -78,6 +78,40 @@ Standard but not yet defined (**DEF**, multi-value or enum, D-068 "Still open"):
 
 One-shot data (D-059 probe scan, not a time series): supported-PID bitmaps, VIN (masked to the WMI, never published), CalID, CVN, ECU name, DTC count and list.
 
+### 2.1 Standard data outside the polled table (added 2026-10-15)
+
+Answer to "do we read everything we can?": **we read every scalar J1979 PID that D-066 judged plausible for a one-cylinder gasoline bike, but not everything that is standard and readable inside `tester_policy`.** What exists on the CL250 is unknown until the D-059 probe has run on the bike: its 0x22 0xF4xx bitmap chain covers every PID 0x01–0xFF, so the bitmap, not this list, decides. Everything below is a 0x22, 0x19 or OBD 0x01/0x09 read, so none of it widens `tester_policy` (D-020); each item still needs `/signal-change` (or a D-xxx where noted). Formulas are SAE J1979-DA / ISO 14229-1 values to be checked in that change, not CL250 facts.
+
+**(a) Scalar PIDs left out of the D-066 list.** Add one only if the bitmap marks it supported.
+
+| PID / DID | Signal | Why it was left out | Worth it if served |
+|---|---|---|---|
+| 0x08, 0x09 / F408, F409 | Short/long fuel trim bank 2 | One cylinder, no bank 2 | No |
+| 0x2C, 0x2D / F42C, F42D | Commanded EGR, EGR error | No EGR expected | No |
+| 0x32, 0x53, 0x54 / F432, F453, F454 | EVAP vapour pressure (3 forms) | EVAP leak monitoring is not expected on an L-category bike | Low |
+| 0x3D, 0x3E, 0x3F / F43D–F43F | Catalyst temperature B2S1, B1S2, B2S2 | Only B1S1 (F43C) plausible | B1S2 only |
+| 0x48, 0x4A, 0x4B / F448, F44A, F44B | Throttle C, grip E, grip F | Redundant channels | Low (plausibility residuals, §5) |
+| 0x59 / F459 | Fuel rail absolute pressure | Port injection, F40A/F422/F423 cover it | Low |
+| 0x5B / F45B | Hybrid battery life | Not a hybrid | No |
+| 0x8E / F48E | Engine friction, % torque (A − 125) | Beyond 0x63, not reviewed by D-066 | Yes: torque model, warm-up friction |
+| 0xA2 / F4A2 | Cylinder fuel rate, mg/stroke ((256A+B)/32) | Beyond 0x63 | Yes: fuelling per stroke, consumption |
+| 0xA6 / F4A6 | Odometer, km (4 bytes / 10) | Beyond 0x63 | **Yes**: ECU odometer, distance cross-check (§5) |
+
+**(b) Multi-value PIDs that need a decode definition** (D-068 "Still open"; the existing **DEF** paragraph above). Added here: **0x65** auxiliary I/O status (one bit is "manual transmission neutral/gear", a free neutral signal if the ECU reports it), **0xA4** transmission actual gear (gear number + ratio; unlikely on a bike without a gear sensor, but the bitmap tells), **0x7F** engine run time (total / idle / PTO, a real engine-hours counter), 0x5F emission requirement (enum, one-shot), 0x64 torque data points, 0x66–0x68 multi-sensor MAF/coolant/IAT. Priority for one cylinder: 0x01, 0x03, the O2 PID the bitmap reports, then 0x65, 0xA4, 0x7F.
+
+**(c) OBD-on-UDS ranges beyond 0xF4xx** (SAE J1979-2 maps the OBD services onto 0x22). The CL250 answering 0x22 0xF4xx suggests these may exist too. Neither is in `discovery_scan` today.
+
+| DID range | Content | Note |
+|---|---|---|
+| 0xF600–0xF6FF (support DIDs 0xF600, 0xF620 …) | Monitor test results (old mode 0x06): O2 sensor, catalyst, O2 heater and the **misfire monitors (cylinder 1)** with test values and limits | Misfire counts are a direct anomaly label. Answers are multi-frame (one 9-byte record per test), so only the probe env can receive them (D-059 item 3) |
+| 0xF800–0xF8FF | Vehicle information (old mode 0x09): VIN, CalID, CVN, ECU name, in-use performance ratios | Same data as the mode 0x09 probe; a cross-check of the 0x22 path |
+
+**(d) ISO 14229-1 identification DIDs 0xF180–0xF19F** (one-shot, key-on; multi-frame for the long strings): boot/application software IDs and fingerprints (F180–F185), active session (F186, a cheap check that the 0x10 0x03 session holds), spare part number (F187), ECU software number and version (F188, F189), supplier (F18A), manufacturing date (F18B), ECU serial (F18C, **personal-adjacent, never committed**), hardware/software numbers (F191–F195), type-approval number (F196), system name / engine type (F197), programming and calibration dates (F199, F19B), ODX file (F19E). Use: identify the ECU variant and software level once per ignition so a model can tell data from two calibrations apart. Same privacy rule as the VIN (D-033, D-059 item 3).
+
+**(e) More of 0x19 (allowed, `tester_policy` does not restrict its sub-functions).** The probe reads only 0x01 (count) and 0x02 (list). Also readable: 0x03 snapshot identification, **0x04 DTC snapshot record = freeze frame** (the ECU's own sample of RPM, load, temperatures … at the moment the DTC was set), 0x06 extended data (occurrence and ageing counters), 0x0A supported DTCs. Freeze frames are the best labelled anomaly samples we can get, but they are event data: read them once per ignition when the DTC count is non-zero, as the strategy note's tier 3 says, not periodically. Needs a D-xxx (when, how often, multi-frame only in a build that receives FC answers).
+
+**(f) Not readable without widening `tester_policy` (listed so nobody tries):** 0x2A ReadDataByPeriodicIdentifier (would save request overhead), 0x2C DynamicallyDefineDataIdentifier (bundles DIDs into one read, but writes a definition into the ECU), 0x23 ReadMemoryByAddress (raw RAM, needs addresses we do not have), OBD modes 0x02 (freeze frame), 0x03/0x07 (stored/pending DTCs; 0x19 covers them), 0x06 (covered by 0xF6xx). Each would need the user's approval, a versioned defs change and `safety-reviewer` (invariant 1); none is proposed.
+
 ## 3. Switches and chassis data the ECU may or may not have
 
 None of these is defined anywhere yet. J1979 has no PID for them.
@@ -99,6 +133,33 @@ Notes:
 - (a) means new read-only discovery of non-standard DIDs (0x22 only, so inside `tester_policy`), but a range scan is a new probe mode: it needs a D-xxx (budget, which ranges, stop rules) before it is coded. The strategy note's 0x1000–0x2FFF range is an example, not a known range.
 - (b) is the Q-001 listen-only capture (`esp32-s3-devkitc-1-listen-only`, `hardware-integration.md` §7.1). It costs nothing on the bus; do it first.
 - (c) never cuts the OEM harness (vehicle-work-plan: parallel or via connectors). A tap is a hardware decision (which node reads it: io-node per §5b.1, or conn in Phase 0) and must not load the switch circuit.
+
+### 3.1 Interactive discovery on the bike (proposal for Q-031 (b), added 2026-10-15)
+
+No public source lists Honda's proprietary DIDs for its CAN-diagnosed motorcycles; Honda keeps them in its service tool (HDS). So proprietary data can only be found on the bike. This is a **proposal**, not a decision: the range-scan probe mode needs a D-xxx (ranges, time budget, stop rules) and `safety-reviewer` before it is coded. It sends only 0x22 Single Frames and the D-059 FC.CTS, so `tester_policy` and the frame gate stay as they are.
+
+**What a Honda PGM-FI ECU is likely to know** (hypotheses to look for, not signals). The HDS data list in the Honda service manual's PGM-FI chapter names what the ECU exposes; the CL250 manual is the best non-invented reference and should be read before the scan. Typical content of such lists:
+
+| Group | Likely items | Stimulus that makes it change |
+|---|---|---|
+| Interlock switches | Neutral switch, clutch switch, side stand switch, engine stop (kill) switch, starter switch | Toggle each by hand, key on, engine off |
+| Tip-over | Bank angle sensor state (on/off, sometimes its voltage) | Not stimulated (the bike stays upright); identify it only by the manual's description, never by tipping the bike or unplugging the sensor |
+| Raw sensor voltages | TP sensor, ECT sensor, IAT sensor, MAP sensor, O2 sensor (and O2 heater state) | Throttle sweep (TP), warm-up (ECT, IAT), engine start (MAP), closed loop (O2) |
+| Actuator states | Fuel pump relay, cooling fan relay, injector pulse width, idle air control / ISC position, EVAP purge, PAIR solenoid | Key on (pump primes ~2 s), warm idle until the fan starts, idle vs blip |
+| Engine state | Ignition timing, fuel cut flag, O2 feedback (closed loop) flag, gear position if a sensor exists | Idle, throttle blips, engine braking (fuel cut) |
+| Chassis | Vehicle speed source, ABS warning state | Rear wheel turned by hand on a rear paddock stand, engine off; in gear at idle only on a proper stand, nobody near the chain or wheel |
+
+**Procedure** (stationary, side stand down, never while riding):
+
+0. **Power.** Key on with the engine off draws the battery (the headlight is always on). Connect a battery maintainer for any scan longer than ~15 minutes, or run it with the engine idling in open air, and log the battery voltage (F442) throughout.
+1. **Silence test.** Read ~20 IDs in an unused range and see how the ECU refuses an unsupported DID: NRC 0x31 within the round trip (fast scan, ~20 ms per ID) or no answer (each ID costs `response_timeout_base_ms` + `client_step_max_ms` = 110 ms). This sets the time budget of step 2.
+2. **Coarse sweep.** ISO 14229-1 reserves 0x0100–0xEFFF (and 0xF010–0xF0FF, 0xF100–0xF17F, 0xF1A0–0xF1EF, 0xFD00–0xFEFF) for vehicle-manufacturer and supplier data. A full sweep of 0x0100–0xEFFF is ~61,000 reads: ~20 min with fast NRCs, ~1.9 h with silence. Start with the first 16 IDs of every 0xXX00 block (~3,800 reads: 1.3–7 min), since manufacturers cluster their DIDs, then sweep every block with a hit in full. Record per ID: NRC code (0x31 = absent; 0x22/0x33 = present but locked, never pursued with 0x27), or the positive answer bytes and length.
+3. **Stop rules** (for the D-xxx): one request in flight; never more than one retry per ID; abort the scan if the ECU is absent for `ecu_absent_timeout_ms`, if the session falls back (NRC 0x7E/0x7F, re-request it once), or on a bus-off; answers longer than `max_ff_dl` are not received. The five verified DIDs keep being polled between scan blocks so the log shows the bike's state.
+4. **Stimulus run.** Poll only the DIDs found in step 2, in rotation (~N × 20 ms per round), while the operator performs a scripted sequence, each action held ≥ 3 s and repeated 3 times, with a time marker per action (a button on the ESP32 or a marker in the phone app): clutch pull, neutral ↔ first (clutch in), side stand up/down, front brake lever, rear brake pedal, kill switch, starter button with the kill switch at stop (no crank), indicators left/right, high beam, horn, throttle sweep engine off, key-on fuel pump prime, engine start, idle until the fan runs, throttle blips, rear wheel turned on a paddock stand (see the table).
+5. **Correlation (offline, moto-ml).** For every byte and bit of every found DID: does it flip in step with a marker? Bits that follow exactly one action name the switch; bytes that track a known DID (e.g. F411 throttle) with an offset/scale are the raw voltage or a twin channel; bytes that only move with the engine running are engine-state candidates. Output: a table *DID, byte, bit/scale, meaning, confidence, evidence (log file + time)*. A row enters `uds/vehicle_cl250.yaml` only through `/signal-change` with `verified: false`, like the D-068 DIDs (invariant 2).
+6. **Stage 3 (optional).** Sniffing HDS while it shows its data list gives exact DIDs and scaling at once, but needs access to an HDS unit and a second tester on the bus for that session (D-037: our tester then stays off; a listen-only capture only).
+
+Expected yield: the interlock switches (clutch, neutral, side stand, kill) are the most likely finds, because the ECU uses them for its own start/ignition-cut logic. Gear position appears only if the CL250 has a gear position sensor. Wheel speeds and ABS state live in the ABS unit, a second ECU outside our tester policy: only a broadcast (Q-001) or a tap gives them.
 
 ## 4. Node sensors and platform data
 
@@ -152,6 +213,35 @@ Computed offline (moto-ml / moto-server) first; anything safety-related only on 
 | ECU/bus health trends | CAN errors, NRC counts, round trips | rates per ride | data-quality flag for the models |
 | Data quality per sample | ages, states, valid flags | stale/never/NRC masks | feature masking in training |
 
+Added 2026-10-15 (same rules: offline first, nothing safety-related outside rt-core):
+
+| Derived signal | From | How | Use |
+|---|---|---|---|
+| Final-drive ratio drift (chain stretch, sprocket/tyre wear) | RPM, speed, gear estimate | RPM/speed ratio per gear at steady cruise, trended over weeks | maintenance, slow anomaly |
+| Odometer cross-check | ECU odometer (0xA6 if served), ∫speed, GPS distance | three distances per ride | speed sensor fault, data gaps |
+| Throttle sensor plausibility | throttle A (F411), B (F447), relative (F445), commanded (F44C), grips (F449, F45A) | residuals between redundant channels | TP sensor ageing, a fault before the ECU flags it |
+| Intake plausibility (air leak) | MAP, MAF, RPM, throttle, IAT | MAF vs speed-density estimate; MAP at closed throttle vs idle RPM | intake leak, sensor drift |
+| Total fuel trim, trim vs load map | STFT + LTFT, load, RPM | trim per (RPM, load) cell | injector/O2 ageing, fuel quality |
+| Fuelling per stroke, BSFC | cylinder fuel rate (0xA2) or fuel rate, power estimate | g/kWh | efficiency, engine health |
+| Torque structure | demanded vs actual torque, friction torque (0x8E), reference torque | gap and friction vs coolant/oil temperature | warm-up friction, drivability |
+| Air density and power correction | baro, IAT | ρ = p/(R·T); SAE J1349-style correction factor | normalise dyno and anomaly features across weather |
+| Altitude change, road grade | baro (F433, or MAP with the engine off), speed; IMU pitch | Δh from the barometric formula; grade = Δh / distance | context (climb/descent), load explanation; never a position (invariant 7) |
+| Cold-engine abuse | RPM, load, coolant/oil temperature | time and revs above a threshold while coolant < operating temperature | wear index, rider feedback |
+| Over-rev and lugging | RPM, load, gear estimate | RPM near the limiter; high load at low RPM | wear index, riding style |
+| Operating-point histogram | RPM, load (or MAP) | time per (RPM, load) cell per ride | usage profile, model conditioning |
+| Idle quality | RPM at idle, MAP, battery voltage | RPM standard deviation and drift at warm idle | idle control, misfire hint |
+| Fuel-cut / engine-braking phases | throttle closed, RPM > idle, speed, (fuel rate ≈ 0) | flag | separate decel from braking, fuelling features |
+| Cooling fan switch-on temperature | coolant, battery voltage | voltage step of the fan load near the hot end of the coolant curve | thermostat/fan anomaly |
+| Thermal cycles, time at temperature | coolant, oil, run time | count of cold→hot cycles; time above thresholds | engine ageing |
+| Cool-down rate after stop | coolant, IAT at the next key-on, time since key-off | Newton cooling constant | heat soak, cooling system |
+| Battery rest voltage, self-discharge | key-on voltage before crank, time since last ride | V vs days parked | battery ageing (pairs with the cranking dip) |
+| Refuel and fuel slosh filter | fuel level, speed, IMU | step up at rest = refuel; level averaged over acceleration | consumption from level, range |
+| Coast-down drag | speed decay with the clutch in or in neutral (clutch from the ratio rule), baro, IAT | fit F = a + b·v² | CdA, rolling resistance for the virtual dyno |
+| Launch and clutch engagement | RPM, speed, throttle, gear estimate | RPM dip and slip time when moving off | clutch wear, riding style |
+| Rider aggressiveness score | throttle rate, longitudinal jerk, lateral acceleration, lean (later) | weighted features per ride | context (F9), anomaly conditioning |
+| Misfire rate | misfire monitor (0xF6xx, if served), IMU/engine accelerometer vibration | counts per 1000 revolutions; vibration order features | ignition/fuelling anomaly label |
+| ECU software change | identification DIDs (0xF181/0xF188/0xF189, CalID/CVN) | value differs from the previous ride | split data sets by calibration |
+
 ## 6. What to do next to grow the data set
 
 1. Ride with conn on defs v0.12.0: the vehicle-signal block shows which D-068 DIDs the CL250 serves (LIVE vs NRC 0x31 vs skipped) at key-on and after the engine start.
@@ -159,3 +249,33 @@ Computed offline (moto-ml / moto-server) first; anything safety-related only on 
 3. Define the DEF PIDs that matter for one cylinder: 0x01, 0x03 and the O2 sensor the bitmap reports.
 4. Decide (D-xxx) on proprietary-DID discovery (strategy stage 2) and/or switch taps (§3), with `architecture-guard` (which node) and `safety-reviewer` (tester or wiring).
 5. Tune the D-068 tiers from the first rides: faster for the DIDs that carry information, drop the dead ones.
+6. Run the D-059 probe env (`esp32-s3-devkitc-1-probe`) once on the bike: its 0x22 0xF4xx bitmaps settle §2.1 (a) and (b). Then propose adding the 0xF600/0xF620… and 0xF800 support DIDs and the identification DIDs (§2.1 (c), (d)) to `discovery_scan` (`/signal-change`, `safety-reviewer`).
+7. Before the stimulus run (§3.1), read the HDS data list in the CL250 service manual's PGM-FI chapter (user) and draft the range-scan D-xxx.
+8. Close the integration gaps of §7, in the order given there.
+
+## 7. Where each signal flows in the code today (2026-10-15)
+
+Checked on every repo's `origin/main`. "40" = the 5 verified + 35 D-068 DIDs of defs v0.12.0.
+
+| Repo / artifact | defs pin | ECU DIDs handled | How | Derived signals |
+|---|---|---|---|---|
+| defs `gen/c` (conn, rt_core, hil_sim) | v0.12.0 | 40 | generated DID table (`VEHICLE_CL250_DID_COUNT` 40); not generated for safety/io (correct) | — |
+| defs `gen/python`, `gen/dart` | v0.12.0 | 40 | merged catalog (`candidates: []`, so catalog = polled table) | — |
+| defs `vss/overlay.vspec` | — | **5** | only the verified DIDs carry `platform_signal` / a VSS path | — |
+| defs `dbc/platform.dbc` | — | **5** | 0x021 VehicleSpeed, 0x110 VehicleEngine (RPM, battery, coolant, TPS); `dbc/cl250.dbc` empty (Q-001) | — |
+| defs `ble/ble_schema.json` | — | 5 fixed + 40 generic | telemetry v4 fixed fields; `vehicleSignalBlock` records keyed by DID | — |
+| moto-connectivity-node | v0.12.0 | **40 polled**, 5 decoded | `HondaCANModule` polls the generated table with the D-068 stop rule; `storeValue` keeps only the 5 in `SystemState`, the 35 travel as raw bytes in the BLE vehicle-signal block | — |
+| moto-rt-core | **v0.9.0** | **5** | generic client loop, but the pinned table has 5; republishes 5 on 0x021/0x110; serves 5 on 0xFD10–0xFD14 | lean EKF (0x020) |
+| moto-mobile | v0.11.0 | 40 (generic) | catalog-driven Signals screen decodes any vsig record; records `signals.csv` | none (unit conversions only) |
+| moto-server | v0.11.0 | 40 (generic) | `signals.parquet` long format (one row per record), MDF4 one channel per catalog signal; `telemetry.parquet` 5 columns | none |
+| moto-linux-node, moto-ml, moto-mcp, moto-hil-bench | none | 0 | skeletons (README/CLAUDE.md only) | — |
+
+Gaps, in the order they should be closed (each is its own change; none is started by this list):
+
+1. **Which of the 40 the CL250 serves is unknown** until the first key-on/idle (V0/V1) and the probe run. Every later step depends on it, so the dead DIDs are dropped before anything is built on them.
+2. **rt-core sees 5.** It must implement the D-068 tester rule before its pin passes v0.11.0 (ISSUES E-19). After that its generic client polls all 40, but nothing carries the 35 off rt-core: they need platform-side DIDs (an extension of 0xFD10–0xFD14 in `uds/dids.yaml`) and/or platform-bus frames in `platform.dbc` (bus load to check, ID plan in ARCHITECTURE §4). Until then conn is the only path for them.
+3. **No VSS path for the 35.** Kuksa (linux-node) and moto-mcp read VSS only. Some have core COVESA paths under `Vehicle.Powertrain.*` (check against the pinned VSS 6.0; COVESA moved the OBD branch out of the core catalog into an optional overlay), the rest need a `Vehicle.Motorcycle.*` extension, which needs the user's approval (D-004).
+4. **mobile/server pin v0.11.0**: they already decode the 40, but show the D-068 DIDs with v0.11.0 metadata until bumped to v0.12.0 (E-19 (4)).
+5. **Time resolution of the 35 on the phone**: the vehicle-signal block sends the latest value per DID every 200 ms, so the recording holds one sample per poll at best (2/5/10 s). That matches the D-068 tiers; a faster tier needs no BLE change.
+6. **No derived signal is computed anywhere** except the lean EKF. §5 is offline work for moto-ml/moto-server on the recorded `signals.parquet` first; a derived signal shown live in the app is a later, separate decision.
+
