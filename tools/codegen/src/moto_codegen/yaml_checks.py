@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import re
 from pathlib import Path
 from typing import Any
 
@@ -642,3 +643,54 @@ def _is_pos_int(value: Any) -> bool:
 def _is_real(value: Any) -> bool:
     """A finite int/float that is not a bool (YAML `true` would pass as 1)."""
     return isinstance(value, int | float) and not isinstance(value, bool) and math.isfinite(value)
+
+
+# --------------------------------------------------------------------------- vehicle constants
+
+VEHICLE_CONSTANT_STATUS = ("spec", "calculated", "provisional", "measured")
+_CONSTANT_KEY = re.compile(r"^[a-z][a-z0-9_]*$")
+
+
+def check_vehicle_constants(doc: dict[str, Any]) -> list[str]:
+    """vehicle/cl250_constants.yaml (D-070 item 3): values only, every one sourced."""
+    errors: list[str] = []
+    if doc.get("schema_version") != 1:
+        errors.append("vehicle constants: schema_version must be 1")
+    consts = doc.get("constants")
+    if not isinstance(consts, dict) or not consts:
+        return errors + ["vehicle constants: `constants` must be a non-empty mapping"]
+    for key, entry in consts.items():
+        where = f"vehicle constants: {key}"
+        if not isinstance(key, str) or not _CONSTANT_KEY.match(key):
+            errors.append(f"{where}: key must be snake_case")
+        if not isinstance(entry, dict) or set(entry) != {"value", "unit", "status", "source"}:
+            errors.append(f"{where}: needs exactly value, unit, status, source")
+            continue
+        val = entry["value"]
+        if isinstance(val, bool) or not isinstance(val, (int, float)):
+            errors.append(f"{where}: value must be a number")
+        elif not math.isfinite(val) or val <= 0:
+            errors.append(f"{where}: value must be finite and > 0")
+        if entry["status"] not in VEHICLE_CONSTANT_STATUS:
+            errors.append(f"{where}: status must be one of {VEHICLE_CONSTANT_STATUS}")
+        if not isinstance(entry["unit"], str):
+            errors.append(f"{where}: unit must be a string")
+        if not isinstance(entry["source"], str) or not entry["source"].strip():
+            errors.append(f"{where}: source must name where the value comes from")
+    if errors:
+        return errors
+    n = consts.get("gear_count", {}).get("value")
+    if not isinstance(n, int):
+        return errors + ["vehicle constants: gear_count must be an integer"]
+    ratios = []
+    for g in range(1, n + 1):
+        entry = consts.get(f"gear_ratio_{g}")
+        if entry is None:
+            errors.append(f"vehicle constants: gear_ratio_{g} missing (gear_count = {n})")
+        else:
+            ratios.append(entry["value"])
+    if f"gear_ratio_{n + 1}" in consts:
+        errors.append(f"vehicle constants: gear_ratio_{n + 1} beyond gear_count = {n}")
+    if len(ratios) == n and any(a <= b for a, b in zip(ratios, ratios[1:], strict=False)):
+        errors.append("vehicle constants: gear ratios must strictly decrease from gear 1")
+    return errors

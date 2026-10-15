@@ -2,4 +2,5 @@
 
 # Modules: platform (platform.dbc constants), vehicle_cl250 (CL250 DIDs),
 # e2e (reference E2E protect/check), uds (ISO 14229 codes, platform servers),
-# limits (platform_limits.yaml), ble (BLE packet schema, D-061).
+# limits (platform_limits.yaml), ble (BLE packet schema, D-061),
+# vehicle_constants (CL250 constants for the derived signals, D-070).

@@ -148,7 +148,8 @@ def generate_init_py() -> str:
         BANNER.format(source="moto-vehicle-defs")
         + "\n# Modules: platform (platform.dbc constants), vehicle_cl250 (CL250 DIDs),\n"
         "# e2e (reference E2E protect/check), uds (ISO 14229 codes, platform servers),\n"
-        "# limits (platform_limits.yaml), ble (BLE packet schema, D-061).\n"
+        "# limits (platform_limits.yaml), ble (BLE packet schema, D-061),\n"
+        "# vehicle_constants (CL250 constants for the derived signals, D-070).\n"
     )
 
 
@@ -165,5 +166,15 @@ def generate_limits_py(limits: dict[str, Any]) -> str:
     for section in LIMIT_KEYS:
         nodes = ", ".join(f'"{n}"' for n in limits["scope"][section])
         lines.append(f'    "{section}": ({nodes},),')
+    lines += ["}", ""]
+    return "\n".join(lines)
+
+
+def generate_vehicle_constants_py(doc: dict[str, Any]) -> str:
+    lines = [BANNER.format(source="vehicle/cl250_constants.yaml"), ""]
+    lines.append("# name -> (value, unit, status); sources: vehicle/cl250_constants.yaml (D-070)")
+    lines.append("CONSTANTS = {")
+    for key, entry in doc["constants"].items():
+        lines.append(f'    "{key}": ({entry["value"]!r}, "{entry["unit"]}", "{entry["status"]}"),')
     lines += ["}", ""]
     return "\n".join(lines)

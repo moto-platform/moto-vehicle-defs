@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+MINOR (D-070 item 3, first derived-signal `/signal-change`): new `vehicle/cl250_constants.yaml` (engine, drivetrain, tyre and fuel constants from `vehicle-work-plan.md` §2, each with status and source; fuel density and stoichiometric AFR provisional) → `gen/c/rt_core/vehicle_cl250_constants.h` and `moto_defs.vehicle_constants`; codegen checks every value is finite, positive and sourced, and that the gear ratios match `gear_count` and decrease. `uds/dids.yaml` reserves rt-core 0xFD40–0xFD5F for the class-B ride-summary DIDs (comment only, 0xFD10–0xFD3F stays for the vehicle samples). Layout fixed for the next step: derived signal definitions in `derived/cl250_derived.yaml`. Additive, no existing message, DID or generated symbol changes; consumers (moto-rt-core, moto-server) use it only when they build the derived module.
+
 ## [0.12.0] — 2026-10-15
 
 MINOR (D-068, user): every scalar D-066 candidate is now a polled DID, read slowly for the anomaly data set. Additive: the five verified DIDs keep their periods, priorities, table positions and worst-case gaps; `tester_policy`, the D-020 golden copy, the frame gate, the BLE layouts and every DBC message are unchanged. Consumers: moto-connectivity-node polls the new DIDs (`gen/c/conn/vehicle_cl250.h`, `VEHICLE_CL250_DID_COUNT` 5 -> 40) and must stop reading an unsupported one (D-068 item 2) before it takes this tag; moto-mobile and moto-server show them as polled (`vehicle_signals.dart`, `vehicle_catalog.py`). moto-rt-core and hil_sim get the larger table too (`gen/c/rt_core`, `gen/c/hil_sim`); rt-core stays on its pin until its poller has the same rule (ISSUES).

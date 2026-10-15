@@ -1,0 +1,121 @@
+# Honda CL250 vehicle constants used by the derived signals (D-070 item 3), so no node
+# hard-codes a ratio or a dimension (invariant 2). rt-core gets them as
+# gen/c/rt_core/vehicle_cl250_constants.h, the Python reference (moto-server) as
+# moto_defs.vehicle_constants. Formulas never live here: they are logic, in rt-core's
+# src/features/derived/ (and services/ for the gear estimate) and in the Python reference.
+#
+# status:
+#   spec        manufacturer specification (docs/vehicle-work-plan.md section 2)
+#   calculated  derived from spec values (formula in `source`)
+#   provisional a generic or estimated value, to be replaced by a measurement
+#   measured    measured on the bike (evidence in `source`)
+# Changing a value is a /signal-change (CHANGELOG + version bump). Derived signals are
+# QM information (D-070 item 5): none of these values feeds a safety decision.
+#
+# The derived signal definitions themselves go to derived/cl250_derived.yaml (D-070
+# item 3, next /signal-change); ride-summary DIDs use the rt-core block 0xFD40-0xFD5F
+# reserved in uds/dids.yaml (D-070 item 4).
+
+schema_version: 1
+
+constants:
+  engine_displacement_cm3:
+    value: 249
+    unit: cm3
+    status: spec
+    source: vehicle-work-plan.md section 2
+  engine_bore_mm:
+    value: 76.0
+    unit: mm
+    status: spec
+    source: vehicle-work-plan.md section 2
+  engine_stroke_mm:
+    value: 55.0
+    unit: mm
+    status: spec
+    source: vehicle-work-plan.md section 2
+  engine_compression_ratio:
+    value: 10.7
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2
+  fuel_tank_capacity_l:
+    value: 12.0
+    unit: L
+    status: spec
+    source: vehicle-work-plan.md section 2
+  vehicle_wet_mass_kg:
+    value: 172.0
+    unit: kg
+    status: spec
+    source: vehicle-work-plan.md section 2 (without rider; limits use 252 kg with rider, D-029)
+  primary_reduction_ratio:
+    value: 2.807
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  secondary_reduction_ratio:
+    value: 2.642
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1 (final drive, chain)
+  gear_count:
+    value: 6
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2
+  gear_ratio_1:
+    value: 3.416
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  gear_ratio_2:
+    value: 2.250
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  gear_ratio_3:
+    value: 1.650
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  gear_ratio_4:
+    value: 1.350
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  gear_ratio_5:
+    value: 1.166
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  gear_ratio_6:
+    value: 1.038
+    unit: ""
+    status: spec
+    source: vehicle-work-plan.md section 2.1
+  rear_wheel_radius_unloaded_m:
+    value: 0.3209
+    unit: m
+    status: calculated
+    source: "vehicle-work-plan.md section 2.2: 150/70 R17, 215.9 mm rim radius + 105.0 mm sidewall"
+  rear_wheel_radius_dynamic_m:
+    value: 0.311
+    unit: m
+    status: provisional
+    source: "vehicle-work-plan.md section 2.2: unloaded radius 2-4 % smaller when loaded; replace with the chalk-mark roll-out"
+  rear_wheel_circumference_m:
+    value: 2.016
+    unit: m
+    status: calculated
+    source: "vehicle-work-plan.md section 2.2: 2 pi x unloaded radius; the measured roll-out value replaces it"
+  fuel_density_kg_per_l:
+    value: 0.745
+    unit: kg/L
+    status: provisional
+    source: generic gasoline at 15 degC (0.72-0.77 by blend); not in the vehicle docs
+  stoichiometric_afr:
+    value: 14.7
+    unit: ""
+    status: provisional
+    source: generic E0 gasoline (E10 is about 14.1); not in the vehicle docs
