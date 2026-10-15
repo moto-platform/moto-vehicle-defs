@@ -589,3 +589,21 @@ def generate_limits_c(limits: dict[str, Any], node: str) -> dict[str, str]:
         "",
     ]
     return {"platform_limits.h": "\n".join(h)}
+
+
+# --------------------------------------------------------------------------- vehicle constants
+
+
+def generate_vehicle_constants_c(doc: dict[str, Any]) -> dict[str, str]:
+    """CL250 vehicle constants for the derived signals (D-070 item 3). Values only."""
+    h = [BANNER.format(source="vehicle/cl250_constants.yaml"), "#ifndef VEHICLE_CL250_CONSTANTS_H"]
+    h += ["#define VEHICLE_CL250_CONSTANTS_H", ""]
+    h += ["/* QM information for the derived signals (D-070 item 5); status and source of each",
+          " * value are in vehicle/cl250_constants.yaml. */"]  # fmt: skip
+    for key, entry in doc["constants"].items():
+        val = entry["value"]
+        text = f"{val}u" if isinstance(val, int) else _c_float(val)
+        unit = f" [{entry['unit']}]" if entry["unit"] else ""
+        h.append(f"#define VEHICLE_CL250_{key.upper()} ({text}) /* {entry['status']}{unit} */")
+    h += ["", "#endif /* VEHICLE_CL250_CONSTANTS_H */", ""]
+    return {"vehicle_cl250_constants.h": "\n".join(h)}

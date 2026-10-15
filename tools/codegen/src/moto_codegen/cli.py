@@ -9,7 +9,7 @@ from pathlib import Path
 
 from . import config, gen_ble, gen_c, gen_catalog, gen_python, gen_uds, gen_vss
 from .dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
-from .yaml_checks import check_limits, check_vehicle, load_yaml
+from .yaml_checks import check_limits, check_vehicle, check_vehicle_constants, load_yaml
 
 
 def run_checks(with_vss: bool = True) -> list[str]:
@@ -28,6 +28,7 @@ def run_checks(with_vss: bool = True) -> list[str]:
     errors += check_limits(
         load_yaml(config.LIMITS_YAML), load_yaml(config.VEHICLE_YAML), platform_db
     )
+    errors += check_vehicle_constants(load_yaml(config.VEHICLE_CONSTANTS_YAML))
     ble = gen_ble.load_schema()
     ble_errors = gen_ble.check_schema(ble)
     errors += ble_errors
@@ -49,6 +50,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     db = load_dbc(config.PLATFORM_DBC)
     vehicle = load_yaml(config.VEHICLE_YAML)
     limits = load_yaml(config.LIMITS_YAML)
+    constants = load_yaml(config.VEHICLE_CONSTANTS_YAML)
     iso = load_yaml(config.ISO14229_YAML)
     dids = load_yaml(config.DIDS_YAML)
     servers = gen_uds.servers(dids)
@@ -60,6 +62,8 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
             parts.update(gen_c.generate_vehicle_c(vehicle))
         if target.limits:
             parts.update(gen_c.generate_limits_c(limits, target.node))
+        if target.vehicle_constants:
+            parts.update(gen_c.generate_vehicle_constants_c(constants))
         if target.uds_iso is not None:
             parts.update(gen_uds.generate_iso_c(iso, client_only=target.uds_iso == "client"))
         if target.node in servers:
@@ -84,6 +88,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     files[py / "vehicle_cl250.py"] = gen_python.generate_vehicle_py(vehicle)
     files[py / "e2e.py"] = gen_python.generate_e2e_py()
     files[py / "limits.py"] = gen_python.generate_limits_py(limits)
+    files[py / "vehicle_constants.py"] = gen_python.generate_vehicle_constants_py(constants)
     files[py / "uds.py"] = gen_uds.generate_uds_py(iso, dids, vehicle)
     files[py / "ble.py"] = gen_ble.generate_python(ble)
     files[py / "vehicle_catalog.py"] = gen_catalog.generate_python(cand, vehicle)
