@@ -4,6 +4,18 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.12.0] — 2026-10-15
+
+MINOR (D-068, user): every scalar D-066 candidate is now a polled DID, read slowly for the anomaly data set. Additive: the five verified DIDs keep their periods, priorities, table positions and worst-case gaps; `tester_policy`, the D-020 golden copy, the frame gate, the BLE layouts and every DBC message are unchanged. Consumers: moto-connectivity-node polls the new DIDs (`gen/c/conn/vehicle_cl250.h`, `VEHICLE_CL250_DID_COUNT` 5 -> 40) and must stop reading an unsupported one (D-068 item 2) before it takes this tag; moto-mobile and moto-server show them as polled (`vehicle_signals.dart`, `vehicle_catalog.py`). moto-rt-core and hil_sim get the larger table too (`gen/c/rt_core`, `gen/c/hil_sim`); rt-core stays on its pin until its poller has the same rule (ISSUES).
+
+### Added
+- `uds/vehicle_cl250.yaml`: 35 DIDs 0xF404..0xF463 (the former candidates, standard SAE J1979 formulas over 0xF400 | PID), `verified: false`, `evidence: []`, priority normal, appended after the verified DIDs. Provisional tiers (D-068 item 3): 16 at 2000 ms (load, timing, throttle/grip variants, MAP, MAF, lambda, STFT, injection timing, fuel rate, torque %), 12 at 5000 ms (IAT, LTFT, baro, pressures, purge, fuel level, ethanol, catalyst, ambient, oil), 7 at 10000 ms (run time, distance/time counters, warm-ups, reference torque); stale_after_ms = 3 x period. Polling budget 0.514 -> 0.736 (<= 0.8, D-029).
+- `uds/iso14229.yaml`: NRC 0x31 requestOutOfRange is `client: true` (D-068 item 2), so `gen/c/conn/uds_iso14229.h` gets `UDS_NRC_REQUEST_OUT_OF_RANGE`.
+- codegen (D-068 item 1): an unverified DID must be priority normal and come after every verified DID; refused otherwise.
+
+### Changed
+- `uds/vehicle_cl250_candidates.yaml`: `candidates` is empty (every entry moved); the labels and groups of the new DIDs are in `polled`. codegen accepts an empty list (it refused one before).
+
 ## [0.11.0] — 2026-10-11
 
 MINOR: the generic BLE vehicle-signal block of D-066 item 4 (layout confirmed by the user). Additive: a new notify characteristic and block; telemetry v4, the IMU and GPS blocks, every DBC message, polled DID, VSS path, `tester_policy` and the D-020 golden copy are unchanged. Consumers: moto-connectivity-node sends the block (`gen/c/conn/ble_schema.h`), moto-mobile decodes it (`ble_schema.dart` with `vehicle_signals.dart`), moto-server ingests it (`ble.py`). They take it together; until a consumer bumps, it simply does not subscribe or send.

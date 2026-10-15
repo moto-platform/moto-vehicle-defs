@@ -12,6 +12,35 @@ from moto_codegen.yaml_checks import (
     single_frame,
 )
 
+# The verified legacy DIDs; the D-068 unverified DIDs follow them in the table.
+CORE_FIVE = ("ENGINE_SPEED", "VEHICLE_SPEED", "THROTTLE_POS", "COOLANT_TEMP", "BATTERY_VOLTAGE")
+
+
+def test_unverified_dids_come_last_in_the_normal_class(vehicle, platform_db):
+    # D-068 item 1: the core DIDs never queue behind more than one unverified read.
+    names = [d["name"] for d in vehicle["dids"]]
+    assert names[: len(CORE_FIVE)] == list(CORE_FIVE)
+    assert all(d["verified"] for d in vehicle["dids"][: len(CORE_FIVE)])
+    assert all(
+        not d["verified"] and d["priority"] == "normal" for d in vehicle["dids"][len(CORE_FIVE) :]
+    )
+    moved = vehicle["dids"].pop(0)
+    vehicle["dids"].append(moved)
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("verified DID after the unverified DID" in e for e in errs)
+
+
+def test_a_non_bool_verified_fails(vehicle, platform_db):
+    vehicle["dids"][-1]["verified"] = 0
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("verified must be true or false" in e for e in errs)
+
+
+def test_an_unverified_high_priority_did_fails(vehicle, platform_db):
+    vehicle["dids"][-1]["priority"] = "high"
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("unverified DID must be priority normal (D-068)" in e for e in errs)
+
 
 def test_policy_allowing_a_forbidden_service_fails(vehicle, platform_db):
     vehicle["tester_policy"]["allowed"].append({"sid": 0x2E, "name": "WriteDataByIdentifier"})
@@ -126,8 +155,11 @@ def test_sample_gap_bounds_of_the_table_are_within_stale_after(vehicle):
     # 110 ms, D-053): speed (high, P110): w = 20 -> 150; RPM (P110): w = 20 + 20 = 40 -> 170;
     # throttle (P200): w = 60 -> 280; coolant (P800): w = 80 -> 900;
     # battery (P800): w = 100 -> 920.
+    # D-068: the unverified DIDs sit after these five in the normal class, so the five
+    # bounds are the same as without them.
     assert vehicle["timing"]["assumed_round_trip_ms"] == 20
-    assert _gap_bounds(vehicle) == {
+    bounds = _gap_bounds(vehicle)
+    assert {k: bounds[k] for k in CORE_FIVE} == {
         "VEHICLE_SPEED": 150,
         "ENGINE_SPEED": 170,
         "THROTTLE_POS": 280,
@@ -135,7 +167,7 @@ def test_sample_gap_bounds_of_the_table_are_within_stale_after(vehicle):
         "BATTERY_VOLTAGE": 920,
     }
     for d in vehicle["dids"]:
-        assert _gap_bounds(vehicle)[d["name"]] <= d["stale_after_ms"]
+        assert bounds[d["name"]] <= d["stale_after_ms"]
 
 
 def test_a_stale_after_below_the_sample_gap_bound_fails(vehicle, platform_db):
@@ -189,13 +221,17 @@ def test_fault_gap_bounds_of_the_table_are_within_stale_after(vehicle):
     t = vehicle["timing"]
     assert (t["assumed_round_trip_ms"], t["response_timeout_base_ms"]) == (20, 100)
     assert (t["client_step_max_ms"], t["max_consecutive_timeouts"]) == (10, 5)
-    assert _fault_bounds(vehicle) == {
+    # D-068: unchanged by the unverified DIDs after them (only the blocking read).
+    fault = _fault_bounds(vehicle)
+    assert {k: fault[k] for k in CORE_FIVE} == {
         "ENGINE_SPEED": 260,
         "VEHICLE_SPEED": 220,
         "THROTTLE_POS": 480,
         "COOLANT_TEMP": 1740,
         "BATTERY_VOLTAGE": 2270,
     }
+    for d in vehicle["dids"]:
+        assert fault[d["name"]] <= d["stale_after_ms"]
     assert not any("fault-mode" in e for e in check_vehicle(vehicle, None))
 
 

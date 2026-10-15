@@ -140,8 +140,10 @@ def check_catalog(cand: dict[str, Any], vehicle: dict[str, Any]) -> list[str]:
             )
         names.add(e.get("name"))
         dids.add(e.get("did"))
-    if not cand.get("candidates"):
-        errors.append("candidates: empty candidate list")
+    # D-068: every scalar candidate is polled now, so the list may be empty; the file
+    # stays for the multi-value PIDs that are not defined yet.
+    if not isinstance(cand.get("candidates"), list):
+        errors.append("candidates: `candidates` must be a list (empty once all are polled)")
     return errors
 
 

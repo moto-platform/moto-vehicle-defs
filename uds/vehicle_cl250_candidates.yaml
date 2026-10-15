@@ -1,4 +1,4 @@
-# Honda CL250: candidate signal catalog (D-066). NOT POLLED.
+# Honda CL250: candidate signal catalog (D-066, D-068). NOT POLLED.
 #
 # Every scalar SAE J1979 / ISO 15031-5 mode 0x01 PID that the CL250 ECU *might* serve
 # through the UDS 0x22 0xF4xx path its verified DIDs use (uds/vehicle_cl250.yaml; ISO
@@ -11,11 +11,13 @@
 # uds/vehicle_cl250.yaml into one catalog, so the app and the server can show every
 # signal and mark which ones flow. No C target gets it: no node polls a candidate.
 #
-# A candidate becomes a polled DID only through /signal-change (D-059 item 4, D-066
-# item 3): the scan marks it supported, the entry moves to uds/vehicle_cl250.yaml with
-# `verified: false`, a poll_period_ms, a stale_after_ms and a priority, and the D-029
-# budget stays <= 0.8. This file therefore never carries poll_period_ms, stale_after_ms
-# or priority (codegen refuses them).
+# A candidate becomes a polled DID only through /signal-change: the entry moves to
+# uds/vehicle_cl250.yaml with `verified: false`, a poll_period_ms, a stale_after_ms and
+# priority normal, at the end of the table, and the D-029 budget stays <= 0.8. This file
+# therefore never carries poll_period_ms, stale_after_ms or priority (codegen refuses
+# them). D-068 moved every scalar candidate at once, before the discovery scan: the
+# tester stops reading one the ECU does not serve (uds/vehicle_cl250.yaml), so the list
+# below is empty until the multi-value PIDs listed next are defined.
 #
 # Entry: obd_pid, did (= 0xF400 | obd_pid), name (UPPER_SNAKE, unique across both
 # files), label (short UI text), group, length (1/2/4 data bytes), factor_num,
@@ -39,118 +41,42 @@ polled:
   THROTTLE_POS: {group: engine, label: Throttle}
   COOLANT_TEMP: {group: temperature, label: Coolant}
   BATTERY_VOLTAGE: {group: electrical, label: Battery}
+  ENGINE_LOAD: {group: engine, label: Engine load}
+  TIMING_ADVANCE: {group: engine, label: Ignition advance}
+  ABSOLUTE_LOAD: {group: engine, label: Absolute load}
+  RELATIVE_THROTTLE_POS: {group: engine, label: Relative throttle}
+  ABSOLUTE_THROTTLE_POS_B: {group: engine, label: Throttle B}
+  ACCEL_PEDAL_POS_D: {group: engine, label: Throttle grip D}
+  COMMANDED_THROTTLE: {group: engine, label: Commanded throttle}
+  RELATIVE_ACCEL_PEDAL_POS: {group: engine, label: Relative grip}
+  INTAKE_MAP: {group: air, label: Intake MAP}
+  MAF_RATE: {group: air, label: Air flow}
+  COMMANDED_EQUIV_RATIO: {group: air, label: Commanded lambda}
+  SHORT_TERM_FUEL_TRIM_B1: {group: fuel, label: Short fuel trim}
+  INJECTION_TIMING: {group: fuel, label: Injection timing}
+  ENGINE_FUEL_RATE: {group: fuel, label: Fuel rate}
+  DEMAND_TORQUE_PCT: {group: torque, label: Demanded torque}
+  ACTUAL_TORQUE_PCT: {group: torque, label: Actual torque}
+  BAROMETRIC_PRESSURE: {group: air, label: Barometric}
+  LONG_TERM_FUEL_TRIM_B1: {group: fuel, label: Long fuel trim}
+  FUEL_PRESSURE: {group: fuel, label: Fuel pressure}
+  FUEL_RAIL_PRESSURE_REL: {group: fuel, label: Rail pressure (rel)}
+  FUEL_RAIL_PRESSURE_GAUGE: {group: fuel, label: Rail pressure}
+  COMMANDED_EVAP_PURGE: {group: fuel, label: EVAP purge}
+  FUEL_LEVEL: {group: fuel, label: Fuel level}
+  ETHANOL_PERCENT: {group: fuel, label: Ethanol}
+  INTAKE_AIR_TEMP: {group: temperature, label: Intake air}
+  CATALYST_TEMP_B1S1: {group: temperature, label: Catalyst}
+  AMBIENT_AIR_TEMP: {group: temperature, label: Ambient}
+  ENGINE_OIL_TEMP: {group: temperature, label: Oil}
+  RUN_TIME_SINCE_START: {group: engine, label: Run time}
+  DISTANCE_WITH_MIL: {group: diagnostic, label: Distance with MIL}
+  WARMUPS_SINCE_CLEAR: {group: diagnostic, label: Warm-ups since clear}
+  DISTANCE_SINCE_CLEAR: {group: diagnostic, label: Distance since clear}
+  TIME_WITH_MIL: {group: diagnostic, label: Time with MIL}
+  TIME_SINCE_CLEAR: {group: diagnostic, label: Time since clear}
+  REFERENCE_TORQUE: {group: torque, label: Reference torque}
 
 groups: [engine, motion, air, fuel, temperature, electrical, torque, diagnostic]
 
-candidates:
-  # engine
-  - {obd_pid: 0x04, did: 0xF404, name: ENGINE_LOAD, label: Engine load, group: engine, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Calculated engine load.}
-  - {obd_pid: 0x0E, did: 0xF40E, name: TIMING_ADVANCE, label: Ignition advance, group: engine, length: 1,
-     factor_num: 1, factor_den: 2, offset: -64, unit: deg, min: -64, max: 63.5,
-     description: Ignition timing advance before TDC (cylinder 1).}
-  - {obd_pid: 0x1F, did: 0xF41F, name: RUN_TIME_SINCE_START, label: Run time, group: engine, length: 2,
-     factor_num: 1, factor_den: 1, offset: 0, unit: s, min: 0, max: 65535,
-     description: Run time since engine start.}
-  - {obd_pid: 0x43, did: 0xF443, name: ABSOLUTE_LOAD, label: Absolute load, group: engine, length: 2,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 25700,
-     description: Absolute load value.}
-  - {obd_pid: 0x45, did: 0xF445, name: RELATIVE_THROTTLE_POS, label: Relative throttle, group: engine, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Relative throttle position.}
-  - {obd_pid: 0x47, did: 0xF447, name: ABSOLUTE_THROTTLE_POS_B, label: Throttle B, group: engine, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Absolute throttle position B.}
-  - {obd_pid: 0x49, did: 0xF449, name: ACCEL_PEDAL_POS_D, label: Throttle grip D, group: engine, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Accelerator pedal (throttle grip) position D.}
-  - {obd_pid: 0x4C, did: 0xF44C, name: COMMANDED_THROTTLE, label: Commanded throttle, group: engine, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Commanded throttle actuator.}
-  - {obd_pid: 0x5A, did: 0xF45A, name: RELATIVE_ACCEL_PEDAL_POS, label: Relative grip, group: engine, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Relative accelerator pedal (throttle grip) position.}
-  # air
-  - {obd_pid: 0x0B, did: 0xF40B, name: INTAKE_MAP, label: Intake MAP, group: air, length: 1,
-     factor_num: 1, factor_den: 1, offset: 0, unit: kPa, min: 0, max: 255,
-     description: Intake manifold absolute pressure.}
-  - {obd_pid: 0x10, did: 0xF410, name: MAF_RATE, label: Air flow, group: air, length: 2,
-     factor_num: 1, factor_den: 100, offset: 0, unit: g/s, min: 0, max: 655.35,
-     description: Mass air flow rate.}
-  - {obd_pid: 0x33, did: 0xF433, name: BAROMETRIC_PRESSURE, label: Barometric, group: air, length: 1,
-     factor_num: 1, factor_den: 1, offset: 0, unit: kPa, min: 0, max: 255,
-     description: Absolute barometric pressure.}
-  - {obd_pid: 0x44, did: 0xF444, name: COMMANDED_EQUIV_RATIO, label: Commanded lambda, group: air, length: 2,
-     factor_num: 1, factor_den: 32768, offset: 0, unit: ratio, min: 0, max: 1.999969482421875,
-     description: Commanded air-fuel equivalence ratio (lambda).}
-  # fuel
-  - {obd_pid: 0x06, did: 0xF406, name: SHORT_TERM_FUEL_TRIM_B1, label: Short fuel trim, group: fuel, length: 1,
-     factor_num: 25, factor_den: 32, offset: -100, unit: "%", min: -100, max: 99.21875,
-     description: Short term fuel trim, bank 1.}
-  - {obd_pid: 0x07, did: 0xF407, name: LONG_TERM_FUEL_TRIM_B1, label: Long fuel trim, group: fuel, length: 1,
-     factor_num: 25, factor_den: 32, offset: -100, unit: "%", min: -100, max: 99.21875,
-     description: Long term fuel trim, bank 1.}
-  - {obd_pid: 0x0A, did: 0xF40A, name: FUEL_PRESSURE, label: Fuel pressure, group: fuel, length: 1,
-     factor_num: 3, factor_den: 1, offset: 0, unit: kPa, min: 0, max: 765,
-     description: Fuel pressure (gauge).}
-  - {obd_pid: 0x22, did: 0xF422, name: FUEL_RAIL_PRESSURE_REL, label: Rail pressure (rel), group: fuel, length: 2,
-     factor_num: 79, factor_den: 1000, offset: 0, unit: kPa, min: 0, max: 5177.265,
-     description: Fuel rail pressure relative to manifold vacuum.}
-  - {obd_pid: 0x23, did: 0xF423, name: FUEL_RAIL_PRESSURE_GAUGE, label: Rail pressure, group: fuel, length: 2,
-     factor_num: 10, factor_den: 1, offset: 0, unit: kPa, min: 0, max: 655350,
-     description: Fuel rail gauge pressure.}
-  - {obd_pid: 0x2E, did: 0xF42E, name: COMMANDED_EVAP_PURGE, label: EVAP purge, group: fuel, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Commanded evaporative purge.}
-  - {obd_pid: 0x2F, did: 0xF42F, name: FUEL_LEVEL, label: Fuel level, group: fuel, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Fuel tank level input.}
-  - {obd_pid: 0x52, did: 0xF452, name: ETHANOL_PERCENT, label: Ethanol, group: fuel, length: 1,
-     factor_num: 100, factor_den: 255, offset: 0, unit: "%", min: 0, max: 100,
-     description: Ethanol fuel percentage.}
-  - {obd_pid: 0x5D, did: 0xF45D, name: INJECTION_TIMING, label: Injection timing, group: fuel, length: 2,
-     factor_num: 1, factor_den: 128, offset: -210, unit: deg, min: -210, max: 301.9921875,
-     description: Fuel injection timing.}
-  - {obd_pid: 0x5E, did: 0xF45E, name: ENGINE_FUEL_RATE, label: Fuel rate, group: fuel, length: 2,
-     factor_num: 1, factor_den: 20, offset: 0, unit: L/h, min: 0, max: 3276.75,
-     description: Engine fuel rate.}
-  # temperature
-  - {obd_pid: 0x0F, did: 0xF40F, name: INTAKE_AIR_TEMP, label: Intake air, group: temperature, length: 1,
-     factor_num: 1, factor_den: 1, offset: -40, unit: degC, min: -40, max: 215,
-     description: Intake air temperature.}
-  - {obd_pid: 0x3C, did: 0xF43C, name: CATALYST_TEMP_B1S1, label: Catalyst, group: temperature, length: 2,
-     factor_num: 1, factor_den: 10, offset: -40, unit: degC, min: -40, max: 6513.5,
-     description: Catalyst temperature, bank 1 sensor 1.}
-  - {obd_pid: 0x46, did: 0xF446, name: AMBIENT_AIR_TEMP, label: Ambient, group: temperature, length: 1,
-     factor_num: 1, factor_den: 1, offset: -40, unit: degC, min: -40, max: 215,
-     description: Ambient air temperature.}
-  - {obd_pid: 0x5C, did: 0xF45C, name: ENGINE_OIL_TEMP, label: Oil, group: temperature, length: 1,
-     factor_num: 1, factor_den: 1, offset: -40, unit: degC, min: -40, max: 215,
-     description: Engine oil temperature.}
-  # torque
-  - {obd_pid: 0x61, did: 0xF461, name: DEMAND_TORQUE_PCT, label: Demanded torque, group: torque, length: 1,
-     factor_num: 1, factor_den: 1, offset: -125, unit: "%", min: -125, max: 130,
-     description: Driver's demand engine percent torque.}
-  - {obd_pid: 0x62, did: 0xF462, name: ACTUAL_TORQUE_PCT, label: Actual torque, group: torque, length: 1,
-     factor_num: 1, factor_den: 1, offset: -125, unit: "%", min: -125, max: 130,
-     description: Actual engine percent torque.}
-  - {obd_pid: 0x63, did: 0xF463, name: REFERENCE_TORQUE, label: Reference torque, group: torque, length: 2,
-     factor_num: 1, factor_den: 1, offset: 0, unit: Nm, min: 0, max: 65535,
-     description: Engine reference torque.}
-  # diagnostic
-  - {obd_pid: 0x21, did: 0xF421, name: DISTANCE_WITH_MIL, label: Distance with MIL, group: diagnostic, length: 2,
-     factor_num: 1, factor_den: 1, offset: 0, unit: km, min: 0, max: 65535,
-     description: Distance traveled with the malfunction indicator lamp on.}
-  - {obd_pid: 0x30, did: 0xF430, name: WARMUPS_SINCE_CLEAR, label: Warm-ups since clear, group: diagnostic, length: 1,
-     factor_num: 1, factor_den: 1, offset: 0, unit: count, min: 0, max: 255,
-     description: Warm-ups since diagnostic trouble codes were cleared.}
-  - {obd_pid: 0x31, did: 0xF431, name: DISTANCE_SINCE_CLEAR, label: Distance since clear, group: diagnostic, length: 2,
-     factor_num: 1, factor_den: 1, offset: 0, unit: km, min: 0, max: 65535,
-     description: Distance traveled since diagnostic trouble codes were cleared.}
-  - {obd_pid: 0x4D, did: 0xF44D, name: TIME_WITH_MIL, label: Time with MIL, group: diagnostic, length: 2,
-     factor_num: 1, factor_den: 1, offset: 0, unit: min, min: 0, max: 65535,
-     description: Time run with the malfunction indicator lamp on.}
-  - {obd_pid: 0x4E, did: 0xF44E, name: TIME_SINCE_CLEAR, label: Time since clear, group: diagnostic, length: 2,
-     factor_num: 1, factor_den: 1, offset: 0, unit: min, min: 0, max: 65535,
-     description: Time since diagnostic trouble codes were cleared.}
+candidates: []

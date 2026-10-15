@@ -69,7 +69,7 @@ nrcs:
   - {nrc: 0x21, name: BUSY_REPEAT_REQUEST}
   - {nrc: 0x22, name: CONDITIONS_NOT_CORRECT}
   - {nrc: 0x24, name: REQUEST_SEQUENCE_ERROR}
-  - {nrc: 0x31, name: REQUEST_OUT_OF_RANGE}
+  - {nrc: 0x31, name: REQUEST_OUT_OF_RANGE, client: true}  # D-068: tester stops an unverified DID
   - {nrc: 0x78, name: RESPONSE_PENDING, client: true}
   - {nrc: 0x7E, name: SUBFUNCTION_NOT_SUPPORTED_IN_ACTIVE_SESSION, client: true}
   - {nrc: 0x7F, name: SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION, client: true}
