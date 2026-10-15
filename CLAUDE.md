@@ -23,6 +23,8 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /uds/iso14229.yaml    → generic ISO 14229-1 codes (names for numbers only)
 /ble/ble_schema.json  → BLE packet schema of conn: telemetry v2/v3/v4, IMU block, GATT UUIDs; single source for conn, moto-mobile, moto-server (D-061)
 /limits/platform_limits.yaml → k_yellow/k_red, µ/mass fallbacks, rt-core speed rules, per-node scope (provisional, D-029, D-048)
+/vehicle/cl250_constants.yaml → CL250 constants for the derived signals, status + source per value (D-070)
+/derived/cl250_derived.yaml → derived signal definitions + non-DID sensor inputs + ride-summary DIDs 0xFD40–0xFD5F; no formulas (D-070)
 /tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, Dart, VSS JSON
 /gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging): `c/<node>`, `python/moto_defs`, `dart/moto_defs` (BLE schema), `vss`
 /misra/               → MISRA C:2012 deviation register for gen/c + cppcheck suppressions (D-046)

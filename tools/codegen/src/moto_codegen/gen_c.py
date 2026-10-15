@@ -12,7 +12,7 @@ from typing import Any
 from cantools.database.can import Database, Message
 from cantools.database.can.c_source import camel_to_snake_case, generate
 
-from . import config
+from . import config, derived
 from .c_e2e_templates import BANNER, E2E_CORE_C, E2E_CORE_H
 from .dbc_checks import cycle_time_ms, e2e_data_id, is_e2e_protected
 from .yaml_checks import DID_PRIORITIES, SCAN_REQUEST_MAX, check_discovery, limit_scope
@@ -607,3 +607,150 @@ def generate_vehicle_constants_c(doc: dict[str, Any]) -> dict[str, str]:
         h.append(f"#define VEHICLE_CL250_{key.upper()} ({text}) /* {entry['status']}{unit} */")
     h += ["", "#endif /* VEHICLE_CL250_CONSTANTS_H */", ""]
     return {"vehicle_cl250_constants.h": "\n".join(h)}
+
+
+# --------------------------------------------------------------------------- derived signals
+
+
+def _derived_input_c(ref: str) -> str:
+    kind, name = derived.split_ref(ref)
+    if kind == "did":
+        return f"{{ VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_{name} }}"
+    if kind == "sensor":
+        return f"{{ VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_{name.upper()} }}"
+    return f"{{ VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_{name.upper()} }}"
+
+
+def _record_c(key: str) -> str:
+    return f"VEHICLE_CL250_RIDE_{key.removeprefix('RIDE_')}_DID"
+
+
+def generate_derived_c(doc: dict[str, Any], constants: dict[str, Any]) -> dict[str, str]:
+    """rt-core metadata of the class-A/B derived signals (D-070). No formula: rt-core's
+    src/features/derived/ computes them; the table says what each one reads, how often,
+    how long it stays valid and which ride-summary DID reports it."""
+    src = "derived/cl250_derived.yaml"
+    p = "VEHICLE_CL250"
+    sensors = list(doc["sensors"])
+    names = derived.rt_core_signals(doc)
+    signals = doc["signals"]
+    # Constants are compile time (vehicle_cl250_constants.h), not runtime inputs.
+    refs = {n: [r for r in signals[n]["inputs"] if not r.startswith("const.")] for n in names}
+    input_max = max([1] + [len(v) for v in refs.values()])
+
+    def define(name: str, value: str, comment: str = "") -> str:
+        tail = f" /* {comment} */" if comment else ""
+        return f"#define {p}_{name} ({value}){tail}"
+
+    h = [BANNER.format(source=src), "#ifndef VEHICLE_CL250_DERIVED_H"]
+    h += ["#define VEHICLE_CL250_DERIVED_H", ""]
+    h += ["#include <stdbool.h>", "#include <stdint.h>", ""]
+    h += ["#ifdef __cplusplus", 'extern "C" {', "#endif", ""]
+    h += ["/* QM information (D-070 item 5): never an input of a safety decision. An output",
+          " * is valid only while every input is valid and younger than its stale_after_ms",
+          " * (a DID's in vehicle_cl250_dids[], a sensor's below, a derived signal's here).",
+          " * rt_core_ready = false: an input is not defined for rt-core yet, never valid. */",
+          ""]  # fmt: skip
+    h.append(define("SENSOR_COUNT", f"{len(sensors)}u"))
+    for i, key in enumerate(sensors):
+        h.append(define(f"SENSOR_{key.upper()}", f"{i}u", f"[{doc['sensors'][key]['unit']}]"))
+    h.append("")
+    h.append(define("DERIVED_COUNT", f"{len(names)}u", "classes A and B"))
+    for i, n in enumerate(names):
+        h.append(define(f"DERIVED_{n.upper()}", f"{i}u", f"class {signals[n]['class']}"))
+    h.append("")
+    h.append("/* Ride-summary records (class B): rt-core UDS DIDs 0xFD40-0xFD5F (D-070 item 4). */")
+    for key, r in doc["ride_summary_records"].items():
+        h.append(f"#define {_record_c(key)} ({_hex(r['did'], 4)})")
+    h.append(define("DERIVED_NO_RECORD", "0x0000u", "class A"))
+    h.append("")
+    h += ["/* vehicle_cl250_derived_t.derived_class and vehicle_cl250_derived_input_t.kind.",
+          " * Plain constants, not enums: the fields are uint8_t (MISRA 2.3). */"]  # fmt: skip
+    h.append(define("DERIVED_CLASS_LIVE", "0u", "A: live, every period_ms or per event"))
+    h.append(define("DERIVED_CLASS_RIDE", "1u", "B: closes with the ride"))
+    h.append(define("DERIVED_INPUT_DID", "0u", "index into vehicle_cl250_dids[]"))
+    h.append(define("DERIVED_INPUT_SENSOR", "1u", "VEHICLE_CL250_SENSOR_*"))
+    h.append(define("DERIVED_INPUT_DERIVED", "2u", "VEHICLE_CL250_DERIVED_*"))
+    h.append(define("DERIVED_INPUT_MAX", f"{input_max}u"))
+    h.append(define("DERIVED_AXIS_MAX", f"{derived.AXIS_MAX}u"))
+    h += [
+        "",
+        "typedef struct {",
+        "    uint8_t kind; /* VEHICLE_CL250_DERIVED_INPUT_* */",
+        "    uint8_t index;",
+        "} vehicle_cl250_derived_input_t;",
+        "",
+        "/* `count` uniform bins over inputs[input] from min to max. */",
+        "typedef struct {",
+        "    uint8_t input;",
+        "    uint8_t count;",
+        "    float min;",
+        "    float max;",
+        "} vehicle_cl250_derived_axis_t;",
+        "",
+        "typedef struct {",
+        "    uint8_t derived_class; /* VEHICLE_CL250_DERIVED_CLASS_* */",
+        "    bool event;            /* one record per event instead of every period_ms */",
+        "    bool per_gear;         /* one value per gear */",
+        "    bool rt_core_ready;",
+        "    uint16_t period_ms;      /* 0: event or per ride */",
+        "    uint16_t stale_after_ms; /* 0: event or per ride */",
+        "    uint16_t window_ms;      /* 0: none */",
+        "    uint16_t record_did;     /* VEHICLE_CL250_DERIVED_NO_RECORD for class A */",
+        "    uint16_t elements;       /* values held: bins x gears, 1 = a scalar */",
+        "    float min;               /* outside [min, max]: invalid, never clamped */",
+        "    float max;",
+        "    float resolution;        /* log and ride-summary quantisation step */",
+        "    uint8_t input_count;",
+        "    uint8_t axis_count;",
+        f"    vehicle_cl250_derived_input_t inputs[{p}_DERIVED_INPUT_MAX];",
+        f"    vehicle_cl250_derived_axis_t axes[{p}_DERIVED_AXIS_MAX];",
+        "} vehicle_cl250_derived_t;",
+        "",
+        f"extern const uint16_t vehicle_cl250_sensor_stale_after_ms[{p}_SENSOR_COUNT];",
+        f"extern const vehicle_cl250_derived_t vehicle_cl250_derived[{p}_DERIVED_COUNT];",
+        "",
+        "#ifdef __cplusplus",
+        "}",
+        "#endif",
+        "",
+        "#endif /* VEHICLE_CL250_DERIVED_H */",
+        "",
+    ]
+
+    c = [BANNER.format(source=src), '#include "vehicle_cl250_derived.h"']
+    c += ['#include "vehicle_cl250.h"', ""]
+    c.append(f"const uint16_t vehicle_cl250_sensor_stale_after_ms[{p}_SENSOR_COUNT] = {{")
+    c += [f"    {doc['sensors'][k]['stale_after_ms']}u, /* {k} */" for k in sensors]
+    c += ["};", ""]
+    c.append(f"const vehicle_cl250_derived_t vehicle_cl250_derived[{p}_DERIVED_COUNT] = {{")
+    for n in names:
+        s, r = signals[n], refs[n]
+        cls = "LIVE" if s["class"] == "A" else "RIDE"
+        record = _record_c(s["record"]) if "record" in s else f"{p}_DERIVED_NO_RECORD"
+        # MISRA 9.3: arrays are initialised in full.
+        ins = [_derived_input_c(x) for x in r] + ["{ 0u, 0u }"] * (input_max - len(r))
+        bins = s.get("bins", [])
+        axes = (
+            [
+                f"{{ {r.index(b['input'])}u, {b['count']}u, {_c_float(b['min'])}, {_c_float(b['max'])} }}"  # fmt: skip
+                for b in bins
+            ]
+            + ["{ 0u, 0u, 0.0f, 0.0f }"] * (derived.AXIS_MAX - len(bins))
+        )
+        flags = [s.get("event", False), s.get("per_gear", False), derived.ready(doc, n, "rt_core")]
+        c += [
+            f"    {{ /* {n} [{s['unit']}] */",
+            f"        {p}_DERIVED_CLASS_{cls}, "
+            + ", ".join("true" if f else "false" for f in flags)
+            + ",",  # fmt: skip
+            f"        {s.get('period_ms', 0)}u, {s.get('stale_after_ms', 0)}u, "
+            f"{s.get('window_ms', 0)}u, {record}, {derived.element_count(s, constants)}u,",
+            f"        {_c_float(s['range'][0])}, {_c_float(s['range'][1])}, {_c_float(s['resolution'])},",  # fmt: skip
+            f"        {len(r)}u, {len(bins)}u,",
+            "        { " + ", ".join(ins) + " },",
+            "        { " + ", ".join(axes) + " }",
+            "    },",
+        ]
+    c += ["};", ""]
+    return {"vehicle_cl250_derived.h": "\n".join(h), "vehicle_cl250_derived.c": "\n".join(c)}
