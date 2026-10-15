@@ -19,7 +19,7 @@
                                               ┌───────────┴────────────┴───────────┐
                                               │ SN65HVD230 ── GPIO4 TX / GPIO5 RX  │
                                               │ ESP32-S3 DevKitC-1 (conn firmware) │
-                                              │ MPU-6050 ── I2C GPIO1 SDA / GPIO2 SCL (0x68, 400 kHz)
+                                              │ MPU-6500 ── I2C GPIO7 SDA / GPIO6 SCL (0x68, 400 kHz)
                                               │ NEO-M8N ── UART1: module TX → GPIO15 / module RX ← GPIO16 (pins CONFIRM, §7.3)
                                               │ Nextion (later, unconnected now) ── UART2 GPIO17 TX / GPIO18 RX
                                               └──────────────┬─────────────────────┘
@@ -29,13 +29,13 @@
 
 ## 2. Parts list for this build
 
-Sources: `phase0-data-collection-plan.md` §9, `hardware-procurement-list.md` (groups 1-3, 10, "Already On Hand"), `vehicle-work-plan.md` §3. On hand as of 2026-10-11 (user): ESP32-S3, MPU-6050, SN65HVD230, NEO-M8N; everything else is still to be bought or confirmed.
+Sources: `phase0-data-collection-plan.md` §9, `hardware-procurement-list.md` (groups 1-3, 10, "Already On Hand"), `vehicle-work-plan.md` §3. On hand as of 2026-10-11 (user): ESP32-S3, MPU-6050, SN65HVD230, NEO-M8N; everything else is still to be bought or confirmed. Desk bring-up 2026-10-15: the board and the working IMU are recorded in the rows below.
 
 | Part | Spec | Role | On hand |
 |---|---|---|---|
-| ESP32-S3 DevKitC-1 | WROOM module | conn firmware | **on hand** (ESP32-S3); **CONFIRM** it is a DevKitC-1 or a board with the same GPIOs free (1, 2, 4, 5, 8, 15, 16) |
+| ESP32-S3 DevKitC-1 | WROOM module | conn firmware | **on hand**: ESP32-S3 rev v0.2, 16 MB flash, 8 MB embedded PSRAM, FTDI FT232R USB-UART (shows as `/dev/cu.usbserial-*`), flashes and boots with the DevKitC-1 envs (2026-10-15). GPIOs used: 4, 5, 6, 7, 8, 15, 16 |
 | CAN transceiver | SN65HVD230 (3.3 V) | TWAI ↔ vehicle CAN | **on hand**; **CONFIRM** whether the breakout carries a 120 Ω termination resistor: it must be removed or left open, since the vehicle line is already terminated (§3.1) |
-| IMU | MPU-6050 class, must deliver ±8 g / ±500 dps at 100 Hz (D-032) | raw motion data | **on hand**: MPU-6050 (its ±8 g / ±500 dps ranges meet D-032; the part stays provisional) |
+| IMU | MPU-6050 class, must deliver ±8 g / ±500 dps at 100 Hz (D-032) | raw motion data | **on hand**: the working part is an MPU-6500 (WHO_AM_I 0x70, accepted by conn; ±8 g / ±500 dps meet D-032; the part stays provisional). The first module (MPU-6050 class) gave no I2C answer on the desk |
 | GPS | u-blox NEO-M8N, 3.3 V logic on its UART, own antenna (D-060) | ground speed, heading | **on hand** |
 | DLC Y-cable | Parallel to the OEM connector, no cut | bus access | **CONFIRM** connector type |
 | Fuse + holder | 2 A, blade or glass | input protection | **CONFIRM** |
@@ -78,7 +78,7 @@ Rules from `vehicle-work-plan.md` §3.2, §3.3 and §4; vehicle bus facts from D
 
 ### 3.3 IMU, display and GPS wiring
 
-- IMU on I2C: SDA `GPIO1`, SCL `GPIO2`, address `0x68`, 400 kHz. Keep the I2C wires short, inside the enclosure.
+- IMU on I2C: SDA `GPIO7`, SCL `GPIO6`, address `0x68` (AD0 to GND), 400 kHz (conn#19; the legacy port used GPIO1/2). GPIO4/5 stay with CAN. Keep the I2C wires short, inside the enclosure, and solder the module's header: a header only pushed into the jumpers lost contact on the desk (2026-10-15).
 - Nextion (later, unconnected in this build): UART2 TX `GPIO17`, RX `GPIO18`, 115200 8N1.
 - `GPIO8` pulses high for each `loop()` pass (scope probe for the step time, §6).
 - GPS (D-060): NEO-M8N on UART1, module TX → `GPIO15` (conn RX), module RX → `GPIO16` (conn TX), common GND. **CONFIRM**: candidate pins of the `esp32-s3-devkitc-1-gps` env, confirmed by the procedure in §7.3. The module's UART must be 3.3 V logic.
@@ -256,7 +256,7 @@ Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 
 | # | Item | Blocks |
 |---|---|---|
 | 1 | CL250 DLC location, connector type and pinout | §3.1, Y-cable |
-| 2 | Parts actually on hand: ESP32-S3, MPU-6050, SN65HVD230 and NEO-M8N recorded (2026-10-11); the board variant, the transceiver's termination resistor, the Y-cable, the power chain, the enclosure and the phone are still **CONFIRM** (§2) | Build start |
+| 2 | Parts actually on hand: ESP32-S3, MPU-6050, SN65HVD230 and NEO-M8N recorded (2026-10-11); board and IMU (MPU-6500) confirmed on the desk (2026-10-15); the the transceiver's termination resistor, the Y-cable, the power chain, the enclosure and the phone are still **CONFIRM** (§2) | Build start |
 | 3 | Ignition-switched tap point on the CL250 harness | §3.2 |
 | 4 | IMU bracket location and axis directions | §4, metadata |
 | 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** (procedure §7.3) | T1 speed check, §9 |
