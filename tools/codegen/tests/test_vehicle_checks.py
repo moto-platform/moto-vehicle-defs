@@ -30,6 +30,12 @@ def test_unverified_dids_come_last_in_the_normal_class(vehicle, platform_db):
     assert any("verified DID after the unverified DID" in e for e in errs)
 
 
+def test_a_non_bool_verified_fails(vehicle, platform_db):
+    vehicle["dids"][-1]["verified"] = 0
+    errs = check_vehicle(vehicle, platform_db)
+    assert any("verified must be true or false" in e for e in errs)
+
+
 def test_an_unverified_high_priority_did_fails(vehicle, platform_db):
     vehicle["dids"][-1]["priority"] = "high"
     errs = check_vehicle(vehicle, platform_db)

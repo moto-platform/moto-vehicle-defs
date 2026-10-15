@@ -352,11 +352,12 @@ dids:
   # ---- D-068: the D-066 catalog, polled slowly for the data set ---------------------
   # Standard SAE J1979 formulas over 0xF400 | PID (ISO 14229-1), NOT vehicle facts:
   # `verified: false` until the CL250 answers them on the bike. They stay at the end of
-  # the table in the normal class, so the five DIDs above keep their worst-case gaps
-  # whatever these do (one read in flight blocks them at most once, D-043, D-052). The
-  # tester reads each one once right after the session starts and stops asking, until
-  # the ECU is lost and found again, for a DID answered with NRC 0x31 or never answered
-  # in max_consecutive_timeouts reads (D-068 item 2). Periods are provisional tiers
+  # the table in the normal class and get no NRC 0x78 extension, so the five DIDs above
+  # stay within their fault-mode bounds however many of these time out (one read in
+  # flight blocks them at most once, D-043, D-052). The tester reads each one as soon as
+  # the session is confirmed and stops asking, until the next confirmation, for one that
+  # has never answered and got NRC 0x31 on two reads or max_consecutive_timeouts
+  # timeouts (D-068 item 2). Periods are provisional tiers
   # (D-068 item 3), to be tuned with the anomaly data: 2000 ms engine/air/fuel dynamics,
   # 5000 ms slow thermal/pressure/level, 10000 ms counters. stale_after_ms = 3 x period.
   - did: 0xF404
