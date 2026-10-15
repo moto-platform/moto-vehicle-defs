@@ -29,7 +29,7 @@ Sampling rates of the verified DIDs: engine speed and vehicle speed 9.1 Hz (110 
 
 ## 2. ECU data over UDS (`uds/vehicle_cl250.yaml`)
 
-Engine column: **run** = meaningful only with the engine running (key-on engine-off reads 0 or a fixed value, or the ECU may refuse it); **key** = meaningful at key-on too. These are expectations from J1979 practice, not CL250 facts; V0 (key on) and V1 (idle) in `hardware-integration.md` will show it. Caveat: under D-068 item 2 a DID refused or ignored at key-on stays stopped until the next session confirmation; re-asking stopped DIDs once at engine start is proposed (conn branch `claude/d068-engine-rearm`, needs a D-068 amendment).
+Engine column: **run** = meaningful only with the engine running (key-on engine-off reads 0 or a fixed value, or the ECU may refuse it); **key** = meaningful at key-on too. These are expectations from J1979 practice, not CL250 facts; V0 (key on) and V1 (idle) in `hardware-integration.md` will show it. Caveat: under D-068 item 2 a DID refused or ignored at key-on stays stopped until the next session confirmation; D-069 item 3 re-asks the stopped ones once at engine start, so every DID is tried in both states (conn branch `claude/d068-engine-rearm`, rt-core with E-19).
 
 | Signal | DID | Unit | Period | Status | Engine |
 |---|---|---|---|---|---|
@@ -136,7 +136,7 @@ Notes:
 
 ### 3.1 Interactive discovery on the bike (proposal for Q-031 (b), added 2026-10-15)
 
-No public source lists Honda's proprietary DIDs for its CAN-diagnosed motorcycles; Honda keeps them in its service tool (HDS). So proprietary data can only be found on the bike. This is a **proposal**, not a decision: the range-scan probe mode needs a D-xxx (ranges, time budget, stop rules) and `safety-reviewer` before it is coded. It sends only 0x22 Single Frames and the D-059 FC.CTS, so `tester_policy` and the frame gate stay as they are.
+No public source lists Honda's proprietary DIDs for its CAN-diagnosed motorcycles; Honda keeps them in its service tool (HDS). So proprietary data can only be found on the bike. The direction is decided (D-069 item 5); the procedure below is still a **proposal**: the range-scan probe mode needs its own decision (ranges, time budget, stop rules, power supply) and `safety-reviewer` before it is coded, after the Q-001 capture. It sends only 0x22 Single Frames and the D-059 FC.CTS, so `tester_policy` and the frame gate stay as they are.
 
 **What a Honda PGM-FI ECU is likely to know** (hypotheses to look for, not signals). The HDS data list in the Honda service manual's PGM-FI chapter names what the ECU exposes; the CL250 manual is the best non-invented reference and should be read before the scan. Typical content of such lists:
 
@@ -241,6 +241,59 @@ Added 2026-10-15 (same rules: offline first, nothing safety-related outside rt-c
 | Rider aggressiveness score | throttle rate, longitudinal jerk, lateral acceleration, lean (later) | weighted features per ride | context (F9), anomaly conditioning |
 | Misfire rate | misfire monitor (0xF6xx, if served), IMU/engine accelerometer vibration | counts per 1000 revolutions; vibration order features | ignition/fuelling anomaly label |
 | ECU software change | identification DIDs (0xF181/0xF188/0xF189, CalID/CVN) | value differs from the previous ride | split data sets by calibration |
+
+### 5.1 Where each derived signal is computed (D-070)
+
+Classes of D-070 item 1: **A** live on rt-core, **B** per-ride summary on rt-core, **C** across rides on moto-server/moto-ml (from class-B values), **D** server only (off-vehicle inputs). Before the rt-core board exists every class is computed offline by the Python reference on recorded data (D-070 item 2). "Needs" lists what must exist first besides the 40 DIDs on rt-core (E-19).
+
+| Derived signal | Class | Needs |
+|---|---|---|
+| Longitudinal acceleration, jerk | A | rt-core chassis IMU (or speed only) |
+| Distance, trip time, idle time, stops | A + B | — |
+| Gear estimate | A | defs vehicle constants (D-070 item 3) |
+| Clutch disengaged / slipping, neutral / coasting | A | gear estimate |
+| Shift events and shift time; launch and clutch engagement | A | gear estimate |
+| Braking events, deceleration peak | A | — |
+| Speedometer error / effective tyre radius | B | GPS on rt-core (D-060 item 1) |
+| Wheel slip (approx.) | A | GPS on rt-core |
+| Yaw rate, lateral acceleration, turn radius | A | rt-core chassis IMU |
+| Pitch events, road roughness | A | rt-core chassis IMU |
+| Engine vibration features | A | engine accelerometer, Q-025 |
+| Engine torque estimate, torque structure | A | F461/F462/F463 served; 0x8E defined |
+| Engine power estimate | A | torque estimate or virtual dyno inputs |
+| Air–fuel ratio | A | F444 served |
+| Fuel consumption, L/100 km, range | A + B | F45E or F410 + F444 served; 0xA2 defined |
+| Fuelling per stroke, BSFC | A | 0xA2 or F45E; power estimate |
+| Volumetric efficiency | A | displacement in defs constants |
+| Total fuel trim, trim per (RPM, load) cell | A + B | F406/F407 served; 0x03 defined (closed loop) |
+| Fuel-trim drift | C | per-ride trim cells |
+| Throttle–torque response lag | B | bounded window on rt-core |
+| Throttle and intake plausibility residuals | A | redundant channels served |
+| Air density, power correction | A | F433, F40F served |
+| Altitude change, road grade | A | F433 (or MAP engine-off); IMU pitch |
+| Warm-up curve, thermal rate, heat soak | A + B | — |
+| Thermal cycles, time at temperature | B | — |
+| Cooling fan switch-on temperature | B | — |
+| Cool-down rate after stop | C | times across key-off |
+| Charging health, cranking dip | A | — |
+| Battery rest voltage | A | — |
+| Battery self-discharge vs days parked | C | rest voltages across rides |
+| Cold-engine abuse, over-rev, lugging | A + B | gear estimate |
+| Operating-point histogram | B | — |
+| Idle quality | A + B | — |
+| Fuel-cut / engine-braking phases | A | — |
+| Refuel detection, fuel-level slosh filter | A | F42F served |
+| Coast-down drag | B | clutch/neutral flag; F433, F40F |
+| Final-drive ratio per gear (this ride) | B | gear estimate |
+| Final-drive ratio drift (chain, sprocket, tyre wear) | C | per-ride ratios |
+| Odometer cross-check | B | 0xA6 defined, GPS on rt-core |
+| Rider aggressiveness score | B | — |
+| Misfire rate | A | 0xF6xx defined, or vibration features |
+| ECU software change | B | identification DIDs defined |
+| ECU/bus health per ride | B | — |
+| ECU/bus health trends | C | per-ride health |
+| Data quality per sample | A | — |
+| Anything conditioned on rider weight, load, weather, tyre pressure | D | moto-mobile `meta.json` |
 
 ## 6. What to do next to grow the data set
 
