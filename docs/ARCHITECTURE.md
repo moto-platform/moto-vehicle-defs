@@ -19,7 +19,7 @@ If this file conflicts with the raw document, **this file + DECISIONS.md** gover
 
 | Unit | Chip | Memory (RAM / flash) | CAN peripheral | Repo | Role |
 |---|---|---|---|---|---|
-| Domain controller | STM32H7 (H743/H723) | ~1 MB / 2 MB (H743) | FDCAN x2-3 | `moto-rt-core` | CAN gateway, logging, fusion, UDS/ISO-TP, bootloader, XCP, EKF (Layer 2), context, dyno, anomaly safety net |
+| Domain controller | STM32H7 (H743/H723) | ~1 MB / 2 MB (H743) | FDCAN x2-3 | `moto-rt-core` | CAN gateway, logging, fusion, UDS/ISO-TP, bootloader, XCP, EKF (Layer 2), context, dyno, anomaly safety net, derived signals (D-070) |
 | Safety monitor | STM32G4 (G474 class) | 128 KB / 512 KB | FDCAN x3 | `moto-safety-node` | Lean-angle safety decision (Layer 1, closed form, D-041), own fallback IMU (D-042), LED ring (owner: Q-026) |
 | Zone/I/O | STM32G0 (G0B1 class); prototype F103 | 144 KB / 512 KB (F103: 20 KB / 64 KB) | FDCAN x2 (F103: bxCAN x1) | `moto-io-node` | Blind spot, immobilizer, park mode, power monitoring |
 | Connectivity + audio | ESP32-S3 (WROOM module) | 512 KB (+PSRAM) | TWAI x1 (classic) | `moto-connectivity-node` | Wi-Fi/BLE, ESP-SR voice command, park notification |
@@ -134,6 +134,7 @@ tests/host/             host-native unit tests with Unity (pure logic: EKF, ISO-
 | Cornering warning | IMU/GPS/vehicle CAN → rt-core EKF → lean + µ [platform CAN, E2E] → safety-node decision (no speed, D-041; own-IMU fallback when rt-core data is unusable, D-042) → LED ring (owner: Q-026) | CAN | µs-ms, safety |
 | Blind spot | radar x2 → io-node decision → mirror LED; status → platform CAN | local + CAN | reflex, safety |
 | Context data bus | rt-core `context/` + EKF + measurements → platform CAN 0x100-0x3FF → consumers | CAN | ms |
+| Derived signals (D-070) | vehicle DIDs + IMU + GPS speed → rt-core `features/derived` → microSD log (all); ride summaries → rt-core UDS DIDs; platform CAN 0x100-0x3FF only for a live consumer (Raspi anomaly model via VSS, D-004); cross-ride trends → moto-server. Never a safety-node or io-node input | SD/CAN | latency-tolerant (QM) |
 | Telemetry/logging | rt-core → microSD (binary, block CRC) → Wi-Fi (ESP/Raspi) → moto-server → MDF4/Parquet | SD/Wi-Fi | latency-tolerant |
 | VSS | vehicle + platform CAN → kuksa-can-provider → Kuksa Databroker → Raspi applications (gRPC) | local | ms |
 | Cloud | Kuksa → MQTT/Zenoh → moto-server (InfluxDB+Grafana) | Wi-Fi | latency-tolerant |
