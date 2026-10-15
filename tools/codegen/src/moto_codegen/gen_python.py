@@ -8,7 +8,7 @@ from typing import Any
 from cantools.database.can import Database
 from cantools.database.can.c_source import camel_to_snake_case
 
-from . import config, e2e
+from . import config, derived, e2e
 from .dbc_checks import cycle_time_ms, e2e_data_id, is_e2e_protected
 from .yaml_checks import DID_PRIORITIES, LIMIT_KEYS
 
@@ -149,7 +149,8 @@ def generate_init_py() -> str:
         + "\n# Modules: platform (platform.dbc constants), vehicle_cl250 (CL250 DIDs),\n"
         "# e2e (reference E2E protect/check), uds (ISO 14229 codes, platform servers),\n"
         "# limits (platform_limits.yaml), ble (BLE packet schema, D-061),\n"
-        "# vehicle_constants (CL250 constants for the derived signals, D-070).\n"
+        "# vehicle_constants (CL250 constants for the derived signals, D-070),\n"
+        "# vehicle_derived (derived signal definitions, D-070).\n"
     )
 
 
@@ -176,5 +177,35 @@ def generate_vehicle_constants_py(doc: dict[str, Any]) -> str:
     lines.append("CONSTANTS = {")
     for key, entry in doc["constants"].items():
         lines.append(f'    "{key}": ({entry["value"]!r}, "{entry["unit"]}", "{entry["status"]}"),')
+    lines += ["}", ""]
+    return "\n".join(lines)
+
+
+def generate_derived_py(doc: dict[str, Any]) -> str:
+    """Every class (A-D) for the Python reference (D-070 item 2); readiness per place."""
+    lines = [BANNER.format(source="derived/cl250_derived.yaml"), ""]
+    lines.append(
+        "# name -> fields of derived/cl250_derived.yaml (sources: phase0 = ble/ble_schema.json"
+    )
+    lines.append("# field, rt_core = platform.dbc signal or rt-core DID field, None = not defined)")
+    lines.append("SENSORS = {")
+    for key, s in doc["sensors"].items():
+        lines.append(f'    "{key}": {s!r},')
+    lines += ["}", ""]
+    lines.append(
+        "# record -> (rt-core UDS DID, description); class-B ride summaries (D-070 item 4)"
+    )
+    lines.append("RIDE_SUMMARY_RECORDS = {")
+    for key, r in doc["ride_summary_records"].items():
+        lines.append(f'    "{key}": (0x{r["did"]:04X}, {r["description"]!r}),')
+    lines += ["}", ""]
+    lines.append("# name -> definition; inputs are did.<NAME> / sensor.<name> / const.<key> /")
+    lines.append("# derived.<name>. ready_phase0 / ready_rt_core: every input is defined there.")
+    lines.append("SIGNALS = {")
+    for name, sig in doc["signals"].items():
+        entry = dict(sig)
+        entry["ready_phase0"] = derived.ready(doc, name, "phase0")
+        entry["ready_rt_core"] = derived.ready(doc, name, "rt_core")
+        lines.append(f'    "{name}": {entry!r},')
     lines += ["}", ""]
     return "\n".join(lines)
