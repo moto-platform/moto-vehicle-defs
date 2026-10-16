@@ -2,7 +2,7 @@
 
 All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/signal = MINOR, changed or removed message/signal/ID/layout/scale = MAJOR, comment-only = PATCH. Consumers pin a tag; nothing updates automatically.
 
-## [Unreleased]
+## [0.13.0] — 2026-10-17
 
 MINOR (D-070 item 3, second derived-signal `/signal-change`): new `derived/cl250_derived.yaml` with 126 derived signal definitions covering every catalog §5.1 row (class A 66, B 46, C 12, D 2; unit, range, resolution, inputs, period or event, staleness, bins, per-gear, record), 18 non-DID sensor inputs (each with its phase-0 source, a `ble/ble_schema.json` field, and its rt-core source, a platform.dbc signal or an rt-core DID field, or null while undefined) and 10 ride-summary records on rt-core DIDs 0xFD40–0xFD49. Inputs not defined in defs yet (0xA6, 0x8E, 0x03, 0xF6xx, identification DIDs, engine accelerometer, meta.json) are listed as `pending_inputs`, never invented. Codegen checks that every input resolves, the class rules (A uses A, B uses A/B, C uses B/C, outputs per class, no CAN/VSS), periods ≥ 20 ms and no faster than the fastest input, staleness ≥ period, 16-bit limits, records inside 0xFD40–0xFD5F and off `uds/dids.yaml`, and that each `catalog` value is a catalog §5 row. Generated: `gen/c/rt_core/vehicle_cl250_derived.{h,c}` (classes A/B metadata table with `rt_core_ready`; rt-core only) and `moto_defs.vehicle_derived` (every class with `ready_phase0`/`ready_rt_core`). Formulas are not in defs. Additive: no existing message, DID or generated symbol changes; moto-rt-core and moto-server use it when they build the derived module and its Python reference.
 
