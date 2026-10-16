@@ -178,7 +178,7 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_LEAN_HEALTH_SPEED_CONSUMER_FAULT_BYTE (0u)
 #define PLATFORM_UDS_LEAN_HEALTH_SPEED_CONSUMER_FAULT_MASK (0x20u) /* The EKF task latched a fault reading the speed snapshot (from the last record) */
 #define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_BYTE (0u)
-#define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_MASK (0x40u) /* The comms task's EKF alive supervision passes (heartbeat ekf_stalled clear; read at request time) */
+#define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_MASK (0x40u) /* An EKF is registered with the comms task (comms_ekf_registered) and its alive supervision passes (heartbeat ekf_stalled clear); clear without a registered EKF. Read at request time */
 #define PLATFORM_UDS_LEAN_HEALTH_RESERVED_BYTE (0u)
 #define PLATFORM_UDS_LEAN_HEALTH_RESERVED_MASK (0x80u) /* Always 0 */
 #define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_BYTE (1u)
