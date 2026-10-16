@@ -158,12 +158,19 @@ nodes:
         length: 5
         encoding: record
         access: read
-        description: rt-core lean health. Gyro z-offset learning of services/imu and the snapshot fault latches of the lean link (D-065, D-067). The comms-side latches are read at request time; the other fields come from the last record the EKF published. Counters saturate, never wrap. A missing or stale record reads RECORD_FRESH and OFFSET_LEARNED clear (fail-safe), never as a learnt offset.
-        # The EKF publishes a record each step. With no record since boot, or one older
-        # than this, RECORD_FRESH and OFFSET_LEARNED read clear and the other EKF fields
-        # read their last values (0 before the first record). A latched output-snapshot
-        # producer fault stops the records (rt-core cornering README), so it reads as
-        # RECORD_FRESH clear for good: the EKF task cannot report that latch itself.
+        description: rt-core lean health. Gyro z-offset learning of services/imu and the snapshot fault latches of the lean link (D-065, D-067). The comms-side fields are read at request time; the EKF fields come from the last record the EKF published. Counters saturate, never wrap. A missing or stale record reads RECORD_FRESH and OFFSET_LEARNED clear and UNLEARNED_S UNKNOWN (fail-safe); a learnt offset is reported only by OFFSET_LEARNED.
+        # Race freedom (safety review): the handler runs in the comms task and builds the
+        # reply from the comms-local copy of the last record lean_tx_step() read. It never
+        # calls snapshot_read_index() itself and keeps no slot index (a second read would
+        # take the new record away from 0x020). The comms-side latches and EKF_ALIVE_OK are
+        # comms-task state. The EKF publishes a record each step; RECORD_FRESH follows
+        # lean_tx_core's age rule (a stamp more than LEAN_TX_FUTURE_MAX_MS ahead is not
+        # fresh) with this wider diagnostic window, so RECORD_FRESH set does not mean 0x020
+        # is valid (LEAN_TX_AGE_MAX_MS). With no record since boot, or one older than
+        # max_age_ms, RECORD_FRESH and OFFSET_LEARNED read clear, UNLEARNED_S reads UNKNOWN
+        # and the other EKF fields read their last values (0 before the first record). A
+        # latched output-snapshot producer fault stops the records, so it reads as
+        # RECORD_FRESH clear for good; EKF_ALIVE_OK tells it from a stalled EKF task.
         max_age_ms: 500
         fields:
           - {byte: 0, mask: 0x01, name: RECORD_FRESH, description: The EKF published a lean record within max_age_ms.}
@@ -172,9 +179,12 @@ nodes:
           - {byte: 0, mask: 0x08, name: SPEED_PRODUCER_FAULT, description: The comms task latched a fault publishing the speed snapshot (read at request time).}
           - {byte: 0, mask: 0x10, name: OUTPUT_CONSUMER_FAULT, description: The comms task latched a fault reading the lean output snapshot (read at request time).}
           - {byte: 0, mask: 0x20, name: SPEED_CONSUMER_FAULT, description: The EKF task latched a fault reading the speed snapshot (from the last record).}
-          - {byte: 0, mask: 0xC0, name: RESERVED, description: Always 0.}
+          - {byte: 0, mask: 0x40, name: EKF_ALIVE_OK, description: "The comms task's EKF alive supervision passes (heartbeat ekf_stalled clear; read at request time)."}
+          - {byte: 0, mask: 0x80, name: RESERVED, description: Always 0.}
           - {byte: 1, length: 2, name: OFFSET_REJECTS, description: "Learning windows rejected since boot (imu reject_count, OFFSET_RANGE), saturating at 0xFFFF."}
-          - {byte: 3, length: 2, name: UNLEARNED_S, description: "Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; saturating at 0xFFFF."}
+          - {byte: 3, length: 2, name: UNLEARNED_S, description: "Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; UNKNOWN without a fresh record, and saturating at the same value (both read as not learnt)."}
+        values:
+          UNLEARNED_S: {UNKNOWN: 0xFFFF}
     dtcs:
       - dtc: 0xC10000
         name: VEHICLE_ECU_COMM_LOST

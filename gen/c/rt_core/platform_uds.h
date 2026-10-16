@@ -177,14 +177,17 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_LEAN_HEALTH_OUTPUT_CONSUMER_FAULT_MASK (0x10u) /* The comms task latched a fault reading the lean output snapshot (read at request time) */
 #define PLATFORM_UDS_LEAN_HEALTH_SPEED_CONSUMER_FAULT_BYTE (0u)
 #define PLATFORM_UDS_LEAN_HEALTH_SPEED_CONSUMER_FAULT_MASK (0x20u) /* The EKF task latched a fault reading the speed snapshot (from the last record) */
+#define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_MASK (0x40u) /* The comms task's EKF alive supervision passes (heartbeat ekf_stalled clear; read at request time) */
 #define PLATFORM_UDS_LEAN_HEALTH_RESERVED_BYTE (0u)
-#define PLATFORM_UDS_LEAN_HEALTH_RESERVED_MASK (0xC0u) /* Always 0 */
+#define PLATFORM_UDS_LEAN_HEALTH_RESERVED_MASK (0x80u) /* Always 0 */
 #define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_BYTE (1u)
 #define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_LENGTH (2u) /* Learning windows rejected since boot (imu reject_count, OFFSET_RANGE), saturating at 0xFFFF */
 #define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_MAX (0xFFFFu) /* counters saturate here */
 #define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_BYTE (3u)
-#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_LENGTH (2u) /* Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; saturating at 0xFFFF */
-#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_LENGTH (2u) /* Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; UNKNOWN without a fresh record, and saturating at the same value (both read as not learnt) */
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_MAX (0xFFFFu)
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_UNKNOWN (65535u)
 
 #define PLATFORM_UDS_VEHICLE_SAMPLE_HEADER_LEN (3u)
 #define PLATFORM_UDS_VEHICLE_SAMPLE_STATE_NONE (0u)

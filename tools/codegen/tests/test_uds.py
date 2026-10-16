@@ -178,10 +178,12 @@ def test_lean_health_record_layout(dids):
         "SPEED_PRODUCER_FAULT": (0, None, 0x08),
         "OUTPUT_CONSUMER_FAULT": (0, None, 0x10),
         "SPEED_CONSUMER_FAULT": (0, None, 0x20),
-        "RESERVED": (0, None, 0xC0),
+        "EKF_ALIVE_OK": (0, None, 0x40),
+        "RESERVED": (0, None, 0x80),
         "OFFSET_REJECTS": (1, 2, None),
         "UNLEARNED_S": (3, 2, None),
     }
+    assert item["values"] == {"UNLEARNED_S": {"UNKNOWN": 0xFFFF}}  # fail-safe, never "learnt"
 
 
 def test_vehicle_sample_needs_vehicle_node(dids, iso, vehicle):
