@@ -39,7 +39,7 @@ extern "C" {
 #define PLATFORM_UDS_MAX_DID_LENGTH (23u) /* longest data record */
 #define PLATFORM_UDS_DTC_STATUS_AVAILABILITY_MASK (0x09u)
 
-#define PLATFORM_UDS_DID_COUNT (10u)
+#define PLATFORM_UDS_DID_COUNT (11u)
 #define PLATFORM_UDS_DID_ACTIVE_DIAGNOSTIC_SESSION (0xF186u) /* uint */
 #define PLATFORM_UDS_DID_ACTIVE_DIAGNOSTIC_SESSION_LENGTH (1u) /* data record bytes */
 #define PLATFORM_UDS_DID_SW_VERSION (0xF189u) /* ascii */
@@ -60,6 +60,8 @@ extern "C" {
 #define PLATFORM_UDS_DID_VEHICLE_BATTERY_VOLTAGE_LENGTH (5u) /* data record bytes */
 #define PLATFORM_UDS_DID_RT_CORE_HEALTH (0xFD02u) /* record */
 #define PLATFORM_UDS_DID_RT_CORE_HEALTH_LENGTH (23u) /* data record bytes */
+#define PLATFORM_UDS_DID_LEAN_HEALTH (0xFD03u) /* record */
+#define PLATFORM_UDS_DID_LEAN_HEALTH_LENGTH (5u) /* data record bytes */
 
 /* Index into platform_uds_dids[]. */
 typedef enum {
@@ -73,6 +75,7 @@ typedef enum {
     PLATFORM_UDS_IDX_VEHICLE_COOLANT_TEMP = 7,
     PLATFORM_UDS_IDX_VEHICLE_BATTERY_VOLTAGE = 8,
     PLATFORM_UDS_IDX_RT_CORE_HEALTH = 9,
+    PLATFORM_UDS_IDX_LEAN_HEALTH = 10,
 } platform_uds_did_index_t;
 
 typedef enum {
@@ -160,6 +163,31 @@ extern const platform_uds_did_t platform_uds_dids[PLATFORM_UDS_DID_COUNT];
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_BUS_OFF (2u)
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_LATCHED (3u)
 #define PLATFORM_UDS_RT_CORE_HEALTH_PLATFORM_STATE_UNKNOWN (255u)
+
+#define PLATFORM_UDS_LEAN_HEALTH_MAX_AGE_MS (500u) /* older data is stale (D-040), see the DID */
+#define PLATFORM_UDS_LEAN_HEALTH_RECORD_FRESH_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_RECORD_FRESH_MASK (0x01u) /* The EKF published a lean record within max_age_ms */
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_LEARNED_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_LEARNED_MASK (0x02u) /* services/imu holds a learnt gyro z offset (record fresh only; otherwise clear) */
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTED_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTED_MASK (0x04u) /* The last learning window's z offset was beyond IMU_OFFSET_MAX_RPS (imu reason OFFSET_RANGE) */
+#define PLATFORM_UDS_LEAN_HEALTH_SPEED_PRODUCER_FAULT_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_SPEED_PRODUCER_FAULT_MASK (0x08u) /* The comms task latched a fault publishing the speed snapshot (read at request time) */
+#define PLATFORM_UDS_LEAN_HEALTH_OUTPUT_CONSUMER_FAULT_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_OUTPUT_CONSUMER_FAULT_MASK (0x10u) /* The comms task latched a fault reading the lean output snapshot (read at request time) */
+#define PLATFORM_UDS_LEAN_HEALTH_SPEED_CONSUMER_FAULT_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_SPEED_CONSUMER_FAULT_MASK (0x20u) /* The EKF task latched a fault reading the speed snapshot (from the last record) */
+#define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_EKF_ALIVE_OK_MASK (0x40u) /* An EKF is registered with the comms task (comms_ekf_registered) and its alive supervision passes (heartbeat ekf_stalled clear); clear without a registered EKF. Read at request time */
+#define PLATFORM_UDS_LEAN_HEALTH_RESERVED_BYTE (0u)
+#define PLATFORM_UDS_LEAN_HEALTH_RESERVED_MASK (0x80u) /* Always 0 */
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_BYTE (1u)
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_LENGTH (2u) /* Learning windows rejected since boot (imu reject_count, OFFSET_RANGE), saturating at 0xFFFF */
+#define PLATFORM_UDS_LEAN_HEALTH_OFFSET_REJECTS_MAX (0xFFFFu) /* counters saturate here */
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_BYTE (3u)
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_LENGTH (2u) /* Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; UNKNOWN without a fresh record, and saturating at the same value (both read as not learnt) */
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_MAX (0xFFFFu)
+#define PLATFORM_UDS_LEAN_HEALTH_UNLEARNED_S_UNKNOWN (65535u)
 
 #define PLATFORM_UDS_VEHICLE_SAMPLE_HEADER_LEN (3u)
 #define PLATFORM_UDS_VEHICLE_SAMPLE_STATE_NONE (0u)

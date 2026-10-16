@@ -102,6 +102,14 @@ def test_class_rules(doc, refs):
             "period_ms must be",
         ),  # fmt: skip
         ({"stale_after_ms": 100}, "stale_after_ms must be"),
+        (
+            {
+                "inputs": ["sensor.imu_accel_x", "did.VEHICLE_SPEED"],
+                "stale_after_ms": 60,
+                "period_ms": 20,
+            },
+            "below its slowest input's period (110 ms)",
+        ),
         ({"period_ms": None}, "exactly one of period_ms and event"),
         ({"period_ms": None, "event": True}, "an event has no stale_after_ms"),
         ({"window_ms": 0}, "window_ms"),

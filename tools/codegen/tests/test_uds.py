@@ -162,7 +162,28 @@ def test_health_record_layout(dids):
         assert fields[f"{port}_STATE"] == (base, 1, None)
         for i, name in enumerate(("BUS_OFFS", "RECOVERIES", "RECOVER_DEFERRED", "NAS_ABORTS")):
             assert fields[f"{port}_{name}"] == (base + 1 + 2 * i, 2, None)
-    assert _rt(dids)["dids"][-1] is item  # appended: existing indices unchanged
+    assert _rt(dids)["dids"][-2] is item  # appended: existing indices unchanged
+
+
+def test_lean_health_record_layout(dids):
+    """D-067: 0xFD03 after 0xFD02, flag byte then two u16 counters (5 bytes)."""
+    item = _rt(dids)["dids"][-1]  # appended: existing indices unchanged
+    assert (item["did"], item["name"], item["length"]) == (0xFD03, "LEAN_HEALTH", 5)
+    assert (item["encoding"], item["access"], item["max_age_ms"]) == ("record", "read", 500)
+    fields = {f["name"]: (f["byte"], f.get("length"), f.get("mask")) for f in item["fields"]}
+    assert fields == {
+        "RECORD_FRESH": (0, None, 0x01),
+        "OFFSET_LEARNED": (0, None, 0x02),
+        "OFFSET_REJECTED": (0, None, 0x04),
+        "SPEED_PRODUCER_FAULT": (0, None, 0x08),
+        "OUTPUT_CONSUMER_FAULT": (0, None, 0x10),
+        "SPEED_CONSUMER_FAULT": (0, None, 0x20),
+        "EKF_ALIVE_OK": (0, None, 0x40),
+        "RESERVED": (0, None, 0x80),
+        "OFFSET_REJECTS": (1, 2, None),
+        "UNLEARNED_S": (3, 2, None),
+    }
+    assert item["values"] == {"UNLEARNED_S": {"UNKNOWN": 0xFFFF}}  # fail-safe, never "learnt"
 
 
 def test_vehicle_sample_needs_vehicle_node(dids, iso, vehicle):
