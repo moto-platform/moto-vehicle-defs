@@ -331,6 +331,13 @@ def _check_timing(
     periods = [p for ref in sig["inputs"] if (p := input_period_ms(ref, doc, vehicle)) is not None]
     if periods and period < min(periods):
         return [f"{where}: period_ms {period} is faster than its fastest input ({min(periods)} ms)"]
+    # The output is only as fresh as its slowest input: a stale_after_ms below that
+    # input's period would call an output fresh while it carries an older sample.
+    if periods and stale < max(periods):
+        slowest = max(periods)
+        return [
+            f"{where}: stale_after_ms {stale} is below its slowest input's period ({slowest} ms)"
+        ]
     return []
 
 

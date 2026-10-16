@@ -46,7 +46,8 @@
 #   period_ms      class A periodic: output period, >= 20 ms (50 Hz, D-070 item 1) and
 #                  >= the fastest input's period. Or `event: true` (one record per event).
 #   window_ms      optional: the sliding window or the averaging time
-#   stale_after_ms class A: how long a consumer may use the last output (>= its period)
+#   stale_after_ms class A: how long a consumer may use the last output (>= its period and
+#                  >= its slowest input's period: never fresh while it carries an older sample)
 #   bins           optional, histograms and per-cell maps: [{input, min, max, count}],
 #                  uniform bins over an input of `inputs`
 #   per_gear       optional, true: one value per gear (const.gear_count of them)
@@ -286,7 +287,7 @@ signals:
     inputs: [sensor.imu_accel_x, derived.vehicle_accel]
     period_ms: 20
     window_ms: 440
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   trip_distance:
     class: A
@@ -478,7 +479,7 @@ signals:
     resolution: 0.01
     inputs: [derived.yaw_rate, did.VEHICLE_SPEED]
     period_ms: 20
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   turn_radius:
     class: A
@@ -489,7 +490,7 @@ signals:
     resolution: 0.5
     inputs: [derived.yaw_rate, did.VEHICLE_SPEED]
     period_ms: 20
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   lean_crosscheck_residual:
     class: A
@@ -500,7 +501,7 @@ signals:
     resolution: 0.1
     inputs: [sensor.lean_angle, derived.lateral_accel]
     period_ms: 20
-    stale_after_ms: 60
+    stale_after_ms: 300
     output: [log]
   pitch_event:
     class: A
@@ -522,7 +523,7 @@ signals:
     inputs: [sensor.imu_accel_z, did.VEHICLE_SPEED]
     period_ms: 20
     window_ms: 1000
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   engine_vibration_rms:
     class: A
@@ -536,7 +537,7 @@ signals:
     inputs: [did.ENGINE_SPEED, sensor.imu_accel_z]
     period_ms: 20
     window_ms: 1000
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   engine_vibration_crest:
     class: A
@@ -550,7 +551,7 @@ signals:
     inputs: [did.ENGINE_SPEED, sensor.imu_accel_z]
     period_ms: 20
     window_ms: 1000
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   engine_vibration_order_amp:
     class: A
@@ -566,7 +567,7 @@ signals:
       - {input: did.ENGINE_SPEED, min: 0.0, max: 12000.0, count: 12}
     period_ms: 20
     window_ms: 2000
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
 
   # ---- torque, power, fuel ----
@@ -579,7 +580,7 @@ signals:
     resolution: 0.05
     inputs: [did.ACTUAL_TORQUE_PCT, did.REFERENCE_TORQUE]
     period_ms: 2000
-    stale_after_ms: 6000
+    stale_after_ms: 30000
     output: [log]
   demand_torque:
     class: A
@@ -590,7 +591,7 @@ signals:
     resolution: 0.05
     inputs: [did.DEMAND_TORQUE_PCT, did.REFERENCE_TORQUE]
     period_ms: 2000
-    stale_after_ms: 6000
+    stale_after_ms: 30000
     output: [log]
   torque_gap:
     class: A
@@ -614,7 +615,7 @@ signals:
     resolution: 0.05
     inputs: [did.COOLANT_TEMP, did.ENGINE_OIL_TEMP]
     period_ms: 800
-    stale_after_ms: 2400
+    stale_after_ms: 15000
     output: [log]
   engine_power:
     class: A
@@ -625,7 +626,7 @@ signals:
     resolution: 0.05
     inputs: [derived.engine_torque, did.ENGINE_SPEED]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   air_density:
     class: A
@@ -664,7 +665,7 @@ signals:
       - did.VEHICLE_SPEED
       - derived.air_density
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   air_fuel_ratio:
     class: A
@@ -701,7 +702,7 @@ signals:
     resolution: 0.1
     inputs: [did.ENGINE_FUEL_RATE, did.VEHICLE_SPEED]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   fuel_consumption_avg:
     class: A
@@ -713,7 +714,7 @@ signals:
     inputs: [did.ENGINE_FUEL_RATE, did.VEHICLE_SPEED]
     period_ms: 110
     window_ms: 60000
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   fuel_range:
     class: A
@@ -724,7 +725,7 @@ signals:
     resolution: 1.0
     inputs: [did.FUEL_LEVEL, const.fuel_tank_capacity_l, derived.fuel_consumption_avg]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   bsfc:
     class: A
@@ -735,7 +736,7 @@ signals:
     resolution: 1.0
     inputs: [did.ENGINE_FUEL_RATE, derived.engine_power, const.fuel_density_kg_per_l]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   fuel_per_stroke:
     class: A
@@ -746,7 +747,7 @@ signals:
     resolution: 0.01
     inputs: [did.ENGINE_FUEL_RATE, did.ENGINE_SPEED, const.fuel_density_kg_per_l]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   volumetric_efficiency:
     class: A
@@ -761,7 +762,7 @@ signals:
       - did.INTAKE_AIR_TEMP
       - const.engine_displacement_cm3
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   total_fuel_trim:
     class: A
@@ -786,7 +787,7 @@ signals:
       - did.ABSOLUTE_THROTTLE_POS_B
       - did.RELATIVE_THROTTLE_POS
     period_ms: 200
-    stale_after_ms: 600
+    stale_after_ms: 6000
     output: [log]
   throttle_command_residual:
     class: A
@@ -797,7 +798,7 @@ signals:
     resolution: 0.1
     inputs: [did.COMMANDED_THROTTLE, did.THROTTLE_POS]
     period_ms: 200
-    stale_after_ms: 600
+    stale_after_ms: 6000
     output: [log]
   grip_channel_residual:
     class: A
@@ -824,7 +825,7 @@ signals:
       - did.INTAKE_AIR_TEMP
       - const.engine_displacement_cm3
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   idle_map_residual:
     class: A
@@ -835,7 +836,7 @@ signals:
     resolution: 0.1
     inputs: [did.INTAKE_MAP, did.THROTTLE_POS, did.ENGINE_SPEED]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   altitude_change:
     class: A
@@ -858,7 +859,7 @@ signals:
     inputs: [derived.altitude_change, derived.trip_distance, sensor.imu_accel_x]
     period_ms: 20
     window_ms: 30000
-    stale_after_ms: 60
+    stale_after_ms: 15000
     output: [log]
 
   # ---- thermal, electrical ----
@@ -895,7 +896,7 @@ signals:
     resolution: 0.5
     inputs: [did.INTAKE_AIR_TEMP, did.AMBIENT_AIR_TEMP, did.VEHICLE_SPEED]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   charging_plateau_voltage:
     class: A
@@ -907,7 +908,7 @@ signals:
     inputs: [did.BATTERY_VOLTAGE, did.ENGINE_SPEED]
     period_ms: 110
     window_ms: 10000
-    stale_after_ms: 330
+    stale_after_ms: 2400
     output: [log]
   charging_ripple:
     class: A
@@ -919,7 +920,7 @@ signals:
     inputs: [did.BATTERY_VOLTAGE, did.ENGINE_SPEED]
     period_ms: 110
     window_ms: 10000
-    stale_after_ms: 330
+    stale_after_ms: 2400
     output: [log]
   cranking_dip:
     class: A
@@ -952,7 +953,7 @@ signals:
     resolution: 1.0
     inputs: [did.ENGINE_SPEED, did.ENGINE_LOAD, did.COOLANT_TEMP, did.ENGINE_OIL_TEMP]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   over_rev:
     class: A
@@ -974,7 +975,7 @@ signals:
     resolution: 1.0
     inputs: [did.ENGINE_SPEED, did.ENGINE_LOAD, derived.gear_estimate]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   idle_rpm_std:
     class: A
@@ -986,7 +987,7 @@ signals:
     inputs: [did.ENGINE_SPEED, did.VEHICLE_SPEED, did.COOLANT_TEMP]
     period_ms: 110
     window_ms: 10000
-    stale_after_ms: 330
+    stale_after_ms: 2400
     output: [log]
   idle_rpm_drift:
     class: A
@@ -998,7 +999,7 @@ signals:
     inputs: [did.ENGINE_SPEED, did.VEHICLE_SPEED, did.COOLANT_TEMP]
     period_ms: 110
     window_ms: 60000
-    stale_after_ms: 330
+    stale_after_ms: 2400
     output: [log]
   engine_braking_phase:
     class: A
@@ -1009,7 +1010,7 @@ signals:
     resolution: 1.0
     inputs: [did.THROTTLE_POS, did.ENGINE_SPEED, did.VEHICLE_SPEED, did.ENGINE_FUEL_RATE]
     period_ms: 110
-    stale_after_ms: 330
+    stale_after_ms: 6000
     output: [log]
   refuel_event:
     class: A
@@ -1031,7 +1032,7 @@ signals:
     inputs: [did.FUEL_LEVEL, did.VEHICLE_SPEED, derived.vehicle_accel]
     period_ms: 110
     window_ms: 30000
-    stale_after_ms: 330
+    stale_after_ms: 15000
     output: [log]
   misfire_rate:
     class: A
@@ -1045,7 +1046,7 @@ signals:
     inputs: [did.ENGINE_SPEED, derived.engine_vibration_rms]
     period_ms: 20
     window_ms: 10000
-    stale_after_ms: 60
+    stale_after_ms: 330
     output: [log]
   data_quality_mask:
     class: A

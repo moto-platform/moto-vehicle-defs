@@ -149,6 +149,32 @@ nodes:
         values:
           VEHICLE_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3, UNKNOWN: 0xFF}
           PLATFORM_STATE: {ERROR_ACTIVE: 0, ERROR_PASSIVE: 1, BUS_OFF: 2, LATCHED: 3, UNKNOWN: 0xFF}
+      # Cornering lean diagnosis (D-067, ISSUES E-17 (a)): the z-offset learning of
+      # services/imu and the snapshot latches of the lean link. Not on 0xFD02, which keeps
+      # its released layout. Diagnostic only (QM): no safety decision reads it. Appended
+      # last so the existing platform_uds_did_index_t values stay unchanged.
+      - did: 0xFD03
+        name: LEAN_HEALTH
+        length: 5
+        encoding: record
+        access: read
+        description: rt-core lean health. Gyro z-offset learning of services/imu and the snapshot fault latches of the lean link (D-065, D-067). The comms-side latches are read at request time; the other fields come from the last record the EKF published. Counters saturate, never wrap. A missing or stale record reads RECORD_FRESH and OFFSET_LEARNED clear (fail-safe), never as a learnt offset.
+        # The EKF publishes a record each step. With no record since boot, or one older
+        # than this, RECORD_FRESH and OFFSET_LEARNED read clear and the other EKF fields
+        # read their last values (0 before the first record). A latched output-snapshot
+        # producer fault stops the records (rt-core cornering README), so it reads as
+        # RECORD_FRESH clear for good: the EKF task cannot report that latch itself.
+        max_age_ms: 500
+        fields:
+          - {byte: 0, mask: 0x01, name: RECORD_FRESH, description: The EKF published a lean record within max_age_ms.}
+          - {byte: 0, mask: 0x02, name: OFFSET_LEARNED, description: "services/imu holds a learnt gyro z offset (record fresh only; otherwise clear)."}
+          - {byte: 0, mask: 0x04, name: OFFSET_REJECTED, description: "The last learning window's z offset was beyond IMU_OFFSET_MAX_RPS (imu reason OFFSET_RANGE)."}
+          - {byte: 0, mask: 0x08, name: SPEED_PRODUCER_FAULT, description: The comms task latched a fault publishing the speed snapshot (read at request time).}
+          - {byte: 0, mask: 0x10, name: OUTPUT_CONSUMER_FAULT, description: The comms task latched a fault reading the lean output snapshot (read at request time).}
+          - {byte: 0, mask: 0x20, name: SPEED_CONSUMER_FAULT, description: The EKF task latched a fault reading the speed snapshot (from the last record).}
+          - {byte: 0, mask: 0xC0, name: RESERVED, description: Always 0.}
+          - {byte: 1, length: 2, name: OFFSET_REJECTS, description: "Learning windows rejected since boot (imu reject_count, OFFSET_RANGE), saturating at 0xFFFF."}
+          - {byte: 3, length: 2, name: UNLEARNED_S, description: "Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; saturating at 0xFFFF."}
     dtcs:
       - dtc: 0xC10000
         name: VEHICLE_ECU_COMM_LOST

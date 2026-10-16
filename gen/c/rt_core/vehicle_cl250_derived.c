@@ -62,7 +62,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* accel_imu_residual [m/s2] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 440u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 440u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -15.0f, 15.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_IMU_ACCEL_X }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_VEHICLE_ACCEL }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -182,7 +182,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* lateral_accel [m/s2] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -12.0f, 12.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_YAW_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -190,7 +190,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* turn_radius [m] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         3.0f, 2000.0f, 0.5f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_YAW_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -198,7 +198,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* lean_crosscheck_residual [deg] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 300u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -30.0f, 30.0f, 0.1f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_LEAN_ANGLE }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_LATERAL_ACCEL }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -214,7 +214,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* road_roughness [m/s2] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 1000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 1000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 30.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_IMU_ACCEL_Z }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -222,7 +222,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* engine_vibration_rms [m/s2] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 1000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 1000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 50.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_IMU_ACCEL_Z }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -230,7 +230,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* engine_vibration_crest [ratio] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 1000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 1000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         1.0f, 20.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_IMU_ACCEL_Z }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -238,7 +238,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* engine_vibration_order_amp [m/s2] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 2000u, VEHICLE_CL250_DERIVED_NO_RECORD, 12u,
+        20u, 330u, 2000u, VEHICLE_CL250_DERIVED_NO_RECORD, 12u,
         0.0f, 50.0f, 0.01f,
         2u, 1u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_IMU_ACCEL_Z }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -246,7 +246,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* engine_torque [Nm] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        2000u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        2000u, 30000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -30.0f, 30.0f, 0.05f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ACTUAL_TORQUE_PCT }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_REFERENCE_TORQUE }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -254,7 +254,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* demand_torque [Nm] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        2000u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        2000u, 30000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -30.0f, 30.0f, 0.05f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_DEMAND_TORQUE_PCT }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_REFERENCE_TORQUE }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -270,7 +270,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* friction_torque [Nm] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        800u, 2400u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        800u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 15.0f, 0.05f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_OIL_TEMP }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -278,7 +278,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* engine_power [kW] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -10.0f, 25.0f, 0.05f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_ENGINE_TORQUE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -302,7 +302,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* wheel_power_estimate [kW] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -30.0f, 30.0f, 0.05f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_VEHICLE_ACCEL }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_AIR_DENSITY }, { 0u, 0u }, { 0u, 0u } },
@@ -326,7 +326,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* fuel_consumption_instant [L/100km] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 100.0f, 0.1f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_FUEL_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -334,7 +334,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* fuel_consumption_avg [L/100km] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 60000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 60000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 30.0f, 0.05f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_FUEL_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -342,7 +342,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* fuel_range [km] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 600.0f, 1.0f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_FUEL_LEVEL }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_FUEL_CONSUMPTION_AVG }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -350,7 +350,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* bsfc [g/kWh] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 2000.0f, 1.0f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_FUEL_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_ENGINE_POWER }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -358,7 +358,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* fuel_per_stroke [mg] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 50.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_FUEL_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -366,7 +366,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* volumetric_efficiency [%] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 150.0f, 0.1f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_MAP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_AIR_TEMP }, { 0u, 0u }, { 0u, 0u } },
@@ -382,7 +382,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* throttle_channel_residual [%] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        200u, 600u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        200u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 100.0f, 0.1f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_THROTTLE_POS }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ABSOLUTE_THROTTLE_POS_B }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_RELATIVE_THROTTLE_POS }, { 0u, 0u }, { 0u, 0u } },
@@ -390,7 +390,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* throttle_command_residual [%] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        200u, 600u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        200u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -100.0f, 100.0f, 0.1f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COMMANDED_THROTTLE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_THROTTLE_POS }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -406,7 +406,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* intake_flow_residual [%] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -100.0f, 100.0f, 0.1f,
         4u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_MAF_RATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_MAP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_AIR_TEMP }, { 0u, 0u } },
@@ -414,7 +414,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* idle_map_residual [kPa] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -100.0f, 100.0f, 0.1f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_MAP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_THROTTLE_POS }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u } },
@@ -430,7 +430,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* road_grade [%] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 30000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 15000u, 30000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -30.0f, 30.0f, 0.1f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_ALTITUDE_CHANGE }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_TRIP_DISTANCE }, { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_IMU_ACCEL_X }, { 0u, 0u }, { 0u, 0u } },
@@ -454,7 +454,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* heat_soak_delta [degC] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -20.0f, 80.0f, 0.5f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_AIR_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_AMBIENT_AIR_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u } },
@@ -462,7 +462,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* charging_plateau_voltage [V] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 2400u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         10.0f, 16.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_BATTERY_VOLTAGE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -470,7 +470,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* charging_ripple [V] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 2400u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 3.0f, 0.01f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_BATTERY_VOLTAGE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
@@ -494,7 +494,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* cold_engine_abuse [flag] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 1.0f, 1.0f,
         4u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_LOAD }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_OIL_TEMP }, { 0u, 0u } },
@@ -510,7 +510,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* lugging [flag] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 1.0f, 1.0f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_LOAD }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_GEAR_ESTIMATE }, { 0u, 0u }, { 0u, 0u } },
@@ -518,7 +518,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* idle_rpm_std [rpm] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 2400u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 500.0f, 1.0f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { 0u, 0u }, { 0u, 0u } },
@@ -526,7 +526,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* idle_rpm_drift [rpm] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 60000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 2400u, 60000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         -500.0f, 500.0f, 1.0f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { 0u, 0u }, { 0u, 0u } },
@@ -534,7 +534,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* engine_braking_phase [flag] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 6000u, 0u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 1.0f, 1.0f,
         4u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_THROTTLE_POS }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_FUEL_RATE }, { 0u, 0u } },
@@ -550,7 +550,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* fuel_level_filtered [%] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
-        110u, 330u, 30000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        110u, 15000u, 30000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 100.0f, 0.1f,
         3u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_FUEL_LEVEL }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_VEHICLE_ACCEL }, { 0u, 0u }, { 0u, 0u } },
@@ -558,7 +558,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
     },
     { /* misfire_rate [count/krev] */
         VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
-        20u, 60u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
+        20u, 330u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 100.0f, 0.1f,
         2u, 0u,
         { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_ENGINE_VIBRATION_RMS }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
