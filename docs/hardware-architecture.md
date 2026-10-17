@@ -22,6 +22,8 @@ Modern SDV (software-defined vehicle) logic: a small number of powerful compute 
 
 ## 2. Target Hardware Architecture (5 units)
 
+> **Superseded in part by D-072/D-073 (2026-10-17).** The three STM32 units of this section became **one dual-core STM32H755** (NUCLEO-H755ZI-Q): the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering decision, own fallback IMU, blind spot, immobilizer, LED ring and mirror LEDs). The I/O node is retired; power management and park mode move to rt-core. A second ESP32-S3 sits in the helmet (HUD, microphone, voice, §5b.4a). Current unit table and topology: `ARCHITECTURE.md` §2-3. The text below is kept as the original rationale.
+
 ```
  VEHICLE CAN (CL250 DLC, classic 500 kbps) ══╤════════════════════
                                              │ rt-core = the single tester (UDS polling, D-021)
@@ -52,6 +54,8 @@ Full diagram with interfaces: `ARCHITECTURE.md` §3.
 ---
 
 ## 3. Standard Chip Selections (by task)
+
+> Safety and I/O rows: superseded by D-072 (the safety class is the Cortex-M4 core of the STM32H755; no separate I/O chip). The AURIX/S32K note remains the production reference for a separate safety MCU.
 
 | Role | Standard chip | Why this class |
 |---|---|---|
@@ -199,7 +203,7 @@ Since it must work at reflex speed, deterministically, and independently, it is 
 - **LEDs must be readable even in morning sunlight** → high-brightness type, visible in direct sun; embedded inside the mirror
 - **Not connected to the AI assistant** — reflex speed is required, LED is the correct interface, spoken words add latency/noise
 
-**Processing node:** the **STM32F103** already on hand, as the rear I/O node — reads the 2 radars, runs the approach logic, drives the mirror LEDs, broadcasts status on CAN. The blind-spot decision is made entirely on the F103; only the result is written to CAN → the LED keeps working even if the main unit/CAN crashes (independent, safe).
+**Processing node (D-072):** the **Cortex-M4 safety partition** of the STM32H755 reads the 2 radars on its own UARTs, runs the approach logic, drives the mirror LEDs and hands the status to the Cortex-M7, which broadcasts it on CAN. The decision is independent of the rt-core software, the Raspi and CAN, so the LED keeps working when rt-core crashes; a power or chip fault stops both (accepted, D-072 item 5). _(Original plan: the STM32F103 as a rear I/O node; retired.)_
 
 **LED logic:**
 - Green: side clear
@@ -275,7 +279,7 @@ Layer 3 — ML adaptation (moto-rt-core, together with the context model, option
 **Lean estimator (D-065).** A 2-state EKF [roll, gyro bias] measuring roll from tan(roll) = v · yaw rate / g, in its own task above the comms task; wait-free triple buffers carry the speed (with its stamp) in and the lean out, and the comms pass sends 0x020. No usable speed (limits `vehicle_speed`) or no converged filter → INVALID (there is no default lean, D-029); the CLAMPED range is a defs limit. The EKF's alive supervision makes rt-core's heartbeat DEGRADED (D-064 item 4).
 
 **Output — two channels:**
-- **Round LED ring** (either side of the gauge, defined in 5b.4, driven by `moto-safety-node` or the I/O node — the owner is open, Q-026; never by rt-core, D-042): green→yellow→red, instantaneous lean state; DEGRADED / UNAVAILABLE patterns per D-042
+- **Round LED ring** (either side of the gauge, defined in 5b.4, driven by the Cortex-M4 safety partition, `moto-safety-node` (Q-026 resolved by D-072); never by rt-core, D-042): green→yellow→red, instantaneous lean state; DEGRADED / UNAVAILABLE patterns per D-042
 - **Audio/HMI warning** (if the threshold is exceeded): on the main-screen profile (visible in the "sport" profile) + if needed, a fixed warning phrase from the voice command system (5b.6)
 
 **Calibration and field testing:** T4-class tests from the vehicle work plan (section 7) — closed area, gradual speed increase, **aimed not at approaching the limit but at validating the model's consistency.** The actual tip-over/slide limit is never reached.
@@ -287,6 +291,8 @@ Layer 3 — ML adaptation (moto-rt-core, together with the context model, option
 ---
 
 ### 5b.3 I/O Node — Immobilizer + Park Mode/Tracking + Power Board (combined)
+
+> **Superseded in part by D-072:** there is no separate I/O node. The immobilizer runs on the Cortex-M4 safety partition (rules below unchanged, invariant 6); park mode and the power-board logic run on the Cortex-M7 (rt-core).
 
 Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the blind-spot system — SDV zone-controller logic: few nodes, many modules.
 
@@ -344,9 +350,9 @@ Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the b
 |---|---|---|---|---|
 | Original Honda round gauge | — | Mandatory info (speed, fuel, fault lamp) | — | **Untouched** — legal/warranty |
 | Between handlebar and tank | **1× Nextion** (existing hardware) | Main info screen — profile-based pages | UART → main MCU (H7) | Critical, works even if Linux/Raspi crashes |
-| Left of the gauge | Round **LED ring** (WS2812, circular) | Left lean-angle indicator | I/O node or main MCU | NOT a graphic display — see rationale |
-| Right of the gauge | Round **LED ring** (WS2812, circular) | Right lean-angle indicator | I/O node or main MCU | Same |
-| Mirror ends (left/right) | LED (defined in 5b.1) | Blind-spot warning | I/O node (STM32) | Not a screen; compensated by lean angle (see below) |
+| Left of the gauge | Round **LED ring** (WS2812, circular) | Left lean-angle indicator | M4 safety partition (D-072) | NOT a graphic display — see rationale |
+| Right of the gauge | Round **LED ring** (WS2812, circular) | Right lean-angle indicator | M4 safety partition (D-072) | Same |
+| Mirror ends (left/right) | LED (defined in 5b.1) | Blind-spot warning | M4 safety partition (D-072) | Not a screen; compensated by lean angle (see below) |
 | Above/beside the main screen (optional) | RGB LED strip (WS2812) | Shift-light (green→red as RPM rises) | Main MCU | Same driver technology, low added cost |
 | Phone | — | Remote interface (settings, history, reports) | BLE/WiFi → `moto-connectivity-node` | Not involved in critical work, loosely coupled |
 
@@ -370,13 +376,48 @@ Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the b
 
 **Lean-angle compensation of the blind-spot LED (point of originality):** Research shows that motorcycle blind-spot systems generally do not compensate for lean angle, and that this is a known shortcoming (the area visible in the mirror changes with lean). Since the system already produces lean angle from the EKF (context bus, 5b.0c), the blind-spot distance threshold can be slightly adjusted based on lean angle — a difference most competing systems lack, a point of originality for the thesis.
 
-**Rule:** The Nextion is directly connected to the H7, works even if Linux/Raspi crashes. The LED rings and shift-light are simple driver logic, from the main MCU or I/O node — no heavy processing required. The phone is never involved in any critical work.
+**Rule:** The Nextion is directly connected to the H7, works even if Linux/Raspi crashes. The LED rings and mirror LEDs are driven by the M4 safety partition, the shift-light by the M7 (D-072) — no heavy processing required. The helmet HUD (§5b.4a) only repeats warnings. The phone is never involved in any critical work.
 
 **Phase 2 note (upgrade reference, not done now):** If switching from Nextion to LVGL+ESP32/round display is wanted, open-source references: `dev-ale/moto2000` (ESP32-S3 AMOLED round, BLE, phone-side logic, ~₺1250-1450 BOM, IP67 PG7 cable gland + silicone O-ring mounting), `emdzej/opencluster` (ESP32+LVGL, multi-screen over CAN, desktop simulator), `barcu00/DIY-dash-5` (ESP32-S3, table-based CAN decoder, UI-isolated architecture), `hpeyerl/evj55-dashboard` (large panel → Raspi/Linux framebuffer LVGL, the boundary where ESP32 falls short).
 
 **IP67 mounting note:** An O-ring is more reliable for sealing than complex face-to-face gaskets; a low-hardness silicone gasket accommodates surface irregularities; the enclosure body must be rigid (a flexing body can bend the gasket and leak). Commercial motorcycle displays standardly use IP67 + 700-1000 nit brightness + glove-compatible capacitive touch — the Nextion enclosure should be 3D-printed to meet these three criteria.
 
 ---
+
+### 5b.4a Helmet Unit — Visor HUD, Microphone and Voice (D-073, 2026-10-17)
+
+**What it is:** a monocular head-up display at a fixed spot at the lower edge of the visor, fed over BLE by the bike ESP32. It is **not world-registered AR**: no head tracking, no overlay on the road scene. It repeats warnings and shows a few values so the rider does not look down. It replaces the "visor HUD PoC" line of the old Group 0 list.
+
+**Hardware (helmet ESP32-S3, `moto-connectivity-node` helmet env):**
+
+| Part | Role | Stage |
+|---|---|---|
+| ESP32-S3 N16R8 | HUD, BLE central, ESP-SR voice (PSRAM, Q-024) | H0 |
+| 0.96" SSD1306 OLED | desk stand-in for the display | H0 |
+| 0.39"/0.49" micro-OLED + combiner/beam-splitter prism + small lens | the visor image, focused far so the eye does not refocus | H1 |
+| INMP441 I2S microphone | voice command (D-044, moved into the helmet) | H0 |
+| MAX98357A I2S amplifier + small 8 Ω speaker (or the rider's intercom) | short voice prompts | H1 |
+| Push-to-talk button | voice trigger (D-047); helmet or handlebar (Q-032) | H0 |
+| LiPo 1000-2000 mAh with protection PCB + USB-C charger, slide switch | power | H1 |
+| Clip-on housing (3D printed, PETG/ASA) | chin or side mount | H1 |
+
+**Content (proposal; the final set and budget are Q-032):** in priority order: (1) cornering warning level as colour/blink, only YELLOW, RED, DEGRADED and UNAVAILABLE (GREEN and the mirror's "side clear" are never shown); (2) blind-spot side when a vehicle is present; (3) engine/anomaly warning icon; (4) speed, gear once known (Q-031), RPM bar; (5) link/health marker. The HUD never shows a "safe" state: on link loss or stale data it shows a distinct marker, and no warning on the HUD means nothing.
+
+**Data path:** platform CAN → bike ESP32 → BLE notification → helmet ESP32 → display. The frame layout is defined in `moto-vehicle-defs` `ble/` through `/signal-change` before any code; it carries only values that exist on the platform bus. Telemetry at most 10 Hz; warnings are sent on change and repeated while active.
+
+**Rules:**
+- **Informational only** (D-041 item 2, invariant 4). The wired LED ring and mirror LEDs driven by the M4 safety partition stay the safety output; BLE can drop.
+- **Helmet integrity:** never drill, cut or glue the shell, the EPS liner or the visor (ECE 22.06 approval). The unit clips on and comes off without tools.
+- **Glanceable:** few symbols, no text paragraphs, no animation, automatic brightness, short voice prompts.
+
+**Stages (each ends with a measured result):**
+1. **H0 desk:** helmet ESP32 + 0.96" OLED, BLE from the bike ESP32 → end-to-end latency (platform frame → pixel), packet loss.
+2. **H1 helmet mock-up:** micro-OLED + prism on a clip-on housing → daylight readability, focus/eye strain, battery life, weight.
+3. **H2 parked on the bike:** BLE range around the rider's body, interference with the bike ESP32's other links, rider check of the symbol set.
+4. **H3 low-speed ride:** distraction check, warning latency in use.
+
+**Risks:** daylight brightness of a micro-OLED through a combiner, visor fogging and tint, LiPo in cold or hot weather, helmet weight and balance, BLE shadowing by the rider's head, rider distraction. Open items: Q-032.
+
 
 ### 5b.5 Lane Tracking / Lane Departure Warning (LDW) System — camera + IMU based
 
@@ -460,8 +501,8 @@ Note: Lean angle is read from the context bus (5b.0c) — sharing the same sourc
 | Trigger | Push-to-talk (handlebar button), primary; ESP-SR wake word optional and configurable (D-047) | Push-to-talk eliminates false triggering in wind noise; the wake word's default and enabling conditions are open (Q-024) |
 | Command recognition | **ESP-SR MultiNet** | Up to 300 words, **requires no retraining**, ready-made |
 | Audio preprocessing | ESP-SR Audio Front-end (AEC, VAD, noise suppression) | First line of defense against wind/engine noise |
-| Hardware | Helmet/intercom I2S microphone on `moto-connectivity-node` (D-044) | The engine sound uses a separate engine-facing microphone on linux-node (D-044, see 5b.9). After the trigger (button or wake word, D-047), speech for the LLM path goes to the Raspi; transport open, Q-024 (also whether the ESP32-S3 module has the PSRAM ESP-SR expects) |
-| Location | **ESP32-S3** (`moto-connectivity-node`) | Vector accelerator lives here; moving it to the Raspi adds unnecessary bridge latency |
+| Hardware | Helmet I2S microphone on the **helmet ESP32-S3** (`moto-connectivity-node` helmet env, D-044, D-073) | The engine sound uses a separate engine-facing microphone on linux-node (D-044, see 5b.9). After the trigger (button or wake word, D-047), speech for the LLM path goes to the Raspi; transport open, Q-024 (also whether the ESP32-S3 module has the PSRAM ESP-SR expects) |
+| Location | **helmet ESP32-S3** (`moto-connectivity-node`, D-073) | Vector accelerator lives here; moving it to the Raspi adds unnecessary bridge latency |
 | Reference | ESP-SR (espressif/esp-sr, GitHub) — WakeNet (~80ms, <2% false positive), MultiNet | Official Espressif framework |
 
 **Latency:** ~100-200ms, fully offline, no connectivity required — works in rural areas.

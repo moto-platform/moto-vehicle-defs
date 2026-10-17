@@ -253,6 +253,8 @@ Function proposals not previously in the pool. Most achievable with existing har
 
 ## 10. Computer Vision and Advanced Perception
 
+> STM32G0 dependencies in this table predate D-072: io-node is retired, so these items would run on the STM32H755 (M4 safety partition or M7 rt-core).
+
 | # | Item | Effort | Dependency | Value | Open source |
 |---|---|---|---|---|---|
 | V1 | Camera integration and recording | 40-70 | Linux unit | U | OpenCV, GStreamer |

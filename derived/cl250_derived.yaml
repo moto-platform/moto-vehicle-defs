@@ -2,8 +2,8 @@
 # and live in rt-core's src/features/derived/ (services/ for the gear estimate) and in
 # moto-server's Python reference (D-070 item 2). Catalog: docs/vehicle-data-catalog.md
 # section 5 (what and how) and 5.1 (class). Derived signals are QM information (D-070
-# item 5): none feeds safety-node's cornering or io-node's blind-spot decision, or a
-# context-bus value safety-node reads; using one in rt-core's anomaly safety net needs
+# item 5): none feeds the safety partition's cornering or blind-spot decision (D-072),
+# or a context-bus value safety-node reads; using one in rt-core's anomaly safety net needs
 # its own decision and safety-reviewer.
 #
 # rt-core gets classes A and B as gen/c/rt_core/vehicle_cl250_derived.{h,c} (metadata
