@@ -23,7 +23,7 @@ The vehicle bus (the CL250 DLC: classic CAN 500 kbps; rt-core's FDCAN1 once the 
 | Before D-068 (5 DIDs) | 25.7 | 36 | 9.8 kbit/s = 2.0 % / 2.3 % | 0.514 |
 | D-068, all 40 served | 36.8 | 51 | 14.0 kbit/s = 2.8 % / 3.3 % | 0.736 |
 
-The limit is not the bus but the ECU: one request in flight and an assumed 20 ms round trip (provisional, D-029; measured by D-058's round-trip records). Unserved D-068 DIDs stop after their first reads (D-068 item 2), so the real load is lower.
+The limit is not the bus but the ECU: one request in flight and an assumed 20 ms round trip (provisional, D-029; measured by D-058's round-trip records). Unserved D-068 DIDs stop after their first reads (D-068 item 2), so the real load is lower. The bitrate stays at 500 kbps; the paths to more data are listen-only capture, multi-DID reads and tier tuning, in that order (D-074).
 
 Sampling rates of the verified DIDs: engine speed and vehicle speed 9.1 Hz (110 ms), throttle 5 Hz, coolant and battery 1.25 Hz.
 
