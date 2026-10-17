@@ -12,7 +12,7 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `vehicle-work-plan.md` | On-vehicle plan (bus access per D-037) | CL250 data, mounting, field test protocols T0-T4, virtual dyno |
 | `phase0-data-collection-plan.md` | Authoritative (data), superseded in part (D-032, D-045) | Recording format, metadata schema, work packages WP-1..WP-7 |
 | `feature-pool.md` | Pool | All feature candidates (IDs F1.., K1.., ...), open-source references |
-| `hardware-procurement-list.md` | Current | Hardware groups 1-12, items on hand |
+| `hardware-procurement-list.md` | Current (v2.0, 2026-10-17, D-072/D-073) | Full parts list by purchase wave, with Turkish store links and prices, items on hand |
 | `hardware-integration.md` | Working guide (2026-10-03) | Phase 0 on-vehicle build: parts, wiring, mounting, bring-up gates, first measurements, open items |
 | `vehicle-data-catalog.md` | Working list (2026-10-15), **not a decision** | Every signal read today, pollable, discoverable or derivable; standard data outside the polled table; on-bike proprietary-DID discovery procedure; vehicle bus load; switch/ABS acquisition paths; per-repo code coverage |
 | `ideas/*` | Idea notes (drafted with Gemini, 2026-10-05), **not decisions** | `can-data-expansion.md` (CAN/UDS expansion, tasks V-01..V-16), `mcp-scenarios.md` (moto-mcp scenarios). Each lists its known conflicts with recorded decisions at the top; nothing applies without a D-xxx |
@@ -20,26 +20,27 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `legacy-telemetry-notes.md` | Reference (short) | Legacy HondaCl250_Telemetry facts per D-023: UDS state machine, NRC table, bus-off backoff, ISO-TP first-frame pitfall, ESP32-S3 pin map, discrepancies, accepted security risks, legacy test coverage |
 | `archive/tr/*` | Turkish originals + the two advisor documents (D-038) | **Not read by Claude.** Ç1-Ç8 are in `ARCHITECTURE.md` §9 |
 
-## hardware-architecture.md (861 lines)
+## hardware-architecture.md (     902 lines)
 
 | Lines | Section |
 |---|---|
-| 13-95 | §1-5 philosophy, 5 units, chip choices, CAN rules, latency (bus topology: see ARCHITECTURE §3) |
-| 96-191 | §5b.0-0c context classification, conditioning factors, context bus |
-| 192-242 | §5b.1 blind spot monitoring (BSM) |
-| 243-288 | §5b.2 cornering safety (3 layers) |
-| 289-334 | §5b.3 io-node: immobilizer, park mode, power board |
-| 335-380 | §5b.4 display / LED ring / profile pages |
-| 381-453 | §5b.5 lane departure warning (LDW) |
-| 454-472 | §5b.6 voice commands (ESP-SR) |
-| 473-531 | §5b.7 moto-mcp, privacy |
-| 532-583 | §5b.8 linux-node SDV layer, Raspi power/thermal |
-| 584-631 | §5b.9 anomaly model + validation protocol |
-| 632-651 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |
-| 652-687 | §6-7 module vs chip, staged rollout |
-| 688-749 | §8-9 repo structure, dependency direction, setup order |
-| 750-819 | §9b HIL bench |
-| 820-861 | §10 Phase 2, eliminated items, open notes |
+| 13-99 | §1-5 philosophy, units (superseded in part by D-072/D-073), chip choices, CAN rules, latency (bus topology: see ARCHITECTURE §3) |
+| 100-195 | §5b.0-0c context classification, conditioning factors, context bus |
+| 196-246 | §5b.1 blind spot monitoring (BSM) |
+| 247-292 | §5b.2 cornering safety (3 layers) |
+| 293-340 | §5b.3 immobilizer, park mode, power board (former io-node, D-072) |
+| 341-386 | §5b.4 display / LED ring / profile pages |
+| 387-421 | §5b.4a helmet unit: visor HUD, microphone, voice (D-073) |
+| 422-494 | §5b.5 lane departure warning (LDW) |
+| 495-513 | §5b.6 voice commands (ESP-SR) |
+| 514-572 | §5b.7 moto-mcp, privacy |
+| 573-624 | §5b.8 linux-node SDV layer, Raspi power/thermal |
+| 625-672 | §5b.9 anomaly model + validation protocol |
+| 673-692 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |
+| 693-728 | §6-7 module vs chip, staged rollout |
+| 729-790 | §8-9 repo structure, dependency direction, setup order |
+| 791-860 | §9b HIL bench |
+| 861-     902 | §10 Phase 2, eliminated items, open notes |
 
 ## vehicle-work-plan.md (672 lines)
 
@@ -64,9 +65,9 @@ Superseded-in-part note (D-032, D-045) at the top, line 5 · §1 work packages 2
 
 §1-13 categories 26-311 (vehicle functions §9 173, comfort/energy §9c 223, vision §10 254) · §14 top ten 312 · §15 out of pool 332 · §16 prioritization 345 · §17 hardware analysis 361-404 · §18 open-source ecosystem 405-624 (SDV §18.3 446, test/sim §18.5 479, data/ML §18.6 495, reference projects §18.7 510, costs §18.9 545)
 
-## hardware-procurement-list.md (156 lines)
+## hardware-procurement-list.md (148 lines)
 
-Groups 1-12: 12-142 · grand total 143 · on hand 149
+On hand 9 · Wave 1 board + on-bike build 22 · Wave 2 anomaly sensors 66 · Wave 3 helmet unit 84 · Wave 4 safety outputs/blind spot/immobilizer 101 · Wave 5 Raspi 114 · Wave 6 HIL 124 · later/Phase 2 133 · removed from v1.0 143
 
 ## archive/tr/ (for the user; not read by Claude, D-038)
 

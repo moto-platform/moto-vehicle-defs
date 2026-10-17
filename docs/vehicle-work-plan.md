@@ -96,7 +96,7 @@ This calculation will be used to independently check the accuracy of the speed s
 
 | Feature | Decision |
 |---|---|
-| Processor | STM32H7 (rt-core, the DUT, D-001) |
+| Processor | STM32H755 Cortex-M7 (rt-core, the DUT, D-001, D-072) |
 | Enclosure | ABS or aluminum box, minimum IP54 |
 | Mounting location | Under-seat or inside the side panel (preferred: under-seat) |
 | Vibration isolation | Silicone mount or double-sided vibration-damping tape |

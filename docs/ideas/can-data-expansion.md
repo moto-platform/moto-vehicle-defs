@@ -1,5 +1,7 @@
 # Field Data Expansion Plan and Technical Necessity Analysis
 
+> **D-072 (2026-10-17):** io-node is retired. Every io-node / STM32G0 actuation item below now targets the Cortex-M4 safety partition (safety-relevant) or the Cortex-M7 rt-core (QM) and needs its own decision.
+>
 > **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07; reviewed against `DECISIONS.md` and the platform invariants on 2026-10-09). Nothing here overrides `DECISIONS.md`; an item becomes work only through a recorded decision. Tasks V-01..V-16 are rows V9-V24 of `../feature-pool.md` §10 (V-01 = V9, V-03..V-06 = V10..V13, V-07 = V14, V-02 = V15, V-08 = V16, V-09..V-16 = V17..V24).
 >
 > **Review (2026-10-09).** CONTRADICTS: a recorded decision or invariant forbids it as written; drop or rewrite it before any use. EDIT: compatible once the stale text is corrected. DECIDE: no recorded decision covers it; it needs one (or the named open question) before any work.
