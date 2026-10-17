@@ -98,6 +98,16 @@ def check_platform_dbc(db: Database) -> list[str]:
             errors.append(f"{where}: no receivers")
         if "SAFETY" in msg.receivers and msg.name not in config.SAFETY_RX_ALLOWED:
             errors.append(f"{where}: SAFETY may not receive it (D-041, SAFETY_RX_ALLOWED)")
+        if is_e2e_protected(msg, db) and "SAFETY" in [*msg.senders, *msg.receivers]:
+            for sig in msg.signals:
+                if not sig.choices or (msg.name, sig.name) in config.NO_INFORMATION_EXEMPT:
+                    continue
+                zero = sig.choices.get(0)
+                if zero is None or str(zero) not in config.NO_INFORMATION_NAMES:
+                    errors.append(
+                        f"{where}: {sig.name} raw 0 must mean no information "
+                        f"({sorted(config.NO_INFORMATION_NAMES)}), got {zero} (D-072)"
+                    )
         if cycle_time_ms(msg) <= 0:
             errors.append(f"{where}: GenMsgCycleTime must be > 0")
 

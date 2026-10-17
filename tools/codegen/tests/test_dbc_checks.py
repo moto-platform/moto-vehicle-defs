@@ -4,6 +4,7 @@ import re
 
 from conftest import parse_dbc
 
+from moto_codegen import config
 from moto_codegen.dbc_checks import check_platform_dbc
 
 
@@ -31,8 +32,71 @@ def test_safety_node_never_receives_vehicle_speed(platform_text):
 
 def test_safety_node_receives_only_the_allow_list(platform_db):
     got = {m.name for m in platform_db.messages if "SAFETY" in m.receivers}
-    # SafetyRequest: D-072 item 4c, QM requests only, never a safety input.
     assert got == {"EkfLean", "EkfFrictionMass", "HeartbeatRtCore", "SafetyRequest"}
+    # D-072 item 7: SafetyRequest is QM and used by the immobilizer alone.
+    assert config.SAFETY_RX_SAFETY_INPUTS == {"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"}
+    assert config.SAFETY_RX_QM_IMMOBILIZER == {"SafetyRequest"}
+
+
+def _choices(db, msg, sig):
+    signal = db.get_message_by_name(msg).get_signal_by_name(sig)
+    return {int(k): str(v) for k, v in signal.choices.items()}
+
+
+def test_safety_status_and_request_value_tables(platform_db):
+    # D-072 item 7 (user, 2026-10-18): raw 0 is the no-information value.
+    level = {0: "UNAVAILABLE", 1: "GREEN", 2: "YELLOW", 3: "RED"}
+    bsm = {0: "UNAVAILABLE", 1: "CLEAR", 2: "PRESENT", 3: "APPROACHING"}
+    assert _choices(platform_db, "SafetyWarningStatus", "CORNERING_LEVEL") == level
+    assert _choices(platform_db, "SafetyWarningStatus", "CORNERING_SOURCE") == {
+        0: "NONE",
+        1: "EKF",
+        2: "OWN_IMU",
+        3: "RESERVED",
+    }
+    assert _choices(platform_db, "SafetyWarningStatus", "BSM_LEFT") == bsm
+    assert _choices(platform_db, "SafetyWarningStatus", "BSM_RIGHT") == bsm
+    assert _choices(platform_db, "SafetyWarningStatus", "IMMOBILIZER_STATE") == {
+        0: "UNKNOWN",
+        1: "UNLOCKED",
+        2: "LOCKED",
+        3: "AUTH_PENDING",
+        4: "FAULT",
+    }
+    unknown = {0: "UNKNOWN", 3: "RESERVED"}
+    assert _choices(platform_db, "SafetyRequest", "IGNITION_STATE") == {
+        **unknown,
+        1: "OFF",
+        2: "ON",
+    }
+    assert _choices(platform_db, "SafetyRequest", "PARK_MODE") == {
+        **unknown,
+        1: "INACTIVE",
+        2: "ACTIVE",
+    }
+    # LOCK = 2: one stuck bit cannot form it.
+    assert _choices(platform_db, "SafetyRequest", "IMMOBILIZER_LOCK_REQUEST") == {
+        0: "NONE",
+        1: "RESERVED",
+        2: "LOCK",
+        3: "RESERVED",
+    }
+
+
+def test_all_zero_decodes_to_no_information(platform_db):
+    for name in ("SafetyWarningStatus", "SafetyRequest"):
+        msg = platform_db.get_message_by_name(name)
+        decoded = msg.decode(bytes(8), decode_choices=True)
+        for sig in msg.signals:
+            if sig.choices:
+                assert str(decoded[sig.name]) in config.NO_INFORMATION_NAMES, (name, sig.name)
+
+
+def test_permissive_raw_zero_is_rejected(platform_text):
+    text = platform_text.replace(
+        'VAL_ 35 BSM_LEFT 0 "UNAVAILABLE" 1 "CLEAR"', 'VAL_ 35 BSM_LEFT 0 "CLEAR" 1 "UNAVAILABLE"'
+    )
+    assert any("BSM_LEFT raw 0 must mean no information" in e for e in errors_for(text))
 
 
 def test_missing_data_id_is_rejected(platform_text):

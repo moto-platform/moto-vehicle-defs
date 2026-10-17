@@ -294,7 +294,7 @@ Layer 3 — ML adaptation (moto-rt-core, together with the context model, option
 
 > **Superseded in part by D-072:** there is no separate I/O node. The immobilizer runs on the Cortex-M4 safety partition (rules below unchanged, invariant 6); park mode and the power-board logic run on the Cortex-M7 (rt-core).
 
-Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the blind-spot system — SDV zone-controller logic: few nodes, many modules.
+_Superseded by D-072: the immobilizer and the blind-spot system run on the Cortex-M4 safety partition of the STM32H755 (`moto-safety-node`); `moto-io-node` is retired._ Originally: runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the blind-spot system — SDV zone-controller logic: few nodes, many modules.
 
 **Immobilizer:**
 - Intervention point: **starter relay coil circuit** (low current, non-functional while the engine runs — can never cut off a moving engine). The ignition/fuel-pump/ECU line is NEVER touched.
@@ -735,7 +735,7 @@ Repo boundary = runtime boundary (things running in a different place/language/h
 | 1 | `moto-rt-core` | **STM32H7** (main domain) | C/C++ |
 | 2 | `moto-connectivity-node` | **ESP32-S3** (connectivity+voice) | C/C++ |
 | 3 | `moto-safety-node` | STM32 G4/F3 (cornering safety) | C/C++ |
-| 4 | `moto-io-node` | STM32 G0/F0 (blind spot+immobilizer+power) | C/C++ |
+| 4 | ~~`moto-io-node`~~ | retired by D-072 (blind spot + immobilizer → safety-node, power → rt-core) | — |
 | 5 | `moto-linux-node` | Raspi 5 (lane tracking, camera, HMI) | Python/C++ |
 | 6 | `moto-hil-bench` | Simulator MCU (STM32F4) + host PC | C/C++ + Python |
 | 7 | `moto-server` | Server | Python (FastAPI, D-010) |
@@ -746,7 +746,7 @@ Repo boundary = runtime boundary (things running in a different place/language/h
 
 **Why moto-mcp is a separate repo (exception rationale):** Its runtime is the same as `moto-linux-node`'s (Raspi 5), which would normally make it a single repo/module. But here **the sharing boundary** is a valid reason: it is intended to be published as an independent open-source project (so other DIY vehicle/motorcycle projects can use it too), to have its own star/contribution history on GitHub, to be a piece of the career showcase. `moto-linux-node` calls `moto-mcp` as an MCP client, treating it as a dependency/subprocess.
 
-**Rationale for the split (1 and 2):** H7 and ESP32-S3 are different physical chips, differently compiled binaries, different flashes — a real runtime boundary. For the same reason, safety-node and io-node are also separate (different STM32 chip/flash). Functions on the main MCU (UDS, XCP, EKF, context, dynamometer, anomaly inference), however, are modules of a SINGLE repo — all compiled into the same H7 binary; a separate repo would be false isolation.
+**Rationale for the split (1 and 2):** H7 and ESP32-S3 are different physical chips, differently compiled binaries, different flashes — a real runtime boundary. For the same reason, safety-node and io-node were also separate (different STM32 chip/flash); since D-072 safety-node is the Cortex-M4 image of the same STM32H755 (own flash bank and linker script) and io-node is retired. Functions on the main MCU (UDS, XCP, EKF, context, dynamometer, anomaly inference), however, are modules of a SINGLE repo — all compiled into the same H7 binary; a separate repo would be false isolation.
 
 **moto-vehicle-defs cornerstone:** Signal definitions, CAN message map, VSS model. The other ten repos take it as their source (submodule/package). Single source of truth → the "two units know the same signal differently" problem never occurs.
 
@@ -760,7 +760,7 @@ moto-vehicle-defs → read by everyone
 moto-rt-core → moto-vehicle-defs
 moto-connectivity-node → moto-vehicle-defs, (via bridge) rt-core
 moto-safety-node → moto-vehicle-defs
-moto-io-node → moto-vehicle-defs
+~~moto-io-node → moto-vehicle-defs~~ (retired, D-072)
 moto-linux-node → moto-vehicle-defs, (via bridge) rt-core, moto-mcp (called as subprocess/dependency)
 moto-mcp → moto-vehicle-defs (for vehicle schemas), local access to the context bus via the Raspi
 moto-hil-bench → moto-vehicle-defs
@@ -782,7 +782,7 @@ moto-mobile → moto-vehicle-defs, moto-server
 5. `moto-server` — data collection server
 6. `moto-ml` — once data accumulates
 7. `moto-safety-node` — once the cornering safety module is built
-8. `moto-io-node` — once the combined blind-spot/immobilizer/power node is built
+8. ~~`moto-io-node`~~ — retired by D-072; its functions are built in safety-node and rt-core
 9. `moto-linux-node` — once Raspi/lane-tracking integration arrives
 10. `moto-mobile` — last
 

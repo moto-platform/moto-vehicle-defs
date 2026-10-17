@@ -76,30 +76,31 @@ extern "C" {
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_INVALID_CHOICE (0u)
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_VALID_CHOICE (1u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_GREEN_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_YELLOW_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_RED_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_UNAVAILABLE_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_GREEN_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_YELLOW_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_RED_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_EKF_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_OWN_IMU_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_NONE_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_NONE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_EKF_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_OWN_IMU_CHOICE (2u)
 #define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_RESERVED_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_CLEAR_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_PRESENT_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_APPROACHING_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_UNAVAILABLE_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_CLEAR_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_PRESENT_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_APPROACHING_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_CLEAR_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_PRESENT_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_APPROACHING_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_UNAVAILABLE_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_CLEAR_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_PRESENT_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_APPROACHING_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNLOCKED_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_LOCKED_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_AUTH_PENDING_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_FAULT_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNKNOWN_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNLOCKED_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_LOCKED_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_AUTH_PENDING_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_FAULT_CHOICE (4u)
 
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_INIT_CHOICE (0u)
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_NORMAL_CHOICE (1u)
@@ -223,7 +224,7 @@ struct platform_vehicle_speed_t {
 /**
  * Signals in message SafetyWarningStatus.
  *
- * Safety partition output status (D-072 item 4c): the cornering warning level and its source (D-041, D-042), both blind-spot sides (hardware-architecture 5b.1) and the immobilizer state. The M4 writes it into the mailbox; rt-core forwards it verbatim and stops when the slot is not updated. Informational for every receiver (logging, phone, helmet HUD, D-073): the safety outputs are the LED ring and mirror LEDs, driven by the partition itself. No receiver may show a safe state from it; a timeout or E2E error means no status is available, never GREEN or CLEAR.
+ * Safety partition output status (D-072 item 4c): the cornering warning level and its source (D-041, D-042), both blind-spot sides (hardware-architecture 5b.1) and the immobilizer state. The M4 writes it into the mailbox; rt-core forwards it verbatim and stops when the slot is not updated. Informational for every receiver (logging, phone, helmet HUD, D-073): the safety outputs are the LED ring and mirror LEDs, driven by the partition itself. No receiver may show a safe state from it; a timeout or E2E error means no status is available, never GREEN or CLEAR. Raw 0 is the no-information value of every field (codegen rule), so a zero-initialised or never-written field reads as unavailable.
  *
  * All signal values are as on the CAN bus.
  */
@@ -243,7 +244,7 @@ struct platform_safety_warning_status_t {
     uint8_t e2_e_counter;
 
     /**
-     * Level shown on the LED ring (D-041 item 1). UNAVAILABLE: no usable lean source (D-042 item 4), always with CORNERING_SOURCE = NONE.
+     * Level shown on the LED ring (D-041 item 1). UNAVAILABLE = no usable lean source (D-042 item 4). It comes with CORNERING_SOURCE = NONE and NONE comes with UNAVAILABLE; a receiver reads any other pairing (e.g. GREEN with NONE, UNAVAILABLE with EKF) as UNAVAILABLE. Test UNAVAILABLE by value, never by ordering.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -252,7 +253,7 @@ struct platform_safety_warning_status_t {
     uint8_t cornering_level;
 
     /**
-     * Lean source of the decision: EKF = rt-core 0x020/0x022 usable; OWN_IMU = the D-042 fallback, shown on the ring as DEGRADED; NONE = no usable source. 3 is reserved and must be treated as NONE.
+     * Lean source of the decision: NONE = no usable source; EKF = rt-core 0x020/0x022 usable; OWN_IMU = the D-042 fallback, shown on the ring as DEGRADED. 3 is reserved and is read as NONE.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -261,7 +262,7 @@ struct platform_safety_warning_status_t {
     uint8_t cornering_source;
 
     /**
-     * Left blind-spot state (hardware-architecture 5b.1): CLEAR = no vehicle (mirror green), PRESENT = a vehicle on that side (solid red), APPROACHING = a vehicle approaching while signalling or changing lanes towards that side (blinking red), UNAVAILABLE = radar or decision not usable.
+     * Left blind-spot state (hardware-architecture 5b.1): UNAVAILABLE = radar or decision not usable (also before the blind spot is implemented); CLEAR = no vehicle (mirror green); PRESENT = a vehicle on that side (solid red); APPROACHING = a vehicle approaching while signalling or changing lanes towards that side (blinking red).
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -279,9 +280,9 @@ struct platform_safety_warning_status_t {
     uint8_t bsm_right;
 
     /**
-     * Starter-relay immobilizer (invariant 6): UNLOCKED = relay released, the engine can start (default); LOCKED = the starter-relay coil circuit is held open; AUTH_PENDING = a lock request or an authorization (NFC, PIN) is being decided, ending in UNLOCKED at the latest after the 10 s timeout; FAULT = immobilizer out of service with the relay released.
+     * Starter-relay immobilizer (invariant 6). UNKNOWN = the partition does not know the relay position (at boot, without position feedback; a boot never pulses the relay). UNLOCKED = relay released, the starter-relay coil circuit passes and the engine can start (default). LOCKED = the starter-relay coil circuit is interrupted. AUTH_PENDING = a lock request or an authorization (NFC, PIN) is being decided; it ends within 10 s in LOCKED or UNLOCKED, and in UNLOCKED if no decision is reached. FAULT = immobilizer out of service. Values 5-7 are read as UNKNOWN.
      *
-     * Range: 0..3 (0..3 -)
+     * Range: 0..4 (0..4 -)
      * Scale: 1
      * Offset: 0
      */

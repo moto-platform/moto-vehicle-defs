@@ -111,30 +111,31 @@ extern "C" {
 #define PLATFORM_EKF_FRICTION_MASS_TOTAL_MASS_STATE_DEFAULT_CHOICE (2u)
 #define PLATFORM_EKF_FRICTION_MASS_TOTAL_MASS_STATE_INVALID_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_GREEN_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_YELLOW_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_RED_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_UNAVAILABLE_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_GREEN_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_YELLOW_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_RED_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_EKF_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_OWN_IMU_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_NONE_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_NONE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_EKF_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_OWN_IMU_CHOICE (2u)
 #define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_RESERVED_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_CLEAR_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_PRESENT_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_APPROACHING_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_UNAVAILABLE_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_CLEAR_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_PRESENT_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_APPROACHING_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_CLEAR_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_PRESENT_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_APPROACHING_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_UNAVAILABLE_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_CLEAR_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_PRESENT_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_APPROACHING_CHOICE (3u)
 
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNLOCKED_CHOICE (0u)
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_LOCKED_CHOICE (1u)
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_AUTH_PENDING_CHOICE (2u)
-#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_FAULT_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNKNOWN_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNLOCKED_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_LOCKED_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_AUTH_PENDING_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_FAULT_CHOICE (4u)
 
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_INIT_CHOICE (0u)
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_NORMAL_CHOICE (1u)
@@ -179,19 +180,19 @@ extern "C" {
 #define PLATFORM_VEHICLE_ENGINE_ECU_PRESENT_ABSENT_CHOICE (0u)
 #define PLATFORM_VEHICLE_ENGINE_ECU_PRESENT_PRESENT_CHOICE (1u)
 
-#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_OFF_CHOICE (0u)
-#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_ON_CHOICE (1u)
-#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_RESERVED_CHOICE (2u)
-#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_UNKNOWN_CHOICE (3u)
+#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_UNKNOWN_CHOICE (0u)
+#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_OFF_CHOICE (1u)
+#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_ON_CHOICE (2u)
+#define PLATFORM_SAFETY_REQUEST_IGNITION_STATE_RESERVED_CHOICE (3u)
 
-#define PLATFORM_SAFETY_REQUEST_PARK_MODE_INACTIVE_CHOICE (0u)
-#define PLATFORM_SAFETY_REQUEST_PARK_MODE_ACTIVE_CHOICE (1u)
-#define PLATFORM_SAFETY_REQUEST_PARK_MODE_RESERVED_CHOICE (2u)
-#define PLATFORM_SAFETY_REQUEST_PARK_MODE_UNKNOWN_CHOICE (3u)
+#define PLATFORM_SAFETY_REQUEST_PARK_MODE_UNKNOWN_CHOICE (0u)
+#define PLATFORM_SAFETY_REQUEST_PARK_MODE_INACTIVE_CHOICE (1u)
+#define PLATFORM_SAFETY_REQUEST_PARK_MODE_ACTIVE_CHOICE (2u)
+#define PLATFORM_SAFETY_REQUEST_PARK_MODE_RESERVED_CHOICE (3u)
 
 #define PLATFORM_SAFETY_REQUEST_IMMOBILIZER_LOCK_REQUEST_NONE_CHOICE (0u)
-#define PLATFORM_SAFETY_REQUEST_IMMOBILIZER_LOCK_REQUEST_LOCK_CHOICE (1u)
-#define PLATFORM_SAFETY_REQUEST_IMMOBILIZER_LOCK_REQUEST_RESERVED_2_CHOICE (2u)
+#define PLATFORM_SAFETY_REQUEST_IMMOBILIZER_LOCK_REQUEST_RESERVED_1_CHOICE (1u)
+#define PLATFORM_SAFETY_REQUEST_IMMOBILIZER_LOCK_REQUEST_LOCK_CHOICE (2u)
 #define PLATFORM_SAFETY_REQUEST_IMMOBILIZER_LOCK_REQUEST_RESERVED_3_CHOICE (3u)
 
 /* Frame Names. */
@@ -443,7 +444,7 @@ struct platform_ekf_friction_mass_t {
 /**
  * Signals in message SafetyWarningStatus.
  *
- * Safety partition output status (D-072 item 4c): the cornering warning level and its source (D-041, D-042), both blind-spot sides (hardware-architecture 5b.1) and the immobilizer state. The M4 writes it into the mailbox; rt-core forwards it verbatim and stops when the slot is not updated. Informational for every receiver (logging, phone, helmet HUD, D-073): the safety outputs are the LED ring and mirror LEDs, driven by the partition itself. No receiver may show a safe state from it; a timeout or E2E error means no status is available, never GREEN or CLEAR.
+ * Safety partition output status (D-072 item 4c): the cornering warning level and its source (D-041, D-042), both blind-spot sides (hardware-architecture 5b.1) and the immobilizer state. The M4 writes it into the mailbox; rt-core forwards it verbatim and stops when the slot is not updated. Informational for every receiver (logging, phone, helmet HUD, D-073): the safety outputs are the LED ring and mirror LEDs, driven by the partition itself. No receiver may show a safe state from it; a timeout or E2E error means no status is available, never GREEN or CLEAR. Raw 0 is the no-information value of every field (codegen rule), so a zero-initialised or never-written field reads as unavailable.
  *
  * All signal values are as on the CAN bus.
  */
@@ -463,7 +464,7 @@ struct platform_safety_warning_status_t {
     uint8_t e2_e_counter;
 
     /**
-     * Level shown on the LED ring (D-041 item 1). UNAVAILABLE: no usable lean source (D-042 item 4), always with CORNERING_SOURCE = NONE.
+     * Level shown on the LED ring (D-041 item 1). UNAVAILABLE = no usable lean source (D-042 item 4). It comes with CORNERING_SOURCE = NONE and NONE comes with UNAVAILABLE; a receiver reads any other pairing (e.g. GREEN with NONE, UNAVAILABLE with EKF) as UNAVAILABLE. Test UNAVAILABLE by value, never by ordering.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -472,7 +473,7 @@ struct platform_safety_warning_status_t {
     uint8_t cornering_level;
 
     /**
-     * Lean source of the decision: EKF = rt-core 0x020/0x022 usable; OWN_IMU = the D-042 fallback, shown on the ring as DEGRADED; NONE = no usable source. 3 is reserved and must be treated as NONE.
+     * Lean source of the decision: NONE = no usable source; EKF = rt-core 0x020/0x022 usable; OWN_IMU = the D-042 fallback, shown on the ring as DEGRADED. 3 is reserved and is read as NONE.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -481,7 +482,7 @@ struct platform_safety_warning_status_t {
     uint8_t cornering_source;
 
     /**
-     * Left blind-spot state (hardware-architecture 5b.1): CLEAR = no vehicle (mirror green), PRESENT = a vehicle on that side (solid red), APPROACHING = a vehicle approaching while signalling or changing lanes towards that side (blinking red), UNAVAILABLE = radar or decision not usable.
+     * Left blind-spot state (hardware-architecture 5b.1): UNAVAILABLE = radar or decision not usable (also before the blind spot is implemented); CLEAR = no vehicle (mirror green); PRESENT = a vehicle on that side (solid red); APPROACHING = a vehicle approaching while signalling or changing lanes towards that side (blinking red).
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -499,9 +500,9 @@ struct platform_safety_warning_status_t {
     uint8_t bsm_right;
 
     /**
-     * Starter-relay immobilizer (invariant 6): UNLOCKED = relay released, the engine can start (default); LOCKED = the starter-relay coil circuit is held open; AUTH_PENDING = a lock request or an authorization (NFC, PIN) is being decided, ending in UNLOCKED at the latest after the 10 s timeout; FAULT = immobilizer out of service with the relay released.
+     * Starter-relay immobilizer (invariant 6). UNKNOWN = the partition does not know the relay position (at boot, without position feedback; a boot never pulses the relay). UNLOCKED = relay released, the starter-relay coil circuit passes and the engine can start (default). LOCKED = the starter-relay coil circuit is interrupted. AUTH_PENDING = a lock request or an authorization (NFC, PIN) is being decided; it ends within 10 s in LOCKED or UNLOCKED, and in UNLOCKED if no decision is reached. FAULT = immobilizer out of service. Values 5-7 are read as UNKNOWN.
      *
-     * Range: 0..3 (0..3 -)
+     * Range: 0..4 (0..4 -)
      * Scale: 1
      * Offset: 0
      */
@@ -785,7 +786,7 @@ struct platform_vehicle_engine_t {
 /**
  * Signals in message SafetyRequest.
  *
- * QM requests from rt-core to the safety partition (D-072 item 4c), passed through the mailbox. E2E protects integrity only: none of these values is a safety input, and the partition applies its own authorization and invariant 6. A missing, stale or invalid frame means no request and leaves the immobilizer unlocked.
+ * QM requests from rt-core to the safety partition (D-072 item 4c), passed through the mailbox. E2E protects integrity only. Used by the immobilizer alone: it never gates or degrades the cornering decision, the blind spot, the LED ring or mirror LEDs, the D-042 source selection or the M4 power and clock state, and its E2E status is not a D-042 fallback criterion (codegen SAFETY_RX_QM_IMMOBILIZER). A missing, stale or invalid frame is no request and never changes the immobilizer state (D-072 item 7, user 2026-10-18). A release rt-core image fills it only from its own state, never from a frame received on the platform bus.
  *
  * All signal values are as on the CAN bus.
  */
@@ -805,7 +806,7 @@ struct platform_safety_request_t {
     uint8_t e2_e_counter;
 
     /**
-     * Ignition (key) state seen by rt-core power management; UNKNOWN until measured. 2 is reserved and must be treated as UNKNOWN.
+     * Ignition (key) state seen by rt-core power management; UNKNOWN until measured. 3 is reserved and is read as UNKNOWN. Only OFF lets the partition accept a lock; it can never cause a lock or an unlock by itself.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -814,7 +815,7 @@ struct platform_safety_request_t {
     uint8_t ignition_state;
 
     /**
-     * rt-core park mode (wake-on-motion watch, D-072 item 2); UNKNOWN until known. 2 is reserved and must be treated as UNKNOWN.
+     * rt-core park mode (wake-on-motion watch, D-072 item 2); UNKNOWN until known. 3 is reserved and is read as UNKNOWN. Informational for the immobilizer; never a mode input to the safety functions.
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1
@@ -823,7 +824,7 @@ struct platform_safety_request_t {
     uint8_t park_mode;
 
     /**
-     * LOCK = the phone or park mode asks the partition to lock the starter relay; it is only a request. 2 and 3 are reserved and must be treated as NONE. There is no unlock request: unlocking is the partition's own decision (NFC, PIN, timeout).
+     * LOCK = the phone or park mode asks the partition to lock the starter relay; it is only a request. LOCK is 2 so that a single stuck bit cannot form it; 1 and 3 are reserved and are read as NONE. The partition counts a lock only on a NONE -> LOCK transition with E2E OK, after it has seen NONE with E2E OK since its own boot, with IGNITION_STATE = OFF and its own IMU stationary (D-072 item 7). There is no unlock request: unlocking is the partition's own decision (NFC, PIN, hidden bypass).
      *
      * Range: 0..3 (0..3 -)
      * Scale: 1

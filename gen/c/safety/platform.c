@@ -364,7 +364,7 @@ int platform_safety_warning_status_pack(
     dst_p[1] |= pack_left_shift_u8(src_p->cornering_source, 6u, 0xc0u);
     dst_p[2] |= pack_left_shift_u8(src_p->bsm_left, 0u, 0x03u);
     dst_p[2] |= pack_left_shift_u8(src_p->bsm_right, 2u, 0x0cu);
-    dst_p[2] |= pack_left_shift_u8(src_p->immobilizer_state, 4u, 0x30u);
+    dst_p[2] |= pack_left_shift_u8(src_p->immobilizer_state, 4u, 0x70u);
 
     return (8);
 }
@@ -528,12 +528,12 @@ uint8_t platform_safety_warning_status_immobilizer_state_encode(float value)
 
 bool platform_safety_warning_status_immobilizer_state_is_in_range(uint8_t value)
 {
-    return (value <= 3u);
+    return (value <= 4u);
 }
 
 bool platform_safety_warning_status_immobilizer_state_is_in_phys_range(float value)
 {
-    return ((value >= 0.0f) && (value <= 3.0f));
+    return ((value >= 0.0f) && (value <= 4.0f));
 }
 
 int platform_heartbeat_rt_core_unpack(
