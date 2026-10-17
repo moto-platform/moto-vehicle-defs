@@ -74,12 +74,12 @@ def test_safety_status_and_request_value_tables(platform_db):
         1: "INACTIVE",
         2: "ACTIVE",
     }
-    # LOCK = 2: one stuck bit cannot form it.
+    # LOCK = 3: every single-bit error from NONE or LOCK lands on a reserved value.
     assert _choices(platform_db, "SafetyRequest", "IMMOBILIZER_LOCK_REQUEST") == {
         0: "NONE",
         1: "RESERVED",
-        2: "LOCK",
-        3: "RESERVED",
+        2: "RESERVED",
+        3: "LOCK",
     }
 
 
