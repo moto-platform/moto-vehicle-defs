@@ -74,14 +74,14 @@ Incremental rollout: a unit is not added until its function arrives (see hardwar
 | Range | Class | E2E | Example |
 |---|---|---|---|
 | 0x000-0x00F | Reserved (emergency/network management) | — | — |
-| 0x010-0x07F | **Safety critical** | Mandatory | lean angle/µ (rt-core→safety, D-041; 0x022 also carries total mass, which is not a safety-node input, D-029/D-041), cornering warning level, blind-spot status |
+| 0x010-0x07F | **Safety critical** | Mandatory | lean angle/µ (rt-core→safety, D-041; 0x022 also carries total mass, which is not a safety-node input, D-029/D-041), 0x023 safety partition status (cornering level and source, blind spot, immobilizer; D-072) |
 | 0x080-0x08F | Heartbeat (`0x080 + node_id`), 100 ms | Mandatory | node status, operating mode, error counter |
-| 0x100-0x3FF | Status/control, context data bus | Optional | context classes, riding profile, immobilizer status |
+| 0x100-0x3FF | Status/control, context data bus | Optional | context classes, riding profile, 0x120 QM requests rt-core → safety partition (ignition, park mode, lock request; never a safety input, D-072) |
 | 0x400-0x5FF | Telemetry (low priority) | — | statistics, power measurement |
 | 0x600-0x6FF | Bridge/log/development | — | — |
 | 0x700-0x7FF | UDS diagnostics (platform nodes) | — | physical `0x7N0`/`0x7N8`, functional `0x7DF` |
 
-**Node ID:** 1 RT_CORE · 2 SAFETY (the M4 partition, D-072) · 3 IO (retired by D-072, removed in the next `platform.dbc` change) · 4 CONN · 5 LINUX · 0xE HIL_SIM · 0xF TESTER
+**Node ID:** 1 RT_CORE · 2 SAFETY (the M4 partition, D-072) · (3 unused: IO retired by D-072, removed in defs v0.15.0) · 4 CONN · 5 LINUX · 0xE HIL_SIM · 0xF TESTER
 
 **E2E (AUTOSAR E2E Profile 1/2-like, D-005):** protected messages carry a 4-bit alive counter + CRC8 (SAE J1850, poly 0x1D). The message's `E2E_DataID` is included in the CRC calculation but not transmitted. The receiver checks three things: **timeout** (3 × cycle), **counter jump/freeze**, **CRC**. If any of these fails, the signal is considered `INVALID` and the consumer transitions to its own safe state. For the safety node, an invalid lean/µ switches to its own-IMU fallback (DEGRADED, or UNAVAILABLE if no source is usable; D-042, Q-002 resolved, details in Q-023). Cost is 1-2 bytes per message plus a few lines of generated code.
 

@@ -190,6 +190,144 @@ bool platform_vehicle_speed_vehicle_speed_age_is_in_phys_range(float value)
     return ((value >= 0.0f) && (value <= 2550.0f));
 }
 
+int platform_safety_warning_status_unpack(
+    struct platform_safety_warning_status_t *dst_p,
+    const uint8_t *src_p,
+    size_t size)
+{
+    if (size < 8u) {
+        return (-EINVAL);
+    }
+
+    dst_p->e2_e_crc = unpack_right_shift_u8(src_p[0], 0u, 0xffu);
+    dst_p->e2_e_counter = unpack_right_shift_u8(src_p[1], 0u, 0x0fu);
+    dst_p->cornering_level = unpack_right_shift_u8(src_p[1], 4u, 0x30u);
+    dst_p->cornering_source = unpack_right_shift_u8(src_p[1], 6u, 0xc0u);
+    dst_p->bsm_left = unpack_right_shift_u8(src_p[2], 0u, 0x03u);
+    dst_p->bsm_right = unpack_right_shift_u8(src_p[2], 2u, 0x0cu);
+    dst_p->immobilizer_state = unpack_right_shift_u8(src_p[2], 4u, 0x30u);
+
+    return (0);
+}
+
+int platform_safety_warning_status_init(struct platform_safety_warning_status_t *msg_p)
+{
+    if (msg_p == NULL) {
+        return -1;
+    }
+
+    (void)memset(msg_p, 0, sizeof(struct platform_safety_warning_status_t));
+
+    return 0;
+}
+
+float platform_safety_warning_status_e2_e_crc_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_e2_e_crc_is_in_range(uint8_t value)
+{
+    (void)value;
+
+    return (true);
+}
+
+bool platform_safety_warning_status_e2_e_crc_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 255.0f));
+}
+
+float platform_safety_warning_status_e2_e_counter_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_e2_e_counter_is_in_range(uint8_t value)
+{
+    return (value <= 15u);
+}
+
+bool platform_safety_warning_status_e2_e_counter_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 15.0f));
+}
+
+float platform_safety_warning_status_cornering_level_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_cornering_level_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_cornering_level_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+float platform_safety_warning_status_cornering_source_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_cornering_source_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_cornering_source_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+float platform_safety_warning_status_bsm_left_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_bsm_left_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_bsm_left_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+float platform_safety_warning_status_bsm_right_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_bsm_right_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_bsm_right_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+float platform_safety_warning_status_immobilizer_state_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_immobilizer_state_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_immobilizer_state_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
 int platform_heartbeat_rt_core_unpack(
     struct platform_heartbeat_rt_core_t *dst_p,
     const uint8_t *src_p,

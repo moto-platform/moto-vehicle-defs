@@ -36,6 +36,14 @@ moto_e2e_status_t platform_ekf_friction_mass_e2e_protect(uint8_t *data, size_t s
 moto_e2e_status_t platform_ekf_friction_mass_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
 moto_e2e_status_t platform_ekf_friction_mass_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
 
+/* SafetyWarningStatus 0x023, cycle 20 ms, sender SAFETY */
+#define PLATFORM_SAFETY_WARNING_STATUS_E2E_DATA_ID (0x1023u)
+#define PLATFORM_SAFETY_WARNING_STATUS_E2E_TIMEOUT_MS (60u)
+#define PLATFORM_SAFETY_WARNING_STATUS_E2E_MAX_DELTA_COUNTER (1u)
+moto_e2e_status_t platform_safety_warning_status_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state);
+moto_e2e_status_t platform_safety_warning_status_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
+moto_e2e_status_t platform_safety_warning_status_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
+
 /* HeartbeatRtCore 0x081, cycle 100 ms, sender RT_CORE */
 #define PLATFORM_HEARTBEAT_RT_CORE_E2E_DATA_ID (0x1081u)
 #define PLATFORM_HEARTBEAT_RT_CORE_E2E_TIMEOUT_MS (300u)
@@ -52,14 +60,6 @@ moto_e2e_status_t platform_heartbeat_safety_e2e_protect(uint8_t *data, size_t si
 moto_e2e_status_t platform_heartbeat_safety_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
 moto_e2e_status_t platform_heartbeat_safety_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
 
-/* HeartbeatIo 0x083, cycle 100 ms, sender IO */
-#define PLATFORM_HEARTBEAT_IO_E2E_DATA_ID (0x1083u)
-#define PLATFORM_HEARTBEAT_IO_E2E_TIMEOUT_MS (300u)
-#define PLATFORM_HEARTBEAT_IO_E2E_MAX_DELTA_COUNTER (1u)
-moto_e2e_status_t platform_heartbeat_io_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state);
-moto_e2e_status_t platform_heartbeat_io_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
-moto_e2e_status_t platform_heartbeat_io_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
-
 /* HeartbeatConn 0x084, cycle 100 ms, sender CONN */
 #define PLATFORM_HEARTBEAT_CONN_E2E_DATA_ID (0x1084u)
 #define PLATFORM_HEARTBEAT_CONN_E2E_TIMEOUT_MS (300u)
@@ -75,6 +75,14 @@ moto_e2e_status_t platform_heartbeat_conn_e2e_check_timeout(moto_e2e_rx_state_t 
 moto_e2e_status_t platform_heartbeat_linux_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state);
 moto_e2e_status_t platform_heartbeat_linux_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
 moto_e2e_status_t platform_heartbeat_linux_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
+
+/* SafetyRequest 0x120, cycle 100 ms, sender RT_CORE */
+#define PLATFORM_SAFETY_REQUEST_E2E_DATA_ID (0x1120u)
+#define PLATFORM_SAFETY_REQUEST_E2E_TIMEOUT_MS (300u)
+#define PLATFORM_SAFETY_REQUEST_E2E_MAX_DELTA_COUNTER (1u)
+moto_e2e_status_t platform_safety_request_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state);
+moto_e2e_status_t platform_safety_request_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
+moto_e2e_status_t platform_safety_request_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
 
 #ifdef __cplusplus
 }

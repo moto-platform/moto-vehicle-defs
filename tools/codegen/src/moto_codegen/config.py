@@ -28,7 +28,7 @@ GEN_DIR = REPO_ROOT / "gen"
 NODE_IDS: dict[str, int] = {
     "RT_CORE": 1,
     "SAFETY": 2,
-    "IO": 3,
+    # 3 was IO (retired by D-072; the ID stays unused)
     "CONN": 4,
     "LINUX": 5,
     "HIL_SIM": 0xE,
@@ -64,7 +64,6 @@ C_TARGETS: tuple[CTarget, ...] = (
         vehicle_constants=True,
     ),
     CTarget("SAFETY", "safety", limits=True),
-    CTarget("IO", "io"),
     # Temporary sole vehicle-bus tester until rt-core polls (D-023).
     CTarget("CONN", "conn", vehicle_dids=True, uds_iso="client"),
     # Simulates the CL250 ECU and impersonates platform nodes on the HIL bench.
@@ -103,9 +102,11 @@ E2E_TIMEOUT_CYCLES = 3  # receiver timeout = 3 x cycle (ARCHITECTURE section 4)
 E2E_MAX_DELTA_COUNTER = 1  # conservative: any lost frame is reported as WRONG_SEQUENCE
 
 # D-041/D-042: the only platform messages safety-node may receive (lean, mu and the
-# rt-core heartbeat for the fallback). Vehicle speed in particular is not a
-# safety-node input; widening this list is a safety decision (safety-reviewer).
-SAFETY_RX_ALLOWED = frozenset({"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"})
+# rt-core heartbeat for the fallback), plus D-072 item 4c's QM SafetyRequest, which is
+# never a safety input (missing or invalid = no request, immobilizer unlocked). Vehicle
+# speed in particular is not a safety-node input; widening this list is a safety
+# decision (safety-reviewer).
+SAFETY_RX_ALLOWED = frozenset({"EkfLean", "EkfFrictionMass", "HeartbeatRtCore", "SafetyRequest"})
 
 # D-020 forbidden vehicle-bus services, repeated here as a second line of defence:
 # the checker rejects vehicle_cl250.yaml if its policy ever allows one of them.

@@ -745,6 +745,250 @@ bool platform_ekf_friction_mass_total_mass_quality_is_in_phys_range(float value)
     return ((value >= 0.0f) && (value <= 100.0f));
 }
 
+int platform_safety_warning_status_pack(
+    uint8_t *dst_p,
+    const struct platform_safety_warning_status_t *src_p,
+    size_t size)
+{
+    if (size < 8u) {
+        return (-EINVAL);
+    }
+
+    (void)memset(&dst_p[0], 0, 8);
+
+    dst_p[0] |= pack_left_shift_u8(src_p->e2_e_crc, 0u, 0xffu);
+    dst_p[1] |= pack_left_shift_u8(src_p->e2_e_counter, 0u, 0x0fu);
+    dst_p[1] |= pack_left_shift_u8(src_p->cornering_level, 4u, 0x30u);
+    dst_p[1] |= pack_left_shift_u8(src_p->cornering_source, 6u, 0xc0u);
+    dst_p[2] |= pack_left_shift_u8(src_p->bsm_left, 0u, 0x03u);
+    dst_p[2] |= pack_left_shift_u8(src_p->bsm_right, 2u, 0x0cu);
+    dst_p[2] |= pack_left_shift_u8(src_p->immobilizer_state, 4u, 0x30u);
+
+    return (8);
+}
+
+int platform_safety_warning_status_unpack(
+    struct platform_safety_warning_status_t *dst_p,
+    const uint8_t *src_p,
+    size_t size)
+{
+    if (size < 8u) {
+        return (-EINVAL);
+    }
+
+    dst_p->e2_e_crc = unpack_right_shift_u8(src_p[0], 0u, 0xffu);
+    dst_p->e2_e_counter = unpack_right_shift_u8(src_p[1], 0u, 0x0fu);
+    dst_p->cornering_level = unpack_right_shift_u8(src_p[1], 4u, 0x30u);
+    dst_p->cornering_source = unpack_right_shift_u8(src_p[1], 6u, 0xc0u);
+    dst_p->bsm_left = unpack_right_shift_u8(src_p[2], 0u, 0x03u);
+    dst_p->bsm_right = unpack_right_shift_u8(src_p[2], 2u, 0x0cu);
+    dst_p->immobilizer_state = unpack_right_shift_u8(src_p[2], 4u, 0x30u);
+
+    return (0);
+}
+
+int platform_safety_warning_status_init(struct platform_safety_warning_status_t *msg_p)
+{
+    if (msg_p == NULL) {
+        return -1;
+    }
+
+    (void)memset(msg_p, 0, sizeof(struct platform_safety_warning_status_t));
+
+    return 0;
+}
+
+uint8_t platform_safety_warning_status_e2_e_crc_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_e2_e_crc_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_e2_e_crc_is_in_range(uint8_t value)
+{
+    (void)value;
+
+    return (true);
+}
+
+bool platform_safety_warning_status_e2_e_crc_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 255.0f));
+}
+
+uint8_t platform_safety_warning_status_e2_e_counter_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_e2_e_counter_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_e2_e_counter_is_in_range(uint8_t value)
+{
+    return (value <= 15u);
+}
+
+bool platform_safety_warning_status_e2_e_counter_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 15.0f));
+}
+
+uint8_t platform_safety_warning_status_cornering_level_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_cornering_level_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_cornering_level_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_cornering_level_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+uint8_t platform_safety_warning_status_cornering_source_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_cornering_source_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_cornering_source_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_cornering_source_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+uint8_t platform_safety_warning_status_bsm_left_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_bsm_left_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_bsm_left_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_bsm_left_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+uint8_t platform_safety_warning_status_bsm_right_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_bsm_right_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_bsm_right_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_bsm_right_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+uint8_t platform_safety_warning_status_immobilizer_state_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_warning_status_immobilizer_state_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_warning_status_immobilizer_state_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_warning_status_immobilizer_state_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
 int platform_heartbeat_rt_core_pack(
     uint8_t *dst_p,
     const struct platform_heartbeat_rt_core_t *src_p,
@@ -1125,198 +1369,6 @@ bool platform_heartbeat_safety_uptime_is_in_range(uint16_t value)
 }
 
 bool platform_heartbeat_safety_uptime_is_in_phys_range(float value)
-{
-    return ((value >= 0.0f) && (value <= 65535.0f));
-}
-
-int platform_heartbeat_io_pack(
-    uint8_t *dst_p,
-    const struct platform_heartbeat_io_t *src_p,
-    size_t size)
-{
-    if (size < 8u) {
-        return (-EINVAL);
-    }
-
-    (void)memset(&dst_p[0], 0, 8);
-
-    dst_p[0] |= pack_left_shift_u8(src_p->e2_e_crc, 0u, 0xffu);
-    dst_p[1] |= pack_left_shift_u8(src_p->e2_e_counter, 0u, 0x0fu);
-    dst_p[1] |= pack_left_shift_u8(src_p->node_mode, 4u, 0xf0u);
-    dst_p[2] |= pack_left_shift_u8(src_p->error_count, 0u, 0xffu);
-    dst_p[3] |= pack_left_shift_u16(src_p->uptime, 0u, 0xffu);
-    dst_p[4] |= pack_right_shift_u16(src_p->uptime, 8u, 0xffu);
-
-    return (8);
-}
-
-int platform_heartbeat_io_unpack(
-    struct platform_heartbeat_io_t *dst_p,
-    const uint8_t *src_p,
-    size_t size)
-{
-    if (size < 8u) {
-        return (-EINVAL);
-    }
-
-    dst_p->e2_e_crc = unpack_right_shift_u8(src_p[0], 0u, 0xffu);
-    dst_p->e2_e_counter = unpack_right_shift_u8(src_p[1], 0u, 0x0fu);
-    dst_p->node_mode = unpack_right_shift_u8(src_p[1], 4u, 0xf0u);
-    dst_p->error_count = unpack_right_shift_u8(src_p[2], 0u, 0xffu);
-    dst_p->uptime = unpack_right_shift_u16(src_p[3], 0u, 0xffu);
-    dst_p->uptime |= unpack_left_shift_u16(src_p[4], 8u, 0xffu);
-
-    return (0);
-}
-
-int platform_heartbeat_io_init(struct platform_heartbeat_io_t *msg_p)
-{
-    if (msg_p == NULL) {
-        return -1;
-    }
-
-    (void)memset(msg_p, 0, sizeof(struct platform_heartbeat_io_t));
-
-    return 0;
-}
-
-uint8_t platform_heartbeat_io_e2_e_crc_encode(float value)
-{
-    const float raw = value;
-    float rounded = 0.0f;
-
-    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
-        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
-    }
-
-    return (uint8_t)rounded;
-}
-
-float platform_heartbeat_io_e2_e_crc_decode(uint8_t value)
-{
-    return ((float)value);
-}
-
-bool platform_heartbeat_io_e2_e_crc_is_in_range(uint8_t value)
-{
-    (void)value;
-
-    return (true);
-}
-
-bool platform_heartbeat_io_e2_e_crc_is_in_phys_range(float value)
-{
-    return ((value >= 0.0f) && (value <= 255.0f));
-}
-
-uint8_t platform_heartbeat_io_e2_e_counter_encode(float value)
-{
-    const float raw = value;
-    float rounded = 0.0f;
-
-    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
-        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
-    }
-
-    return (uint8_t)rounded;
-}
-
-float platform_heartbeat_io_e2_e_counter_decode(uint8_t value)
-{
-    return ((float)value);
-}
-
-bool platform_heartbeat_io_e2_e_counter_is_in_range(uint8_t value)
-{
-    return (value <= 15u);
-}
-
-bool platform_heartbeat_io_e2_e_counter_is_in_phys_range(float value)
-{
-    return ((value >= 0.0f) && (value <= 15.0f));
-}
-
-uint8_t platform_heartbeat_io_node_mode_encode(float value)
-{
-    const float raw = value;
-    float rounded = 0.0f;
-
-    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
-        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
-    }
-
-    return (uint8_t)rounded;
-}
-
-float platform_heartbeat_io_node_mode_decode(uint8_t value)
-{
-    return ((float)value);
-}
-
-bool platform_heartbeat_io_node_mode_is_in_range(uint8_t value)
-{
-    return (value <= 15u);
-}
-
-bool platform_heartbeat_io_node_mode_is_in_phys_range(float value)
-{
-    return ((value >= 0.0f) && (value <= 15.0f));
-}
-
-uint8_t platform_heartbeat_io_error_count_encode(float value)
-{
-    const float raw = value;
-    float rounded = 0.0f;
-
-    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
-        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
-    }
-
-    return (uint8_t)rounded;
-}
-
-float platform_heartbeat_io_error_count_decode(uint8_t value)
-{
-    return ((float)value);
-}
-
-bool platform_heartbeat_io_error_count_is_in_range(uint8_t value)
-{
-    (void)value;
-
-    return (true);
-}
-
-bool platform_heartbeat_io_error_count_is_in_phys_range(float value)
-{
-    return ((value >= 0.0f) && (value <= 255.0f));
-}
-
-uint16_t platform_heartbeat_io_uptime_encode(float value)
-{
-    const float raw = value;
-    float rounded = 0.0f;
-
-    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
-        rounded = (raw >= 65535.0f) ? 65535.0f : (raw + 0.5f);
-    }
-
-    return (uint16_t)rounded;
-}
-
-float platform_heartbeat_io_uptime_decode(uint16_t value)
-{
-    return ((float)value);
-}
-
-bool platform_heartbeat_io_uptime_is_in_range(uint16_t value)
-{
-    (void)value;
-
-    return (true);
-}
-
-bool platform_heartbeat_io_uptime_is_in_phys_range(float value)
 {
     return ((value >= 0.0f) && (value <= 65535.0f));
 }
@@ -2015,4 +2067,190 @@ bool platform_vehicle_engine_ecu_present_is_in_range(uint8_t value)
 bool platform_vehicle_engine_ecu_present_is_in_phys_range(float value)
 {
     return ((value >= 0.0f) && (value <= 1.0f));
+}
+
+int platform_safety_request_pack(
+    uint8_t *dst_p,
+    const struct platform_safety_request_t *src_p,
+    size_t size)
+{
+    if (size < 8u) {
+        return (-EINVAL);
+    }
+
+    (void)memset(&dst_p[0], 0, 8);
+
+    dst_p[0] |= pack_left_shift_u8(src_p->e2_e_crc, 0u, 0xffu);
+    dst_p[1] |= pack_left_shift_u8(src_p->e2_e_counter, 0u, 0x0fu);
+    dst_p[1] |= pack_left_shift_u8(src_p->ignition_state, 4u, 0x30u);
+    dst_p[1] |= pack_left_shift_u8(src_p->park_mode, 6u, 0xc0u);
+    dst_p[2] |= pack_left_shift_u8(src_p->immobilizer_lock_request, 0u, 0x03u);
+
+    return (8);
+}
+
+int platform_safety_request_unpack(
+    struct platform_safety_request_t *dst_p,
+    const uint8_t *src_p,
+    size_t size)
+{
+    if (size < 8u) {
+        return (-EINVAL);
+    }
+
+    dst_p->e2_e_crc = unpack_right_shift_u8(src_p[0], 0u, 0xffu);
+    dst_p->e2_e_counter = unpack_right_shift_u8(src_p[1], 0u, 0x0fu);
+    dst_p->ignition_state = unpack_right_shift_u8(src_p[1], 4u, 0x30u);
+    dst_p->park_mode = unpack_right_shift_u8(src_p[1], 6u, 0xc0u);
+    dst_p->immobilizer_lock_request = unpack_right_shift_u8(src_p[2], 0u, 0x03u);
+
+    return (0);
+}
+
+int platform_safety_request_init(struct platform_safety_request_t *msg_p)
+{
+    if (msg_p == NULL) {
+        return -1;
+    }
+
+    (void)memset(msg_p, 0, sizeof(struct platform_safety_request_t));
+
+    return 0;
+}
+
+uint8_t platform_safety_request_e2_e_crc_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_request_e2_e_crc_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_request_e2_e_crc_is_in_range(uint8_t value)
+{
+    (void)value;
+
+    return (true);
+}
+
+bool platform_safety_request_e2_e_crc_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 255.0f));
+}
+
+uint8_t platform_safety_request_e2_e_counter_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_request_e2_e_counter_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_request_e2_e_counter_is_in_range(uint8_t value)
+{
+    return (value <= 15u);
+}
+
+bool platform_safety_request_e2_e_counter_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 15.0f));
+}
+
+uint8_t platform_safety_request_ignition_state_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_request_ignition_state_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_request_ignition_state_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_request_ignition_state_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+uint8_t platform_safety_request_park_mode_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_request_park_mode_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_request_park_mode_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_request_park_mode_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
+}
+
+uint8_t platform_safety_request_immobilizer_lock_request_encode(float value)
+{
+    const float raw = value;
+    float rounded = 0.0f;
+
+    if (raw > 0.0f) { /* raw <= 0 or NaN: 0 */
+        rounded = (raw >= 255.0f) ? 255.0f : (raw + 0.5f);
+    }
+
+    return (uint8_t)rounded;
+}
+
+float platform_safety_request_immobilizer_lock_request_decode(uint8_t value)
+{
+    return ((float)value);
+}
+
+bool platform_safety_request_immobilizer_lock_request_is_in_range(uint8_t value)
+{
+    return (value <= 3u);
+}
+
+bool platform_safety_request_immobilizer_lock_request_is_in_phys_range(float value)
+{
+    return ((value >= 0.0f) && (value <= 3.0f));
 }

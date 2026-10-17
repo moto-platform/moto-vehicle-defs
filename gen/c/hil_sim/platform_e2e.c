@@ -50,6 +50,21 @@ moto_e2e_status_t platform_ekf_friction_mass_e2e_check_timeout(moto_e2e_rx_state
     return moto_e2e_check_timeout(state, PLATFORM_EKF_FRICTION_MASS_E2E_TIMEOUT_MS, now_ms);
 }
 
+moto_e2e_status_t platform_safety_warning_status_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state)
+{
+    return moto_e2e_protect(PLATFORM_SAFETY_WARNING_STATUS_E2E_DATA_ID, data, size, state);
+}
+
+moto_e2e_status_t platform_safety_warning_status_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
+{
+    return moto_e2e_check(PLATFORM_SAFETY_WARNING_STATUS_E2E_DATA_ID, PLATFORM_SAFETY_WARNING_STATUS_E2E_MAX_DELTA_COUNTER, PLATFORM_SAFETY_WARNING_STATUS_E2E_TIMEOUT_MS, data, size, state, now_ms);
+}
+
+moto_e2e_status_t platform_safety_warning_status_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms)
+{
+    return moto_e2e_check_timeout(state, PLATFORM_SAFETY_WARNING_STATUS_E2E_TIMEOUT_MS, now_ms);
+}
+
 moto_e2e_status_t platform_heartbeat_rt_core_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state)
 {
     return moto_e2e_protect(PLATFORM_HEARTBEAT_RT_CORE_E2E_DATA_ID, data, size, state);
@@ -80,21 +95,6 @@ moto_e2e_status_t platform_heartbeat_safety_e2e_check_timeout(moto_e2e_rx_state_
     return moto_e2e_check_timeout(state, PLATFORM_HEARTBEAT_SAFETY_E2E_TIMEOUT_MS, now_ms);
 }
 
-moto_e2e_status_t platform_heartbeat_io_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state)
-{
-    return moto_e2e_protect(PLATFORM_HEARTBEAT_IO_E2E_DATA_ID, data, size, state);
-}
-
-moto_e2e_status_t platform_heartbeat_io_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
-{
-    return moto_e2e_check(PLATFORM_HEARTBEAT_IO_E2E_DATA_ID, PLATFORM_HEARTBEAT_IO_E2E_MAX_DELTA_COUNTER, PLATFORM_HEARTBEAT_IO_E2E_TIMEOUT_MS, data, size, state, now_ms);
-}
-
-moto_e2e_status_t platform_heartbeat_io_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms)
-{
-    return moto_e2e_check_timeout(state, PLATFORM_HEARTBEAT_IO_E2E_TIMEOUT_MS, now_ms);
-}
-
 moto_e2e_status_t platform_heartbeat_conn_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state)
 {
     return moto_e2e_protect(PLATFORM_HEARTBEAT_CONN_E2E_DATA_ID, data, size, state);
@@ -123,4 +123,19 @@ moto_e2e_status_t platform_heartbeat_linux_e2e_check(const uint8_t *data, size_t
 moto_e2e_status_t platform_heartbeat_linux_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms)
 {
     return moto_e2e_check_timeout(state, PLATFORM_HEARTBEAT_LINUX_E2E_TIMEOUT_MS, now_ms);
+}
+
+moto_e2e_status_t platform_safety_request_e2e_protect(uint8_t *data, size_t size, moto_e2e_tx_state_t *state)
+{
+    return moto_e2e_protect(PLATFORM_SAFETY_REQUEST_E2E_DATA_ID, data, size, state);
+}
+
+moto_e2e_status_t platform_safety_request_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
+{
+    return moto_e2e_check(PLATFORM_SAFETY_REQUEST_E2E_DATA_ID, PLATFORM_SAFETY_REQUEST_E2E_MAX_DELTA_COUNTER, PLATFORM_SAFETY_REQUEST_E2E_TIMEOUT_MS, data, size, state, now_ms);
+}
+
+moto_e2e_status_t platform_safety_request_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms)
+{
+    return moto_e2e_check_timeout(state, PLATFORM_SAFETY_REQUEST_E2E_TIMEOUT_MS, now_ms);
 }

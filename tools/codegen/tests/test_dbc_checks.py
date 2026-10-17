@@ -31,7 +31,8 @@ def test_safety_node_never_receives_vehicle_speed(platform_text):
 
 def test_safety_node_receives_only_the_allow_list(platform_db):
     got = {m.name for m in platform_db.messages if "SAFETY" in m.receivers}
-    assert got == {"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"}
+    # SafetyRequest: D-072 item 4c, QM requests only, never a safety input.
+    assert got == {"EkfLean", "EkfFrictionMass", "HeartbeatRtCore", "SafetyRequest"}
 
 
 def test_missing_data_id_is_rejected(platform_text):
@@ -49,7 +50,7 @@ def test_e2e_layout_is_enforced(platform_text):
 
 
 def test_heartbeat_id_must_match_sender_node_id(platform_text):
-    text = platform_text.replace("BO_ 131 HeartbeatIo: 8 IO", "BO_ 131 HeartbeatIo: 8 CONN")
+    text = platform_text.replace("BO_ 132 HeartbeatConn: 8 CONN", "BO_ 132 HeartbeatConn: 8 LINUX")
     assert any("0x080 + NodeId" in e for e in errors_for(text))
 
 

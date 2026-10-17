@@ -15,6 +15,16 @@ moto_e2e_status_t platform_vehicle_speed_e2e_check_timeout(moto_e2e_rx_state_t *
     return moto_e2e_check_timeout(state, PLATFORM_VEHICLE_SPEED_E2E_TIMEOUT_MS, now_ms);
 }
 
+moto_e2e_status_t platform_safety_warning_status_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
+{
+    return moto_e2e_check(PLATFORM_SAFETY_WARNING_STATUS_E2E_DATA_ID, PLATFORM_SAFETY_WARNING_STATUS_E2E_MAX_DELTA_COUNTER, PLATFORM_SAFETY_WARNING_STATUS_E2E_TIMEOUT_MS, data, size, state, now_ms);
+}
+
+moto_e2e_status_t platform_safety_warning_status_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms)
+{
+    return moto_e2e_check_timeout(state, PLATFORM_SAFETY_WARNING_STATUS_E2E_TIMEOUT_MS, now_ms);
+}
+
 moto_e2e_status_t platform_heartbeat_rt_core_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms)
 {
     return moto_e2e_check(PLATFORM_HEARTBEAT_RT_CORE_E2E_DATA_ID, PLATFORM_HEARTBEAT_RT_CORE_E2E_MAX_DELTA_COUNTER, PLATFORM_HEARTBEAT_RT_CORE_E2E_TIMEOUT_MS, data, size, state, now_ms);

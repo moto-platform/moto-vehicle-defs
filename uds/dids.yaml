@@ -204,10 +204,6 @@ nodes:
     dids: []
     dtcs: []
     routines: []
-  IO:
-    dids: []
-    dtcs: []
-    routines: []
   CONN:
     dids: []
     dtcs: []

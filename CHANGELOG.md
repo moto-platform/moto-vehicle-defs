@@ -7,6 +7,20 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 ### Docs
 - D-072: one dual-core STM32H755 (NUCLEO-H755ZI-Q) replaces the H7 + G4 + G0 set; the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering, own IMU, blind spot, immobilizer, LED ring); io-node retired; resolves Q-019, Q-026, Q-003. D-073: helmet ESP32-S3 unit (visor HUD, microphone, voice), HUD warnings informational; Q-032. ARCHITECTURE, hardware-architecture (§5b.4a helmet unit), procurement list v2.0 (purchase waves with store links). `derived/cl250_derived.yaml`: header comment only. No signal, DID, DBC, VSS, BLE or `tester_policy` change; the `platform.dbc` IO node, 0x083 and the mailbox payloads follow in the next `/signal-change`.
 
+## [0.15.0] — 2026-10-18
+
+Breaking (0.x: breaking changes bump the minor; D-072 item 7, layout confirmed by the user). The platform bus follows the STM32H755 architecture. `tester_policy`, the D-020 golden copy, the frame gate, every vehicle DID, VSS path and BLE layout are unchanged; 0x020, 0x022, 0x021, 0x081, 0x082, 0x084, 0x085 and 0x110 keep their layouts and E2E DataIDs. Consumers: moto-hil-bench (restbus: drop 0x083, add 0x023/0x120), moto-rt-core (forwards 0x023/0x082 verbatim, sends 0x120; gen/c/rt_core changes, stays on its pin until it builds the mailbox), moto-safety-node (no code yet), moto-connectivity-node (receives 0x023 for the phone and the helmet HUD; gen/c/conn changes, bump when it uses it), moto-linux-node (DBC at runtime).
+
+### Removed
+- `dbc/platform.dbc`: node **IO** (node ID 3 stays unused) and **0x083 `HeartbeatIo`** (E2E DataID 0x1083 free); `uds/dids.yaml` node IO; codegen target `gen/c/io/` (moto-io-node is retired, D-072 item 6).
+
+### Added
+- **0x023 `SafetyWarningStatus`** (SAFETY → RT_CORE, CONN, LINUX; E2E, DataID 0x1023, 20 ms): `CORNERING_LEVEL` (GREEN, YELLOW, RED, UNAVAILABLE), `CORNERING_SOURCE` (EKF, OWN_IMU = DEGRADED, NONE; 3 reserved = NONE), `BSM_LEFT` / `BSM_RIGHT` (CLEAR, PRESENT, APPROACHING, UNAVAILABLE), `IMMOBILIZER_STATE` (UNLOCKED, LOCKED, AUTH_PENDING, FAULT). Written by the M4 into the mailbox, forwarded verbatim by rt-core. Informational for every receiver: a timeout or E2E error means no status, never GREEN or CLEAR.
+- **0x120 `SafetyRequest`** (RT_CORE → SAFETY; E2E for integrity, DataID 0x1120, 100 ms; QM, never a safety input): `IGNITION_STATE` (OFF, ON, UNKNOWN), `PARK_MODE` (INACTIVE, ACTIVE, UNKNOWN), `IMMOBILIZER_LOCK_REQUEST` (NONE, LOCK; reserved values = NONE; no unlock request). Missing, stale or invalid = no request, immobilizer unlocked (invariant 6). codegen `SAFETY_RX_ALLOWED` gains `SafetyRequest`.
+
+### Changed
+- `dbc/platform.dbc` comments: RT_CORE = STM32H755 Cortex-M7 and mailbox relay, SAFETY = Cortex-M4 safety partition, CONN = bike ESP32 (helmet unit BLE only, D-073); 0x020, 0x022, 0x081, 0x082 note the mailbox path. 0x081 no longer lists IO as a receiver.
+
 ## [0.14.0] — 2026-10-17
 
 MINOR (D-067, ISSUES E-17 (a); D-070 follow-up). Consumers: moto-server reads the corrected derived staleness from `moto_defs.vehicle_derived`; moto-rt-core gets 0xFD03 and the derived table changes in `gen/c/rt_core` but stays on its pin until it implements 0xFD03 with E-17 (a) and the D-068/D-069 tester rule (E-19). `tester_policy`, the D-020 golden copy, the frame gate, every DBC message, VSS path, BLE layout and polled DID are unchanged.

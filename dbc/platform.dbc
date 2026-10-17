@@ -15,7 +15,7 @@ NS_ :
 
 BS_:
 
-BU_: RT_CORE SAFETY IO CONN LINUX HIL_SIM TESTER
+BU_: RT_CORE SAFETY CONN LINUX HIL_SIM TESTER
 
 
 BO_ 32 EkfLean: 8 RT_CORE
@@ -42,21 +42,23 @@ BO_ 34 EkfFrictionMass: 8 RT_CORE
  SG_ TOTAL_MASS : 40|16@1+ (0.1,0) [0|1000] "kg" SAFETY,LINUX
  SG_ TOTAL_MASS_QUALITY : 56|8@1+ (1,0) [0|100] "%" SAFETY,LINUX
 
+BO_ 35 SafetyWarningStatus: 8 SAFETY
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE,CONN,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE,CONN,LINUX
+ SG_ CORNERING_LEVEL : 12|2@1+ (1,0) [0|3] "" RT_CORE,CONN,LINUX
+ SG_ CORNERING_SOURCE : 14|2@1+ (1,0) [0|3] "" RT_CORE,CONN,LINUX
+ SG_ BSM_LEFT : 16|2@1+ (1,0) [0|3] "" RT_CORE,CONN,LINUX
+ SG_ BSM_RIGHT : 18|2@1+ (1,0) [0|3] "" RT_CORE,CONN,LINUX
+ SG_ IMMOBILIZER_STATE : 20|2@1+ (1,0) [0|3] "" RT_CORE,CONN,LINUX
+
 BO_ 129 HeartbeatRtCore: 8 RT_CORE
- SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,IO,CONN,LINUX
- SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,IO,CONN,LINUX
- SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" SAFETY,IO,CONN,LINUX
- SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" SAFETY,IO,CONN,LINUX
- SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" SAFETY,IO,CONN,LINUX
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY,CONN,LINUX
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY,CONN,LINUX
+ SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" SAFETY,CONN,LINUX
+ SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" SAFETY,CONN,LINUX
+ SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" SAFETY,CONN,LINUX
 
 BO_ 130 HeartbeatSafety: 8 SAFETY
- SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
- SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
- SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
- SG_ ERROR_COUNT : 16|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
- SG_ UPTIME : 24|16@1+ (1,0) [0|65535] "s" RT_CORE,LINUX
-
-BO_ 131 HeartbeatIo: 8 IO
  SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" RT_CORE,LINUX
  SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
  SG_ NODE_MODE : 12|4@1+ (1,0) [0|15] "" RT_CORE,LINUX
@@ -88,16 +90,22 @@ BO_ 272 VehicleEngine: 8 RT_CORE
  SG_ THROTTLE_POS_VALID : 51|1@1+ (1,0) [0|1] "" CONN,LINUX
  SG_ ECU_PRESENT : 52|1@1+ (1,0) [0|1] "" CONN,LINUX
 
+BO_ 288 SafetyRequest: 8 RT_CORE
+ SG_ E2E_CRC : 0|8@1+ (1,0) [0|255] "" SAFETY
+ SG_ E2E_COUNTER : 8|4@1+ (1,0) [0|15] "" SAFETY
+ SG_ IGNITION_STATE : 12|2@1+ (1,0) [0|3] "" SAFETY
+ SG_ PARK_MODE : 14|2@1+ (1,0) [0|3] "" SAFETY
+ SG_ IMMOBILIZER_LOCK_REQUEST : 16|2@1+ (1,0) [0|3] "" SAFETY
+
 
 CM_ "moto-platform platform CAN bus (classic CAN 500 kbps, 11-bit IDs, D-009). ID plan and E2E scheme: docs/ARCHITECTURE.md section 4 and docs/e2e-profile.md. Only our own nodes are on this bus.";
-CM_ BU_ RT_CORE "STM32H7 domain controller; sole vehicle-bus tester, republishes vehicle signals (D-021).";
-CM_ BU_ SAFETY "STM32G4 cornering safety monitor.";
-CM_ BU_ IO "STM32G0 zone/I-O node (blind spot, immobilizer, power).";
-CM_ BU_ CONN "ESP32-S3 connectivity + audio node.";
+CM_ BU_ RT_CORE "STM32H755 Cortex-M7 domain controller (D-072); sole vehicle-bus tester, republishes vehicle signals (D-021). Owns both FDCANs: it passes 0x020, 0x022, 0x081 and 0x120 to the SAFETY partition through the E2E mailbox and forwards the partition's 0x023 and 0x082 to this bus verbatim, never re-signing them (D-072 item 4c).";
+CM_ BU_ SAFETY "STM32H755 Cortex-M4 safety partition (D-072): cornering decision with its own IMU, blind spot, immobilizer, LED ring and mirror LEDs. It has no CAN controller; its frames cross the inter-core mailbox and rt-core relays them. A frozen counter or a timeout on 0x023/0x082 means the partition (or the relay) stopped.";
+CM_ BU_ CONN "Bike ESP32-S3 connectivity + audio node; bridge to the phone and the helmet unit, which is BLE only and not on this bus (D-073).";
 CM_ BU_ LINUX "Raspberry Pi 5 HPC (Kuksa, kuksa-can-provider).";
 CM_ BU_ HIL_SIM "STM32F4 HIL restbus simulator; may impersonate any node on the bench.";
 CM_ BU_ TESTER "Development/diagnostic tester (host PC).";
-CM_ BO_ 32 "rt-core EKF lean (roll) angle estimate for the cornering decision (hardware-architecture 5b.2 Layer 2). Until the EKF has converged after a restart, rt-core sends LEAN_ANGLE_STATE=INVALID and QUALITY=0.";
+CM_ BO_ 32 "rt-core EKF lean (roll) angle estimate for the cornering decision (hardware-architecture 5b.2 Layer 2); reaches the safety partition through the mailbox (D-072 item 4c). Until the EKF has converged after a restart, rt-core sends LEAN_ANGLE_STATE=INVALID and QUALITY=0.";
 CM_ SG_ 32 LEAN_ANGLE_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, or INVALID. There is no safe default lean angle: rt-core sends INVALID instead (D-029); 2 is reserved and must be treated as INVALID.";
 CM_ SG_ 32 LEAN_ANGLE "Roll angle; positive = leaning right.";
 CM_ SG_ 32 LEAN_ANGLE_QUALITY "Estimator confidence; 0 = no confidence.";
@@ -105,22 +113,25 @@ CM_ BO_ 33 "Vehicle speed republished by rt-core from CL250 DID 0xF40D (D-021). 
 CM_ SG_ 33 VEHICLE_SPEED_VALID "1 = VEHICLE_SPEED holds an ECU sample younger than stale_after_ms of DID 0xF40D (uds/vehicle_cl250.yaml); 0 = no valid source value. E2E OK only proves the rt-core link is fresh; consumers that care about freshness also bound VEHICLE_SPEED_AGE.";
 CM_ SG_ 33 VEHICLE_SPEED "Range 0-255 km/h = the range of DID 0xF40D (one byte, formula A). The source resolution is 1 km/h; the 0.01 scale does not add precision today and leaves room for a finer fused speed later (Q-015).";
 CM_ SG_ 33 VEHICLE_SPEED_AGE "Age of the source sample when rt-core wrote this frame, counted from the send time of the oldest unanswered read of DID 0xF40D (D-051), so never younger than the ECU sample; nearest 10 ms, saturates at 2550 ms; an INVALID speed sends 2550 (D-056). It does not include the wait in the TX buffer (at most one write of rt-core): the worst case for a VALID frame at its consumer is stale_after_ms of DID 0xF40D + one cycle + one rt-core comms pass (about 351 ms).";
-CM_ BO_ 34 "rt-core EKF road friction and total mass estimates for the cornering decision (hardware-architecture 5b.2 Layer 2). Until the EKF has converged after a restart, rt-core sends *_STATE=INVALID and QUALITY=0.";
+CM_ BO_ 34 "rt-core EKF road friction and total mass estimates for the cornering decision (hardware-architecture 5b.2 Layer 2); reaches the safety partition through the mailbox (D-072 item 4c). Until the EKF has converged after a restart, rt-core sends *_STATE=INVALID and QUALITY=0.";
 CM_ SG_ 34 FRICTION_COEFF_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).";
 CM_ SG_ 34 TOTAL_MASS_STATE "Estimate state: ESTIMATED, CLAMPED to the physical range, DEFAULT fallback value, or INVALID. Consumers must never treat DEFAULT as ESTIMATED; the DEFAULT values are in limits/platform_limits.yaml (D-029).";
 CM_ SG_ 34 FRICTION_COEFF "Estimated tyre-road friction coefficient mu (dimensionless).";
 CM_ SG_ 34 TOTAL_MASS "Estimated total mass (vehicle + rider + load).";
-CM_ BO_ 129 "rt-core heartbeat (0x080 + node_id).";
-CM_ BO_ 130 "safety-node heartbeat (0x080 + node_id).";
-CM_ BO_ 131 "io-node heartbeat (0x080 + node_id).";
+CM_ BO_ 35 "Safety partition output status (D-072 item 4c): the cornering warning level and its source (D-041, D-042), both blind-spot sides (hardware-architecture 5b.1) and the immobilizer state. The M4 writes it into the mailbox; rt-core forwards it verbatim and stops when the slot is not updated. Informational for every receiver (logging, phone, helmet HUD, D-073): the safety outputs are the LED ring and mirror LEDs, driven by the partition itself. No receiver may show a safe state from it; a timeout or E2E error means no status is available, never GREEN or CLEAR.";
+CM_ SG_ 35 CORNERING_LEVEL "Level shown on the LED ring (D-041 item 1). UNAVAILABLE: no usable lean source (D-042 item 4), always with CORNERING_SOURCE = NONE.";
+CM_ SG_ 35 CORNERING_SOURCE "Lean source of the decision: EKF = rt-core 0x020/0x022 usable; OWN_IMU = the D-042 fallback, shown on the ring as DEGRADED; NONE = no usable source. 3 is reserved and must be treated as NONE.";
+CM_ SG_ 35 BSM_LEFT "Left blind-spot state (hardware-architecture 5b.1): CLEAR = no vehicle (mirror green), PRESENT = a vehicle on that side (solid red), APPROACHING = a vehicle approaching while signalling or changing lanes towards that side (blinking red), UNAVAILABLE = radar or decision not usable.";
+CM_ SG_ 35 BSM_RIGHT "Right blind-spot state; same values as BSM_LEFT.";
+CM_ SG_ 35 IMMOBILIZER_STATE "Starter-relay immobilizer (invariant 6): UNLOCKED = relay released, the engine can start (default); LOCKED = the starter-relay coil circuit is held open; AUTH_PENDING = a lock request or an authorization (NFC, PIN) is being decided, ending in UNLOCKED at the latest after the 10 s timeout; FAULT = immobilizer out of service with the relay released.";
+CM_ BO_ 129 "rt-core heartbeat (0x080 + node_id). The safety partition receives it through the mailbox (D-042 item 3, D-072 item 4c).";
+CM_ BO_ 130 "Safety partition heartbeat (0x080 + node_id), written by the M4 into the mailbox and forwarded verbatim by rt-core (D-072 item 4c).";
 CM_ BO_ 132 "connectivity-node heartbeat (0x080 + node_id).";
 CM_ BO_ 133 "linux-node heartbeat (0x080 + node_id).";
 CM_ SG_ 129 ERROR_COUNT "Faults detected since boot; saturates at 255.";
 CM_ SG_ 129 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
 CM_ SG_ 130 ERROR_COUNT "Faults detected since boot; saturates at 255.";
 CM_ SG_ 130 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
-CM_ SG_ 131 ERROR_COUNT "Faults detected since boot; saturates at 255.";
-CM_ SG_ 131 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
 CM_ SG_ 132 ERROR_COUNT "Faults detected since boot; saturates at 255.";
 CM_ SG_ 132 UPTIME "Seconds since boot; saturates at 65535. A decrease means the node restarted.";
 CM_ SG_ 133 ERROR_COUNT "Faults detected since boot; saturates at 255.";
@@ -131,6 +142,10 @@ CM_ SG_ 272 BATTERY_VOLTAGE "From DID 0xF442, (A*256+B)/1000.";
 CM_ SG_ 272 COOLANT_TEMP "From DID 0xF405, A-40.";
 CM_ SG_ 272 THROTTLE_POS "From DID 0xF411, A*100/255 (raw byte carried unchanged).";
 CM_ SG_ 272 ECU_PRESENT "1 = the ECU answered any UDS request within the ECU-absent timeout.";
+CM_ BO_ 288 "QM requests from rt-core to the safety partition (D-072 item 4c), passed through the mailbox. E2E protects integrity only: none of these values is a safety input, and the partition applies its own authorization and invariant 6. A missing, stale or invalid frame means no request and leaves the immobilizer unlocked.";
+CM_ SG_ 288 IGNITION_STATE "Ignition (key) state seen by rt-core power management; UNKNOWN until measured. 2 is reserved and must be treated as UNKNOWN.";
+CM_ SG_ 288 PARK_MODE "rt-core park mode (wake-on-motion watch, D-072 item 2); UNKNOWN until known. 2 is reserved and must be treated as UNKNOWN.";
+CM_ SG_ 288 IMMOBILIZER_LOCK_REQUEST "LOCK = the phone or park mode asks the partition to lock the starter relay; it is only a request. 2 and 3 are reserved and must be treated as NONE. There is no unlock request: unlocking is the partition's own decision (NFC, PIN, timeout).";
 BA_DEF_ BU_ "NodeId" INT 0 15;
 BA_DEF_ BO_ "GenMsgCycleTime" INT 0 10000;
 BA_DEF_ BO_ "E2E_Protected" ENUM "No","Yes";
@@ -141,7 +156,6 @@ BA_DEF_DEF_ "E2E_Protected" "No";
 BA_DEF_DEF_ "E2E_DataID" 0;
 BA_ "NodeId" BU_ RT_CORE 1;
 BA_ "NodeId" BU_ SAFETY 2;
-BA_ "NodeId" BU_ IO 3;
 BA_ "NodeId" BU_ CONN 4;
 BA_ "NodeId" BU_ LINUX 5;
 BA_ "NodeId" BU_ HIL_SIM 14;
@@ -155,15 +169,15 @@ BA_ "E2E_DataID" BO_ 33 4129;
 BA_ "GenMsgCycleTime" BO_ 34 100;
 BA_ "E2E_Protected" BO_ 34 1;
 BA_ "E2E_DataID" BO_ 34 4130;
+BA_ "GenMsgCycleTime" BO_ 35 20;
+BA_ "E2E_Protected" BO_ 35 1;
+BA_ "E2E_DataID" BO_ 35 4131;
 BA_ "GenMsgCycleTime" BO_ 129 100;
 BA_ "E2E_Protected" BO_ 129 1;
 BA_ "E2E_DataID" BO_ 129 4225;
 BA_ "GenMsgCycleTime" BO_ 130 100;
 BA_ "E2E_Protected" BO_ 130 1;
 BA_ "E2E_DataID" BO_ 130 4226;
-BA_ "GenMsgCycleTime" BO_ 131 100;
-BA_ "E2E_Protected" BO_ 131 1;
-BA_ "E2E_DataID" BO_ 131 4227;
 BA_ "GenMsgCycleTime" BO_ 132 100;
 BA_ "E2E_Protected" BO_ 132 1;
 BA_ "E2E_DataID" BO_ 132 4228;
@@ -171,13 +185,20 @@ BA_ "GenMsgCycleTime" BO_ 133 100;
 BA_ "E2E_Protected" BO_ 133 1;
 BA_ "E2E_DataID" BO_ 133 4229;
 BA_ "GenMsgCycleTime" BO_ 272 50;
+BA_ "GenMsgCycleTime" BO_ 288 100;
+BA_ "E2E_Protected" BO_ 288 1;
+BA_ "E2E_DataID" BO_ 288 4384;
 VAL_ 32 LEAN_ANGLE_STATE 0 "ESTIMATED" 1 "CLAMPED" 2 "RESERVED" 3 "INVALID" ;
 VAL_ 33 VEHICLE_SPEED_VALID 0 "INVALID" 1 "VALID" ;
 VAL_ 34 FRICTION_COEFF_STATE 0 "ESTIMATED" 1 "CLAMPED" 2 "DEFAULT" 3 "INVALID" ;
 VAL_ 34 TOTAL_MASS_STATE 0 "ESTIMATED" 1 "CLAMPED" 2 "DEFAULT" 3 "INVALID" ;
+VAL_ 35 CORNERING_LEVEL 0 "GREEN" 1 "YELLOW" 2 "RED" 3 "UNAVAILABLE" ;
+VAL_ 35 CORNERING_SOURCE 0 "EKF" 1 "OWN_IMU" 2 "NONE" 3 "RESERVED" ;
+VAL_ 35 BSM_LEFT 0 "CLEAR" 1 "PRESENT" 2 "APPROACHING" 3 "UNAVAILABLE" ;
+VAL_ 35 BSM_RIGHT 0 "CLEAR" 1 "PRESENT" 2 "APPROACHING" 3 "UNAVAILABLE" ;
+VAL_ 35 IMMOBILIZER_STATE 0 "UNLOCKED" 1 "LOCKED" 2 "AUTH_PENDING" 3 "FAULT" ;
 VAL_ 129 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
 VAL_ 130 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
-VAL_ 131 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
 VAL_ 132 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
 VAL_ 133 NODE_MODE 0 "INIT" 1 "NORMAL" 2 "DEGRADED" 3 "SAFE_STATE" 4 "BOOTLOADER" 5 "DIAGNOSTIC" ;
 VAL_ 272 ENGINE_SPEED_VALID 0 "INVALID" 1 "VALID" ;
@@ -185,3 +206,6 @@ VAL_ 272 BATTERY_VOLTAGE_VALID 0 "INVALID" 1 "VALID" ;
 VAL_ 272 COOLANT_TEMP_VALID 0 "INVALID" 1 "VALID" ;
 VAL_ 272 THROTTLE_POS_VALID 0 "INVALID" 1 "VALID" ;
 VAL_ 272 ECU_PRESENT 0 "ABSENT" 1 "PRESENT" ;
+VAL_ 288 IGNITION_STATE 0 "OFF" 1 "ON" 2 "RESERVED" 3 "UNKNOWN" ;
+VAL_ 288 PARK_MODE 0 "INACTIVE" 1 "ACTIVE" 2 "RESERVED" 3 "UNKNOWN" ;
+VAL_ 288 IMMOBILIZER_LOCK_REQUEST 0 "NONE" 1 "LOCK" 2 "RESERVED" 3 "RESERVED" ;
