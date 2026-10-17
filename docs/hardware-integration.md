@@ -9,7 +9,7 @@
 - **No on-vehicle storage:** conn keeps no local copy. Data lost while the phone is disconnected is accepted, and the server report shows the gaps (D-045). Persistent logging (microSD, safe shutdown) is rt-core's job later, so the Phase 0 plan's microSD and supercapacitor items are not part of this build.
 - **IMU:** an MPU-6050-class IMU on the same ESP32 at 100 Hz, streamed over BLE. It is for offline analysis only: it is not a vehicle signal, not a safety input, and no lean is estimated from it (D-032, D-044).
 - **Display:** the phone (`moto-mobile`) is the only live telemetry view in this build. The Nextion stays unconnected for now (user, 2026-10-11) and comes back in a later prototype; `NextionModule` with nothing on UART2 is harmless.
-- **Not in this build:** rt-core (H7, Q-019), the platform bus, safety-node, io-node, Raspi, the Nextion (for now). GPS joins it per D-060 (see §9).
+- **Not in this build:** rt-core (STM32H755 M7, D-072), the platform bus, the M4 safety partition (io-node retired, D-072), Raspi, the Nextion (for now). GPS joins it per D-060 (see §9).
 
 ```
  CL250 DLC ──Y-cable (CANH, CANL, GND; < 50 cm, twisted)──┐
@@ -266,4 +266,4 @@ Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 
 
 ## 11. Later: moving to rt-core
 
-When the H7 board exists (Q-019), rt-core becomes the tester (D-021). conn is then built with `-e esp32-s3-devkitc-1-no-tester` (no TWAI driver at all), so there are never two testers. rt-core needs two transceivers (vehicle FDCAN1, platform FDCAN2, A-5), takes over microSD logging (D-045) and republishes the vehicle signals on the platform bus (D-056).
+When the NUCLEO-H755ZI-Q exists (D-072, Q-019 resolved), rt-core on its Cortex-M7 becomes the tester (D-021). conn is then built with `-e esp32-s3-devkitc-1-no-tester` (no TWAI driver at all), so there are never two testers. rt-core needs two transceivers (vehicle FDCAN1, platform FDCAN2, A-5), takes over microSD logging (D-045) and republishes the vehicle signals on the platform bus (D-056).

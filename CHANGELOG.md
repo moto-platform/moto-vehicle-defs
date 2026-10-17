@@ -2,6 +2,11 @@
 
 All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/signal = MINOR, changed or removed message/signal/ID/layout/scale = MAJOR, comment-only = PATCH. Consumers pin a tag; nothing updates automatically.
 
+## [Unreleased]
+
+### Docs
+- D-072: one dual-core STM32H755 (NUCLEO-H755ZI-Q) replaces the H7 + G4 + G0 set; the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering, own IMU, blind spot, immobilizer, LED ring); io-node retired; resolves Q-019, Q-026, Q-003. D-073: helmet ESP32-S3 unit (visor HUD, microphone, voice), HUD warnings informational; Q-032. ARCHITECTURE, hardware-architecture (§5b.4a helmet unit), procurement list v2.0 (purchase waves with store links). `derived/cl250_derived.yaml`: header comment only. No signal, DID, DBC, VSS, BLE or `tester_policy` change; the `platform.dbc` IO node, 0x083 and the mailbox payloads follow in the next `/signal-change`.
+
 ## [0.14.0] — 2026-10-17
 
 MINOR (D-067, ISSUES E-17 (a); D-070 follow-up). Consumers: moto-server reads the corrected derived staleness from `moto_defs.vehicle_derived`; moto-rt-core gets 0xFD03 and the derived table changes in `gen/c/rt_core` but stays on its pin until it implements 0xFD03 with E-17 (a) and the D-068/D-069 tester rule (E-19). `tester_policy`, the D-020 golden copy, the frame gate, every DBC message, VSS path, BLE layout and polled DID are unchanged.
