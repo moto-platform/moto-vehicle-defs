@@ -4,6 +4,7 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Docs
 - D-075 (provisional, user: "use changeable, standard-accepted values for now"): the D-068 stop state and the D-069 engine-start flag belong to a stop epoch that only the tester start and an ECU-lost re-confirmation open; an NRC 0x7E/0x7F re-confirmation keeps the stops and the tier rate, and 0x7E/0x7F on a never-answered unverified DID counts toward its stop like 0x31 (rt-core#33 MAJOR-2); the D-068 item 1 bounds are single-fault-class bounds, `stale_after_ms` covers the combined fault; the N_Bs hold stays. Provisional answers to Q-033 (own M4 indicator input, 1.5 s hold from UN ECE R6/R48), Q-029 (yes) and Q-023 items 1-4. No signal, DID, `tester_policy` or frame-gate change.
 - Q-034: enclosure and IMU placement on the CL250 for the H755 build; `hardware-integration.md` §4.1 compares the engine area, the E-Clutch spot and the rear subframe (recommended, with rules for the longer runs) and lists the measurements to take.
 - D-075 item 1 amended (provisional, safety-reviewer on rt-core#38): a counted 0x7E/0x7F refusal re-requests the session at once (no 2 s blackout of the verified DIDs), the engine-start "valid 0 seen" state survives a re-confirmation, the two-re-request bound is stated outside the quiet window, and the tester keeps a per-DID stop reason. No signal, DID, `tester_policy` or frame-gate change.
