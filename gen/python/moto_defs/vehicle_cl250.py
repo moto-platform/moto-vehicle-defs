@@ -39,6 +39,14 @@ DISCOVERY_SCAN = (
     ("DID_F4C1_F4E0", bytes([0x22, 0xF4, 0xC0]), True, "DID_F4A1_F4C0", 0xC0),
     ("DID_F4E1_F4FF", bytes([0x22, 0xF4, 0xE0]), True, "DID_F4C1_F4E0", 0xE0),
 )
+# D-080 (provisional): freeze-frame read of a DTC, only when a DTC is present.
+# 0x19 0x01 mask (count); if > 0 0x19 0x02 mask (list); per DTC, at most
+# DTC_MAX_PER_RUN: 0x19 0x04 <DTC> DTC_SNAPSHOT_RECORD, 0x19 0x06 <DTC>
+# DTC_EXT_DATA_RECORD (0xFF = all records).
+DTC_STATUS_MASK = 0x0C
+DTC_MAX_PER_RUN = 8
+DTC_SNAPSHOT_RECORD = 0xFF
+DTC_EXT_DATA_RECORD = 0xFF
 # Q-021/D-040: watch-only functional request IDs (id, extended); never sent
 FUNCTIONAL_WATCH_IDS = ((0x7DF, False), (0x18DB33F1, True),)
 SESSION_REQUEST = bytes([0x10, 0x03])

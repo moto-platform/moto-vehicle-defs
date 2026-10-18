@@ -38,6 +38,8 @@ tester_present_subfunctions:
 read_dtc_subfunctions:
   - {id: 0x01, name: REPORT_NUMBER_OF_DTC_BY_STATUS_MASK}
   - {id: 0x02, name: REPORT_DTC_BY_STATUS_MASK}
+  - {id: 0x04, name: REPORT_DTC_SNAPSHOT_RECORD_BY_DTC_NUMBER}
+  - {id: 0x06, name: REPORT_DTC_EXT_DATA_RECORD_BY_DTC_NUMBER}
   - {id: 0x0A, name: REPORT_SUPPORTED_DTC}
 
 # DTCFormatIdentifier in the 0x19 0x01 response (clause 12.3):

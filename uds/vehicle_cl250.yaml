@@ -156,6 +156,29 @@ discovery_scan:
     - {name: DID_F4C1_F4E0, request: [0x22, 0xF4, 0xC0], bitmap: true, after: {name: DID_F4A1_F4C0, id: 0xC0}}
     - {name: DID_F4E1_F4FF, request: [0x22, 0xF4, 0xE0], bitmap: true, after: {name: DID_F4C1_F4E0, id: 0xE0}}
 
+# D-080 (PROVISIONAL values, not measured): read the freeze frame of a DTC only when a
+# DTC is present, never as a poll. Sequence, one request in flight, each a padded
+# Single Frame through the frame gate (0x19 is already in tester_policy, so nothing is
+# widened):
+#   1. 0x19 0x01 <status_mask>              count of DTCs matching the mask
+#   2. if the count > 0: 0x19 0x02 <status_mask>   the list (3-byte DTC + status each)
+#   3. per listed DTC, at most max_dtcs_per_run per run:
+#      0x19 0x04 <DTC 3 bytes> <snapshot_record>    snapshot (freeze frame) data
+#      0x19 0x06 <DTC 3 bytes> <ext_data_record>    extended data
+# - status_mask: 0x0C = PENDING_DTC | CONFIRMED_DTC (ISO 14229-1 Annex D.2).
+# - snapshot_record, ext_data_record: 0xFF = all records of the DTC (clause 12.3).
+# codegen checks the mask against iso14229.yaml dtc_status_bits, max_dtcs_per_run in
+# 1..8, and that all four requests pass tester_policy and the frame gate; they are
+# generated as VEHICLE_CL250_DTC_* macros (C) and DTC_* constants (Python), constants
+# only: the client that sends them and parses the answers is rt-core's (safety-reviewer).
+dtc_snapshot:
+  decision: D-080
+  provisional: true
+  status_mask: 0x0C
+  max_dtcs_per_run: 8
+  snapshot_record: 0xFF
+  ext_data_record: 0xFF
+
 session:
   start:
     request: [0x10, 0x03]            # UDS payload (without ISO-TP PCI)
