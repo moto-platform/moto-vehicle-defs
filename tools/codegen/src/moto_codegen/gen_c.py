@@ -140,6 +140,9 @@ def generate_platform_c(db: Database, target: config.CTarget) -> dict[str, str]:
 # RESERVED is not defined: a sender never emits it, a receiver still treats it as the
 # documented fallback. One exit, no loops, no recursion, no dynamic memory.
 _RESERVED_NAME = "RESERVED"
+# Any other spelling of a reserved entry (Reserved, RESERVED_1, RSVD, RES) would silently
+# count as defined, so codegen refuses it: the name must be exactly RESERVED.
+_RESERVED_LIKE = re.compile(r"^(rsvd|res(erved)?)([^a-z]|$)", re.IGNORECASE)
 
 
 def _enum_signals(msg: Message) -> list[Signal]:
@@ -148,6 +151,38 @@ def _enum_signals(msg: Message) -> list[Signal]:
 
 def _defined_values(sig: Signal) -> list[int]:
     return sorted(int(v) for v, name in sig.choices.items() if str(name) != _RESERVED_NAME)
+
+
+def _raw_bounds(sig: Signal) -> tuple[int, int]:
+    """Raw range of the signal's bit field."""
+    if sig.is_signed:
+        return -(1 << (sig.length - 1)), (1 << (sig.length - 1)) - 1
+    return 0, (1 << sig.length) - 1
+
+
+def _validate_signal(msg: Message, sig: Signal) -> None:
+    """Refuse a DBC that would make the checked pack's two checks disagree silently."""
+    where = f"{msg.name}.{sig.name}"
+    lo, hi = _raw_bounds(sig)
+    raw_min, raw_max = lo, hi
+    if sig.minimum is not None and sig.maximum is not None:
+        raw_min = round(sig.conversion.scaled_to_raw(sig.minimum))
+        raw_max = round(sig.conversion.scaled_to_raw(sig.maximum))
+        if raw_min < lo or raw_max > hi:
+            raise ValueError(
+                f"{where}: raw [min|max] {raw_min}..{raw_max} is outside the "
+                f"{sig.length}-bit field {lo}..{hi}"
+            )
+    for value, name in (sig.choices or {}).items():
+        if not raw_min <= int(value) <= raw_max:
+            raise ValueError(
+                f"{where}: value-table key {value} is outside raw [{raw_min}|{raw_max}]"
+            )
+        if str(name) != _RESERVED_NAME and _RESERVED_LIKE.match(str(name)):
+            raise ValueError(
+                f"{where}: value-table name {str(name)!r} looks reserved; spell it exactly "
+                f"{_RESERVED_NAME!r} or rename it"
+            )
 
 
 def _c_literal(sig: Signal, value: int) -> str:
@@ -168,6 +203,7 @@ def _checked_pack(header: str, source: str, messages: list[Message]) -> tuple[st
         base = f"platform_{camel_to_snake_case(msg.name)}"
         checks = []
         for sig in msg.signals:
+            _validate_signal(msg, sig)
             member = camel_to_snake_case(sig.name)
             ctype = _c_type(sig)
             checks.append(f"{base}_{member}_is_in_range(src_p->{member})")
@@ -205,6 +241,13 @@ def _checked_pack(header: str, source: str, messages: list[Message]) -> tuple[st
             " * its is_in_range() check and every enum signal holds a defined value (the plain\n"
             " * pack masks a value into its bit field). E2E CRC and counter are checked for\n"
             " * range only; they are the E2E wrapper's job.\n"
+            " *\n"
+            " * Every signal is checked on its own. Rules across fields (e.g. 0x023\n"
+            " * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.\n"
+            " *\n"
+            " * On a negative return dst_p is unchanged and must not be E2E-protected or\n"
+            " * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =\n"
+            " * INVALID, 0x023 all raw 0) or nothing.\n"
             " *\n"
             " * @param[out] dst_p Buffer to pack the message into.\n"
             " * @param[in] src_p Data to pack.\n"

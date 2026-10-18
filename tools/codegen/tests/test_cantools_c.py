@@ -18,6 +18,7 @@ import pytest
 from cantools.database.can import Message, Signal
 from cantools.database.can.c_source import camel_to_snake_case, generate
 from conftest import parse_dbc
+from test_c_code import RxState, TxState
 
 from moto_codegen import config, gen_c
 
@@ -301,17 +302,38 @@ def _defined(sig: Signal) -> set[int]:
     return {int(v) for v, name in (sig.choices or {}).items() if str(name) != "RESERVED"}
 
 
-def _checked_pack(cm: CMessage, raw: dict[str, int], size: int = 16) -> tuple[int, bytes]:
-    buf = ctypes.create_string_buffer(b"\xa5" * 16, 16)
+SENTINELS = (b"\xa5" * 16, b"\x5a" * 16)
+
+
+def _checked_pack(
+    cm: CMessage, raw: dict[str, int], size: int = 16, fill: bytes = SENTINELS[0]
+) -> tuple[int, bytes]:
+    buf = ctypes.create_string_buffer(fill, 16)
     return cm.pack_checked(buf, ctypes.byref(cm.struct(**raw)), size), buf.raw
+
+
+def _untouched(cm: CMessage, raw: dict[str, int], size: int = 16) -> bool:
+    """Negative return and the buffer unchanged, with two different sentinel fills."""
+    for fill in SENTINELS:
+        rc, buf = _checked_pack(cm, raw, size, fill)
+        if rc >= 0 or buf != fill:
+            return False
+    return True
+
+
+def _c_range(ctype: Any) -> range:
+    """Every value of the member's C type (the struct member is wider than the bit field)."""
+    bits = 8 * ctypes.sizeof(ctype)
+    signed = ctype(-1).value < 0
+    return range(-(1 << (bits - 1)), 1 << (bits - 1)) if signed else range(1 << bits)
 
 
 def check_pack_checked(cm: CMessage, rng: random.Random) -> None:
     enums = {m: s for m, s in cm.signals.items() if s.choices}
     assert set(cm.is_defined) == set(enums)
+    ctypes_of = dict(cm.struct._fields_)
     for member, sig in enums.items():  # is_defined() is the value table minus RESERVED
-        lo, hi = _raw_range(sig)
-        for v in range(lo, min(hi, 300) + 1):
+        for v in _c_range(ctypes_of[member]):  # the whole C type, not just the bit field
             assert bool(cm.is_defined[member](v)) == (v in _defined(sig)), (cm.msg.name, member, v)
     base = {
         m: min(_defined(s)) if m in enums else next(v for v in _boundaries(s) if cm.in_range[m](v))
@@ -328,22 +350,33 @@ def check_pack_checked(cm: CMessage, rng: random.Random) -> None:
                 raw[m] = base[m]
         rc, buf = _checked_pack(cm, raw)
         assert rc == cm.msg.length and buf[: cm.msg.length] == _c_pack(cm, raw)
+    refused_by_defined_only = 0
     for member, sig in cm.signals.items():  # one bad member: error, buffer untouched
+        full = _c_range(ctypes_of[member])  # e.g. a 1-bit VALID at 2 and 3 (3 would mask to 1)
         lo, hi = _raw_range(sig)
-        for v in range(lo, hi + 1) if hi - lo < 300 else [lo, hi, hi - 1]:
-            ok = bool(cm.in_range[member](v)) and (member not in enums or v in _defined(sig))
-            rc, buf = _checked_pack(cm, {**base, member: v})
+        values = list(full) if len(full) <= 256 else [lo - 1, lo, hi, hi + 1, full[0], full[-1]]
+        for v in values:
+            if v not in full:
+                continue
+            in_rng = bool(cm.in_range[member](v))
+            ok = in_rng and (member not in enums or v in _defined(sig))
             if ok:
-                assert rc == cm.msg.length, (cm.msg.name, member, v)
+                assert _checked_pack(cm, {**base, member: v})[0] == cm.msg.length, (member, v)
             else:
-                assert rc < 0 and buf == b"\xa5" * 16, (cm.msg.name, member, v)
+                assert _untouched(cm, {**base, member: v}), (cm.msg.name, member, v)
+                refused_by_defined_only += in_rng
+    cm_refused_by_defined_only[cm.msg.name] = refused_by_defined_only
     for size in range(cm.msg.length):  # too small: error, untouched
-        rc, buf = _checked_pack(cm, base, size)
-        assert rc < 0 and buf == b"\xa5" * 16
-    buf = ctypes.create_string_buffer(b"\xa5" * 16, 16)
-    assert cm.pack_checked(None, ctypes.byref(cm.struct(**base)), 16) < 0
-    assert cm.pack_checked(buf, None, 16) < 0
-    assert buf.raw == b"\xa5" * 16
+        assert _untouched(cm, base, size)
+    for fill in SENTINELS:
+        buf = ctypes.create_string_buffer(fill, 16)
+        assert cm.pack_checked(None, ctypes.byref(cm.struct(**base)), 16) < 0
+        assert cm.pack_checked(buf, None, 16) < 0
+        assert buf.raw == fill
+
+
+# message -> number of (member, value) pairs that is_in_range() accepts but is_defined() refuses
+cm_refused_by_defined_only: dict[str, int] = {}
 
 
 @pytest.mark.parametrize("target", config.C_TARGETS, ids=lambda t: t.directory)
@@ -367,6 +400,10 @@ def test_node_cantools_code_matches_cantools_python(target, platform_db, tmp_pat
     assert {n for n, cm in by_name.items() if cm.pack_checked} == with_enum
     for name in sorted(with_enum):
         check_pack_checked(by_name[name], rng)
+    if target.directory == "hil_sim":  # is_defined (not is_in_range) is what refuses these
+        assert cm_refused_by_defined_only["HeartbeatSafety"] > 0  # NODE_MODE [0|15] vs 0..5
+        assert cm_refused_by_defined_only["EkfLean"] > 0  # LEAN_ANGLE_STATE RESERVED = 2
+        assert cm_refused_by_defined_only["SafetyRequest"] > 0  # RESERVED lock requests
 
 
 # Every pattern _MISRA_FIXUPS rewrites: memset (pack), the one-line NULL guard (init),
@@ -470,19 +507,28 @@ def test_safety_warning_status_checked_pack(platform_db, tmp_path):
     assert rc == cm.msg.length and buf[:8] == plain_zero
     for level in (1, 2, 3):
         assert _packed(cm, cornering_level=level)[0] == 8
-    for member, last in (("bsm_left", 3), ("bsm_right", 3), ("immobilizer_state", 4)):
+    for member, last in (
+        ("bsm_left", 3),
+        ("bsm_right", 3),
+        ("immobilizer_state", 4),
+    ):  # all defined
         for v in range(last + 1):
             assert _packed(cm, **{member: v})[0] == 8
-    for member, bad in (
-        ("cornering_source", 3),  # RESERVED
+    # cornering_source 3 is accepted by is_in_range() and refused by is_defined() alone (RESERVED)
+    assert cm.in_range["cornering_source"](3) and not cm.is_defined["cornering_source"](3)
+    assert _packed(cm, cornering_source=3)[0] < 0
+    for member, bad in (  # refused by is_in_range() (DBC max) or by the 2/3-bit field width
         ("cornering_level", 4),
-        ("immobilizer_state", 5),
+        ("immobilizer_state", 5),  # DBC [0|4]
         ("immobilizer_state", 7),
         ("bsm_left", 4),
         ("bsm_right", 255),
     ):
-        rc, buf = _packed(cm, **{member: bad})
-        assert rc < 0 and buf == b"\xa5" * 16, (member, bad)
+        assert not cm.in_range[member](bad), (member, bad)
+        assert _packed(cm, **{member: bad})[0] < 0, (member, bad)
+    # Each signal is checked alone: these cross-field combinations are accepted (MINOR-4).
+    assert _packed(cm, cornering_level=2, cornering_source=0)[0] == 8
+    assert _packed(cm, cornering_level=0, cornering_source=1)[0] == 8
 
 
 def test_safety_request_checked_pack(platform_db, tmp_path):
@@ -495,11 +541,107 @@ def test_safety_request_checked_pack(platform_db, tmp_path):
                          "ignition_state": 1, "park_mode": 2})  # fmt: skip
     assert rc == 8 and buf[:8] == plain
     for member, bad in (
-        ("immobilizer_lock_request", 1),
+        ("immobilizer_lock_request", 1),  # RESERVED: in range, not defined
         ("immobilizer_lock_request", 2),
         ("ignition_state", 3),
         ("park_mode", 3),
         ("ignition_state", 200),
     ):
-        rc, buf = _packed(cm, **{member: bad})
-        assert rc < 0 and buf == b"\xa5" * 16, (member, bad)
+        assert _untouched(cm, {**dict.fromkeys(cm.signals, 0), member: bad}), (member, bad)
+
+
+SYNTHETIC_CHECKED = """VERSION ""
+
+NS_ :
+
+BS_:
+
+BU_: TX RX
+
+BO_ 256 M: 8 TX
+ SG_ A : 0|2@1+ (1,0) [{rng}] "" RX
+
+VAL_ 256 A {values} ;
+"""
+
+
+def _synthetic_checked(rng: str, values: str):
+    db = parse_dbc(SYNTHETIC_CHECKED.format(rng=rng, values=values))
+    msg = db.messages[0]
+    return gen_c._checked_pack("\n#ifdef __cplusplus\n}\n#endif\n", "", [msg])
+
+
+def test_checked_pack_accepts_a_consistent_synthetic_dbc():
+    header, source = _synthetic_checked("0|3", '0 "NONE" 1 "ON" 3 "RESERVED"')
+    assert "platform_m_a_is_defined" in header and "(value == 0u) || (value == 1u)" in source
+
+
+@pytest.mark.parametrize(
+    ("rng", "values", "message"),
+    [
+        ("0|5", '0 "NONE" 1 "ON"', "outside the 2-bit field"),  # raw max beyond the bit field
+        ("0|3", '0 "NONE" 4 "ON"', "outside raw"),  # key beyond the bit field and the range
+        ("0|2", '0 "NONE" 3 "ON"', "outside raw"),  # key beyond [min|max]
+        ("0|3", '0 "NONE" 1 "Reserved"', "looks reserved"),
+        ("0|3", '0 "NONE" 1 "RESERVED_1"', "looks reserved"),
+        ("0|3", '0 "NONE" 1 "RSVD"', "looks reserved"),
+        ("0|3", '0 "NONE" 1 "RES"', "looks reserved"),
+    ],
+)
+def test_checked_pack_refuses_an_inconsistent_synthetic_dbc(rng, values, message):
+    with pytest.raises(ValueError, match=message):
+        _synthetic_checked(rng, values)
+
+
+def test_checked_pack_accepts_names_that_only_start_like_reserved():
+    _synthetic_checked("0|3", '0 "NONE" 1 "RESET" 2 "RESUME"')
+
+
+def test_checked_pack_round_trips_through_e2e(platform_db, tmp_path):
+    """pack_checked -> *_e2e_protect -> receiver *_e2e_check = OK, for every E2E message."""
+    d = C_DIR / "hil_sim"
+    so = _build([d / "platform.c", d / "platform_e2e.c", d / "moto_e2e.c"], tmp_path / "libe2e.so")
+    header = (d / "platform.h").read_text()
+    api = {cm.msg.name: cm for cm in load_api(so, header, "platform", platform_db).values()}
+    e2e_header = (d / "platform_e2e.h").read_text()
+    names = re.findall(r"^moto_e2e_status_t platform_(\w+)_e2e_protect\(", e2e_header, re.M)
+    assert names
+    ok_status = 0
+    so.moto_e2e_tx_init.argtypes = [ctypes.POINTER(TxState)]
+    so.moto_e2e_rx_init.argtypes = [ctypes.POINTER(RxState)]
+    by_snake = {camel_to_snake_case(n): cm for n, cm in api.items()}
+    for snake in names:
+        cm = by_snake[snake]
+        protect = getattr(so, f"platform_{snake}_e2e_protect")
+        check = getattr(so, f"platform_{snake}_e2e_check")
+        protect.argtypes = [ctypes.c_char_p, ctypes.c_size_t, ctypes.POINTER(TxState)]
+        check.argtypes = [
+            ctypes.c_char_p,
+            ctypes.c_size_t,
+            ctypes.POINTER(RxState),
+            ctypes.c_uint32,
+        ]
+        tx, rx = TxState(), RxState()
+        so.moto_e2e_tx_init(ctypes.byref(tx))
+        so.moto_e2e_rx_init(ctypes.byref(rx))
+        raw = {
+            m: min(_defined(s))
+            if s.choices
+            else next(v for v in _boundaries(s) if cm.in_range[m](v))
+            for m, s in cm.signals.items()
+        }
+        if "cornering_level" in raw:  # 0x023: the CORNERING fields must survive protect
+            raw.update(cornering_level=3, cornering_source=2)
+        statuses = []
+        for step in range(3):
+            buf = ctypes.create_string_buffer(16)
+            pack = cm.pack_checked or cm.pack
+            assert pack(buf, ctypes.byref(cm.struct(**raw)), 16) == cm.msg.length
+            before = bytes(buf.raw[: cm.msg.length])
+            assert protect(buf, cm.msg.length, ctypes.byref(tx)) == ok_status
+            frame = bytes(buf.raw[: cm.msg.length])
+            if "cornering_level" in raw:
+                assert frame[1] >> 4 == 3 | (2 << 2)  # LEVEL bits 4-5, SOURCE bits 6-7
+            assert frame[2:] == before[2:]  # only CRC and counter change
+            statuses.append(check(frame, cm.msg.length, ctypes.byref(rx), 100 + step * 10))
+        assert statuses[0] == 2 and statuses[1:] == [ok_status, ok_status], (snake, statuses)

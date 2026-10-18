@@ -2910,6 +2910,13 @@ bool platform_ekf_lean_lean_angle_state_is_defined(uint8_t value);
  * pack masks a value into its bit field). E2E CRC and counter are checked for
  * range only; they are the E2E wrapper's job.
  *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
  * @param[out] dst_p Buffer to pack the message into.
  * @param[in] src_p Data to pack.
  * @param[in] size Size of dst_p.
@@ -2939,6 +2946,13 @@ bool platform_vehicle_speed_vehicle_speed_valid_is_defined(uint8_t value);
  * its is_in_range() check and every enum signal holds a defined value (the plain
  * pack masks a value into its bit field). E2E CRC and counter are checked for
  * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
  *
  * @param[out] dst_p Buffer to pack the message into.
  * @param[in] src_p Data to pack.
@@ -2980,6 +2994,13 @@ bool platform_ekf_friction_mass_total_mass_state_is_defined(uint8_t value);
  * pack masks a value into its bit field). E2E CRC and counter are checked for
  * range only; they are the E2E wrapper's job.
  *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
  * @param[out] dst_p Buffer to pack the message into.
  * @param[in] src_p Data to pack.
  * @param[in] size Size of dst_p.
@@ -3009,6 +3030,13 @@ bool platform_heartbeat_rt_core_node_mode_is_defined(uint8_t value);
  * its is_in_range() check and every enum signal holds a defined value (the plain
  * pack masks a value into its bit field). E2E CRC and counter are checked for
  * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
  *
  * @param[out] dst_p Buffer to pack the message into.
  * @param[in] src_p Data to pack.
@@ -3080,6 +3108,13 @@ bool platform_vehicle_engine_ecu_present_is_defined(uint8_t value);
  * pack masks a value into its bit field). E2E CRC and counter are checked for
  * range only; they are the E2E wrapper's job.
  *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
  * @param[out] dst_p Buffer to pack the message into.
  * @param[in] src_p Data to pack.
  * @param[in] size Size of dst_p.
@@ -3129,6 +3164,13 @@ bool platform_safety_request_immobilizer_lock_request_is_defined(uint8_t value);
  * its is_in_range() check and every enum signal holds a defined value (the plain
  * pack masks a value into its bit field). E2E CRC and counter are checked for
  * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
  *
  * @param[out] dst_p Buffer to pack the message into.
  * @param[in] src_p Data to pack.

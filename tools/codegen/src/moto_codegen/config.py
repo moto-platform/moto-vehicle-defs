@@ -232,4 +232,7 @@ def id_range_of(frame_id: int) -> IdRange | None:
 
 def did_stale_after_ms(did: dict[str, Any]) -> int:
     """A vehicle DID's stale_after_ms: the one value the C table and the Python catalog share."""
-    return int(did["stale_after_ms"])
+    value = did["stale_after_ms"]
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise ValueError(f"{did.get('name')}: stale_after_ms must be an integer, got {value!r}")
+    return value
