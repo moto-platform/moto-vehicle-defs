@@ -2,7 +2,7 @@
 
 > Where this list conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
-**Version:** 2.0 — 2026-10-17. Rewritten for D-072 (one dual-core STM32H755 instead of the H7 + G4 + G0 set, io-node retired) and D-073 (helmet unit: ESP32-S3 HUD + voice).
+**Version:** 2.1 — 2026-10-19. 2.1 adds the Wave 2 items of the Antigravity anomaly-sensor review (sump NTC, spark pickup detail, MLX90614, opto taps, GPS PPS) and the Hailo Phase 2 note. 2.0 (2026-10-17) was rewritten for D-072 (one dual-core STM32H755 instead of the H7 + G4 + G0 set, io-node retired) and D-073 (helmet unit: ESP32-S3 HUD + voice).
 **How to use:** buy wave by wave, top to bottom; update the Status column (On hand / Ordered / Arrived / Installed).
 **Prices:** Turkish store prices as shown on 2026-10-17 (TL, VAT as the store shows it). "n/v" = link seen but price or stock not verified (the marketplace blocked automated reading). Prices and stock change; check before ordering. Single-store cart: Motorobit covers most small parts; Direnc is cheaper for some; marketplaces (Hepsiburada, Trendyol, n11) are the only source for TPMS, high-endurance microSD, Deutsch DT and some cables.
 
@@ -79,7 +79,11 @@ New sensors need their signals defined through `/signal-change` (and Q-025) befo
 | LJ12A3-4-Z/BX inductive sensor | 2 | wheel speed from the brake-disc bolts, independent of the ECU (new; helps Q-031, wheel_slip, final drive). Output needs level shifting to 3.3 V | [Direnc](https://www.direnc.net/enduktif-npn-proximity-sensor-lj12a3-4-zbx) | 116.24 TL | |
 | BLE TPMS (motorcycle, 2 external sensors) | 1 set | tyre pressure/temperature. Many sets are 433 MHz with their own display: buy only a Bluetooth one | [Trendyol Powermaster](https://www.trendyol.com/powermaster/pm-28656-motosiklet-kablosuz-lastik-basinc-ve-sicaklik-izleme-sistemi-tpms-p-1042126095) · [n11](https://m.n11.com/lasonstiges-2-harici-sensorlu-motosiklet-tpms-moto-lastik-basinci-izleme-sistemi-P675123074) | n/v | |
 | Oil pressure/temperature sensor (optional) | 1 | lubrication faults | not searched | 300-600 TL (estimate) | |
-| Inductive spark-lead pickup (optional) | 1 | ECU-independent RPM and misfire (new) | not searched | — | |
+| Inductive spark-lead pickup (optional) | 1 | ECU-independent RPM and misfire: clip-on, no cut in the HT lead; conditioned pulse into an M7 timer input capture (µs firing period, spark-period jitter) | not searched | — | |
+| Sump oil temperature NTC in a drain-plug adapter | 1 | oil temperature vs coolant (thermal lag, D-079 windows). **Confirm the CL250 drain-plug thread first**; buy a plug-type sender, never drill the case | not searched | — | |
+| MLX90614 IR thermometer (I2C) | 1-2 | brake-disc / tyre surface temperature, contact-free (new) | not searched | — | |
+| PC817 optocoupler + resistors (12 V → 3.3 V taps) | 3 | parallel, read-only taps of the clutch switch, brake-light feed and cooling-fan feed (Q-031 (c)). **Install only after the Q-031 (c) decision**; a tap never drives or loads the bike's circuit | local | — | |
+| GPS PPS wire | 1 | NEO-M8N timepulse (on hand) to an M7 timer input: sub-ms timestamp alignment of GPS, IMU and ECU samples | local | — | |
 
 ## Wave 3 — helmet unit (D-073, hardware-architecture §5b.4a)
 
@@ -139,6 +143,7 @@ New sensors need their signals defined through `/signal-change` (and Q-025) befo
 | Suspension potentiometers ×2 (Q-010) | road surface, setup effect | 300-600 |
 | Brake line pressure sensor | brake force, virtual dyno | 350-900 |
 | Wideband lambda, RTK GPS, brake-lever load cell, MIFARE DESFire tags | Phase 2, do not buy now | 2,000-4,500 each class |
+| Raspberry Pi AI HAT+ (Hailo-8L 13 TOPS / Hailo-8 26 TOPS) | Phase 2, only if deep-learning vision is decided (lane keeping is classic CV today). The bare Pi 5 load with camera, CV, Kuksa, anomaly model and audio is an estimate to measure first | not searched |
 
 ## Removed from v1.0
 
