@@ -282,8 +282,8 @@ windows:
     conditions:
       - {input: did.COOLANT_TEMP, op: gt, value: 80.0}
       - {input: did.VEHICLE_SPEED, op: eq, value: 0.0}
-      # Idle band: provisional (no idle-speed constant in defs yet); CL250 warm idle is
-      # about 1300 rpm, to be replaced by the measured band.
+      # Idle band: provisional and wide (no idle-speed constant in defs yet, the CL250
+      # idle speed is not verified); replaced by the band measured on the first rides.
       - {input: did.ENGINE_SPEED, op: ge, value: 1000.0}
       - {input: did.ENGINE_SPEED, op: le, value: 1800.0}
     min_duration_ms: 20000
