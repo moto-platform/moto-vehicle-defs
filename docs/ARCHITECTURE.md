@@ -1,6 +1,6 @@
 # moto-platform — Architecture (authoritative summary)
 
-**Version:** 1.1 — 2026-10-17 (units and topology per D-072/D-073) · Source: `hardware-architecture.md` v1.0 + `DECISIONS.md`
+**Version:** 1.2 — 2026-10-18 (two servers D-077, position D-076, scope D-078; 1.1: units and topology per D-072/D-073) · Source: `hardware-architecture.md` v1.0 + `DECISIONS.md`
 If this file conflicts with the raw document, **this file + DECISIONS.md** govern.
 
 ---
@@ -143,8 +143,8 @@ tests/host/             host-native unit tests with Unity (pure logic: EKF, ISO-
 | Derived signals (D-070) | vehicle DIDs + IMU + GPS speed → rt-core `features/derived` → microSD log (all); ride summaries → rt-core UDS DIDs; platform CAN 0x100-0x3FF only for a live consumer (Raspi anomaly model via VSS, D-004); cross-ride trends → moto-server. Never a safety-partition input | SD/CAN | latency-tolerant (QM) |
 | Telemetry/logging | rt-core → microSD (binary, block CRC) → Wi-Fi (ESP/Raspi) → moto-server → MDF4/Parquet | SD/Wi-Fi | latency-tolerant |
 | VSS | vehicle + platform CAN → kuksa-can-provider → Kuksa Databroker → Raspi applications (gRPC) | local | ms |
-| Cloud | Kuksa → MQTT/Zenoh → moto-server (InfluxDB+Grafana) | Wi-Fi | latency-tolerant |
-| LLM assistant | moto-linux-node → moto-mcp (localhost, read-only) → cloud LLM; raw GPS is never sent | local/HTTPS | none |
+| Cloud (D-077) | Kuksa → local moto-server on the Raspi (every ride, offline) → live stream (MQTT/Zenoh or HTTP, open) + end-of-ride batch → remote moto-server (user's machine now, VPS-ready: containers, TLS proxy, per-device token) | Wi-Fi/LTE | latency-tolerant |
+| LLM assistant | moto-mcp (read-only) on the Raspi (localhost, offline) and on the remote moto-server (TLS + auth, D-077) → LLM; position and windowed slices allowed provisionally (D-076, Q-035); the LLM does no math | local/HTTPS | none |
 | OTA | moto-server → Raspi → UDS bootloader (platform CAN) → MCU A/B bank | CAN | controlled |
 
 ---
