@@ -5,6 +5,7 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 ## [Unreleased]
 
 ### Docs
+- D-074: the vehicle bus stays at 500 kbps (the ECU, not the bus, is the limit); more vehicle data comes from the Q-001 listen-only capture, then a probe-env support test of multi-DID 0x22 / multi-PID 0x01 requests (own decision and `safety-reviewer` before any poller change), then D-068 tier tuning. Q-001 row and catalog §1 reference it. No signal, DID, `tester_policy` or frame-gate change.
 - D-072: one dual-core STM32H755 (NUCLEO-H755ZI-Q) replaces the H7 + G4 + G0 set; the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering, own IMU, blind spot, immobilizer, LED ring); io-node retired; resolves Q-019, Q-026, Q-003. D-073: helmet ESP32-S3 unit (visor HUD, microphone, voice), HUD warnings informational; Q-032. ARCHITECTURE, hardware-architecture (§5b.4a helmet unit), procurement list v2.0 (purchase waves with store links). `derived/cl250_derived.yaml`: header comment only. No signal, DID, DBC, VSS, BLE or `tester_policy` change; the `platform.dbc` IO node, 0x083 and the mailbox payloads follow in the next `/signal-change`.
 
 ## [0.15.0] — 2026-10-18
