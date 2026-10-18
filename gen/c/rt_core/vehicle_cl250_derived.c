@@ -924,4 +924,269 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
         { { VEHICLE_CL250_DERIVED_INPUT_SENSOR, VEHICLE_CL250_SENSOR_TESTER_STEP_GAP_MAX }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
         { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
     },
+    { /* window_key_on_rest_voltage [V] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        0.0f, 16.0f, 0.01f,
+        2u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_BATTERY_VOLTAGE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_key_on_pump_peak_current [A] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        0.0f, 30.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_key_on_pump_prime_time [s] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        0.0f, 10.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_key_on_sensor_spread [degC] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        0.0f, 100.0f, 0.1f,
+        3u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_AIR_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_AMBIENT_AIR_TEMP }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_key_on_map_baro_delta [kPa] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        -50.0f, 50.0f, 0.1f,
+        2u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_MAP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_BAROMETRIC_PRESSURE }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_key_on_warm_restart [flag] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        0.0f, 1.0f, 1.0f,
+        2u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_AMBIENT_AIR_TEMP }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_key_on_count [count] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 1u,
+        0.0f, 255.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_crank_min_voltage [V] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRANK_DID, 1u,
+        0.0f, 16.0f, 0.01f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_crank_peak_current [A] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRANK_DID, 1u,
+        0.0f, 400.0f, 0.5f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_crank_internal_resistance [mOhm] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRANK_DID, 1u,
+        0.0f, 200.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_crank_duration [ms] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRANK_DID, 1u,
+        0.0f, 3000.0f, 10.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_crank_count [count] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRANK_DID, 1u,
+        0.0f, 255.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_rpm_spread [rpm] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        0.0f, 500.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_rpm_drift [rpm] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        -500.0f, 500.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_map_spread [kPa] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        0.0f, 50.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_INTAKE_MAP }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_stft_mean [%] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        -100.0f, 100.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_SHORT_TERM_FUEL_TRIM_B1 }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_stft_std [%] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        0.0f, 100.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_SHORT_TERM_FUEL_TRIM_B1 }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_vibration_half_order [m/s2] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        0.0f, 50.0f, 0.01f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_vibration_first_order [m/s2] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        0.0f, 50.0f, 0.01f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_warm_idle_count [count] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 1u,
+        0.0f, 255.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_cruise_final_drive_residual [ratio] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID, 1u,
+        -0.5f, 0.5f, 0.001f,
+        3u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_GEARBOX_RATIO_MEASURED }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_GEAR_ESTIMATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_cruise_ve_residual [%] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID, 1u,
+        -50.0f, 50.0f, 0.1f,
+        3u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_VOLUMETRIC_EFFICIENCY }, { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_GEAR_ESTIMATE }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_THROTTLE_POS }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_cruise_engine_vibration [m/s2] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID, 1u,
+        0.0f, 50.0f, 0.01f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_cruise_swingarm_vibration [m/s2] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, false,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID, 1u,
+        0.0f, 50.0f, 0.01f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_cruise_count [count] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID, 1u,
+        0.0f, 255.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_GEAR_ESTIMATE }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_post_stop_coolant_tau [s] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_POST_STOP_DID, 1u,
+        0.0f, 7200.0f, 1.0f,
+        3u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_AMBIENT_AIR_TEMP }, { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_post_stop_coolant_start [degC] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_POST_STOP_DID, 1u,
+        -40.0f, 150.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_post_stop_coolant_end [degC] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_POST_STOP_DID, 1u,
+        -40.0f, 150.0f, 0.1f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+    { /* window_post_stop_count [count] */
+        VEHICLE_CL250_DERIVED_CLASS_RIDE, false, false, true,
+        0u, 0u, 0u, VEHICLE_CL250_RIDE_WINDOW_POST_STOP_DID, 1u,
+        0.0f, 255.0f, 1.0f,
+        1u, 0u,
+        { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u }, { 0u, 0u } },
+        { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
+    },
+};
+
+const vehicle_cl250_window_t vehicle_cl250_window[VEHICLE_CL250_WINDOW_COUNT] = {
+    { /* W1_KEY_ON */
+        VEHICLE_CL250_WINDOW_OPEN_KEY_ON, 1u, 0u,
+        VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID, 2000u, 10000u,
+        { { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, VEHICLE_CL250_WINDOW_OP_EQ, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f } },
+        { { { 0u, 0u }, 0.0f }, { { 0u, 0u }, 0.0f } }
+    },
+    { /* W2_CRANK */
+        VEHICLE_CL250_WINDOW_OPEN_ENGINE_START, 0u, 0u,
+        VEHICLE_CL250_RIDE_WINDOW_CRANK_DID, 100u, 3000u,
+        { { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f } },
+        { { { 0u, 0u }, 0.0f }, { { 0u, 0u }, 0.0f } }
+    },
+    { /* W3_WARM_IDLE */
+        VEHICLE_CL250_WINDOW_OPEN_CONDITION, 4u, 0u,
+        VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID, 20000u, 60000u,
+        { { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP }, VEHICLE_CL250_WINDOW_OP_GT, 80.0f }, { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, VEHICLE_CL250_WINDOW_OP_EQ, 0.0f }, { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, VEHICLE_CL250_WINDOW_OP_GE, 1000.0f }, { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, VEHICLE_CL250_WINDOW_OP_LE, 1800.0f } },
+        { { { 0u, 0u }, 0.0f }, { { 0u, 0u }, 0.0f } }
+    },
+    { /* W4_CRUISE */
+        VEHICLE_CL250_WINDOW_OPEN_CONDITION, 1u, 2u,
+        VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID, 10000u, 60000u,
+        { { { VEHICLE_CL250_DERIVED_INPUT_DERIVED, VEHICLE_CL250_DERIVED_GEAR_ESTIMATE }, VEHICLE_CL250_WINDOW_OP_GE, 4.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f } },
+        { { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED }, 4.0f }, { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_THROTTLE_POS }, 5.0f } }
+    },
+    { /* W5_POST_STOP */
+        VEHICLE_CL250_WINDOW_OPEN_ENGINE_STOP, 1u, 0u,
+        VEHICLE_CL250_RIDE_WINDOW_POST_STOP_DID, 60000u, 1800000u,
+        { { { VEHICLE_CL250_DERIVED_INPUT_DID, (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED }, VEHICLE_CL250_WINDOW_OP_EQ, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f }, { { 0u, 0u }, 0u, 0.0f } },
+        { { { 0u, 0u }, 0.0f }, { { 0u, 0u }, 0.0f } }
+    },
 };

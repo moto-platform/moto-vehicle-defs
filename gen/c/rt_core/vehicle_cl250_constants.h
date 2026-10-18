@@ -28,5 +28,6 @@
 #define VEHICLE_CL250_REAR_WHEEL_CIRCUMFERENCE_M (2.016f) /* calculated [m] */
 #define VEHICLE_CL250_FUEL_DENSITY_KG_PER_L (0.745f) /* provisional [kg/L] */
 #define VEHICLE_CL250_STOICHIOMETRIC_AFR (14.7f) /* provisional */
+#define VEHICLE_CL250_WINDOW_COLD_SOAK_MAX_DELTA_DEGC (5.0f) /* provisional [degC] */
 
 #endif /* VEHICLE_CL250_CONSTANTS_H */

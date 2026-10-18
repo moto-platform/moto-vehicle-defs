@@ -217,3 +217,125 @@ def test_python_module_carries_every_class_and_readiness(doc):
 
 def test_only_rt_core_gets_the_derived_table():
     assert [t.node for t in config.C_TARGETS if t.vehicle_constants] == ["RT_CORE"]
+
+
+def test_health_windows_are_defined_in_the_free_record_block(doc):
+    assert list(doc["windows"]) == [
+        "W1_KEY_ON",
+        "W2_CRANK",
+        "W3_WARM_IDLE",
+        "W4_CRUISE",
+        "W5_POST_STOP",
+    ]
+    dids = [doc["ride_summary_records"][w["record"]]["did"] for w in doc["windows"].values()]
+    assert dids == [0xFD4A, 0xFD4B, 0xFD4C, 0xFD4D, 0xFD4E]
+    for key, w in doc["windows"].items():
+        mine = [s for s in doc["signals"].values() if s.get("window") == key]
+        assert mine and all(s["class"] == "B" and s["record"] == w["record"] for s in mine)
+        assert any(
+            n.endswith("_count") for n, s in doc["signals"].items() if s.get("window") == key
+        )
+
+
+@pytest.mark.parametrize(
+    "path, value, message",
+    [
+        (("W1_KEY_ON", "opens_on"), "on_tuesday", "opens_on must be one of"),
+        (("W1_KEY_ON", "conditions", 0, "op"), "approx", "op must be one of"),
+        (("W1_KEY_ON", "conditions", 0, "input"), "did.NOT_A_DID", "is not a did, a sensor"),
+        (("W1_KEY_ON", "conditions", 0, "input"), "const.gear_count", "is not a did, a sensor"),
+        (("W1_KEY_ON", "conditions", 0, "input"), "derived.ride_distance", "class-A derived"),
+        (("W1_KEY_ON", "conditions", 0, "value"), "hot", "value must be a number"),
+        (("W1_KEY_ON", "conditions"), [], None),  # allowed: key_on needs no condition
+        (("W3_WARM_IDLE", "conditions"), [], "needs at least one condition"),
+        (("W4_CRUISE", "stable", 0, "input"), "did.NOT_A_DID", "stable[0] input"),
+        (("W4_CRUISE", "stable", 0, "max_spread"), 0.0, "max_spread must be"),
+        (("W4_CRUISE", "stable"), [], "stable must be a non-empty list"),
+        (("W1_KEY_ON", "min_duration_ms"), 0, "min_duration_ms must be"),
+        (("W1_KEY_ON", "max_duration_ms"), 1000, "max_duration_ms must be"),
+        (("W1_KEY_ON", "max_duration_ms"), 2**32, "max_duration_ms must be"),
+        (("W1_KEY_ON", "record"), "RIDE_NOPE", "is not a ride_summary_records entry"),
+        (("W1_KEY_ON", "record"), "RIDE_USAGE", "belongs to window"),
+        (("W2_CRANK", "record"), "RIDE_WINDOW_KEY_ON", "is also the record of W1_KEY_ON"),
+    ],
+)
+def test_window_entries(doc, refs, path, value, message):
+    target = doc["windows"]
+    for step in path[:-1]:
+        target = target[step]
+    target[path[-1]] = value
+    errors = _check(doc, refs)
+    if message is None:
+        assert errors == []
+    else:
+        assert _has(errors, "derived window", message) or _has(errors, "derived ride_", message), (
+            errors
+        )
+
+
+def test_window_needs_a_record_in_the_block(doc, refs):
+    doc["ride_summary_records"]["RIDE_WINDOW_KEY_ON"]["did"] = 0xFD60
+    assert _has(_check(doc, refs), "RIDE_WINDOW_KEY_ON", "0xFD40-0xFD5F")
+
+
+def test_a_window_without_signals_is_refused(doc, refs):
+    doc["windows"]["W6_EMPTY"] = {
+        "description": "no signal",
+        "opens_on": "key_on",
+        "conditions": [],
+        "min_duration_ms": 1000,
+        "record": "RIDE_USAGE_X",
+    }
+    doc["ride_summary_records"]["RIDE_USAGE_X"] = {"did": 0xFD5F, "description": "x"}
+    _add(
+        doc,
+        "t_ride_x",
+        record="RIDE_USAGE_X",
+        output=["log", "ride_summary"],
+        period_ms=None,
+        stale_after_ms=None,
+        **{"class": "B"},
+    )
+    assert _has(_check(doc, refs), "W6_EMPTY", "no signal reports it")
+
+
+def test_window_signals_follow_their_window(doc, refs):
+    sigs = doc["signals"]
+    sigs["window_crank_count"]["window"] = "W9_NOPE"
+    sigs["window_crank_min_voltage"]["record"] = "RIDE_WINDOW_KEY_ON"
+    errors = _check(doc, refs)
+    assert _has(errors, "window_crank_count", "W9_NOPE", "not an entry of windows")
+    assert _has(errors, "window_crank_min_voltage", "window W2_CRANK", "RIDE_WINDOW_CRANK")
+    _add(doc, "t_live_window", window="W1_KEY_ON")
+    assert _has(_check(doc, refs), "t_live_window", "only class B has a window")
+
+
+def test_the_window_table_in_python(doc):
+    ns: dict = {}
+    exec(compile(gen_python.generate_derived_py(doc), "vehicle_derived.py", "exec"), ns)
+    windows = ns["WINDOWS"]
+    assert set(windows) == set(doc["windows"])
+    idle = windows["W3_WARM_IDLE"]
+    assert idle["opens_on"] == "condition" and idle["min_duration_ms"] == 20000
+    assert {"input": "did.COOLANT_TEMP", "op": "gt", "value": 80.0} in idle["conditions"]
+    assert windows["W4_CRUISE"]["stable"][0] == {"input": "did.VEHICLE_SPEED", "max_spread": 4.0}
+    assert windows["W2_CRANK"]["conditions"] == []
+    assert "window_crank_count" in windows["W2_CRANK"]["signals"]
+    for key, w in windows.items():
+        assert ns["RIDE_SUMMARY_RECORDS"][w["record"]][0] in range(0xFD40, 0xFD60), key
+
+
+def test_the_window_table_in_c(doc, refs):
+    files = gen_c.generate_derived_c(doc, refs["constants"])
+    h, c = files["vehicle_cl250_derived.h"], files["vehicle_cl250_derived.c"]
+    assert f"#define VEHICLE_CL250_WINDOW_COUNT ({len(doc['windows'])}u)" in h
+    assert "#define VEHICLE_CL250_WINDOW_W3_WARM_IDLE (2u)" in h
+    assert "#define VEHICLE_CL250_RIDE_WINDOW_CRANK_DID (0xFD4Bu)" in h
+    assert "extern const vehicle_cl250_window_t vehicle_cl250_window[" in h
+    for key in doc["windows"]:
+        assert f"{{ /* {key} */" in c
+    assert "VEHICLE_CL250_WINDOW_OP_GT, 80.0f" in c
+    assert "VEHICLE_CL250_DERIVED_GEAR_ESTIMATE }, VEHICLE_CL250_WINDOW_OP_GE, 4.0f" in c
+    assert "0xFD4Bu" not in c  # records are named, never literals
+    # The window signals are class B: they are in the signal table with their record.
+    assert "/* window_cruise_count [count] */" in c

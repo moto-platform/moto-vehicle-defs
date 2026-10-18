@@ -222,6 +222,16 @@ def generate_derived_py(doc: dict[str, Any]) -> str:
     for key, r in doc["ride_summary_records"].items():
         lines.append(f'    "{key}": (0x{r["did"]:04X}, {r["description"]!r}),')
     lines += ["}", ""]
+    lines.append(
+        "# window -> health-snapshot window (D-079, provisional): when it opens, its conditions,"
+    )
+    lines.append("# stability limits, durations, record and the signals that report in it")
+    lines.append("WINDOWS = {")
+    for key, w in doc["windows"].items():
+        entry = dict(w)
+        entry["signals"] = [n for n, s in doc["signals"].items() if s.get("window") == key]
+        lines.append(f'    "{key}": {entry!r},')
+    lines += ["}", ""]
     lines.append("# name -> definition; inputs are did.<NAME> / sensor.<name> / const.<key> /")
     lines.append("# derived.<name>. ready_phase0 / ready_rt_core: every input is defined there.")
     lines.append("SIGNALS = {")
