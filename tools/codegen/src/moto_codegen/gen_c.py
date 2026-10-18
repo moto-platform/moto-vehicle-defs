@@ -782,6 +782,9 @@ def generate_derived_c(doc: dict[str, Any], constants: dict[str, Any]) -> dict[s
     # Constants are compile time (vehicle_cl250_constants.h), not runtime inputs.
     refs = {n: [r for r in signals[n]["inputs"] if not r.startswith("const.")] for n in names}
     input_max = max([1] + [len(v) for v in refs.values()])
+    windows = doc["windows"]
+    cond_max = max([1] + [len(w["conditions"]) for w in windows.values()])
+    stable_max = max([1] + [len(w.get("stable", [])) for w in windows.values()])
 
     def define(name: str, value: str, comment: str = "") -> str:
         tail = f" /* {comment} */" if comment else ""
@@ -809,6 +812,13 @@ def generate_derived_c(doc: dict[str, Any], constants: dict[str, Any]) -> dict[s
         h.append(f"#define {_record_c(key)} ({_hex(r['did'], 4)})")
     h.append(define("DERIVED_NO_RECORD", "0x0000u", "class A"))
     h.append("")
+    h.append(
+        "/* Health-snapshot windows (D-079, provisional): index into vehicle_cl250_window[]. */"
+    )
+    h.append(define("WINDOW_COUNT", f"{len(windows)}u"))
+    for i, key in enumerate(windows):
+        h.append(define(f"WINDOW_{key}", f"{i}u", windows[key]["record"]))
+    h.append("")
     h += ["/* vehicle_cl250_derived_t.derived_class and vehicle_cl250_derived_input_t.kind.",
           " * Plain constants, not enums: the fields are uint8_t (MISRA 2.3). */"]  # fmt: skip
     h.append(define("DERIVED_CLASS_LIVE", "0u", "A: live, every period_ms or per event"))
@@ -818,6 +828,14 @@ def generate_derived_c(doc: dict[str, Any], constants: dict[str, Any]) -> dict[s
     h.append(define("DERIVED_INPUT_DERIVED", "2u", "VEHICLE_CL250_DERIVED_*"))
     h.append(define("DERIVED_INPUT_MAX", f"{input_max}u"))
     h.append(define("DERIVED_AXIS_MAX", f"{derived.AXIS_MAX}u"))
+    h.append("")
+    h.append("/* vehicle_cl250_window_t.opens_on and vehicle_cl250_window_condition_t.op. */")
+    for i, k in enumerate(derived.WINDOW_OPENS_ON):
+        h.append(define(f"WINDOW_OPEN_{k.upper()}", f"{i}u"))
+    for i, k in enumerate(derived.WINDOW_OPS):
+        h.append(define(f"WINDOW_OP_{k.upper()}", f"{i}u", f"input {k} value"))
+    h.append(define("WINDOW_CONDITION_MAX", f"{cond_max}u"))
+    h.append(define("WINDOW_STABLE_MAX", f"{stable_max}u"))
     h += [
         "",
         "typedef struct {",
@@ -852,8 +870,33 @@ def generate_derived_c(doc: dict[str, Any], constants: dict[str, Any]) -> dict[s
         f"    vehicle_cl250_derived_axis_t axes[{p}_DERIVED_AXIS_MAX];",
         "} vehicle_cl250_derived_t;",
         "",
+        "/* All conditions must hold. The input is a DID, a sensor or a class-A derived signal. */",
+        "typedef struct {",
+        "    vehicle_cl250_derived_input_t input;",
+        "    uint8_t op; /* VEHICLE_CL250_WINDOW_OP_* */",
+        "    float value;",
+        "} vehicle_cl250_window_condition_t;",
+        "",
+        "/* max - min of the input over the window stays within max_spread. */",
+        "typedef struct {",
+        "    vehicle_cl250_derived_input_t input;",
+        "    float max_spread;",
+        "} vehicle_cl250_window_stable_t;",
+        "",
+        "typedef struct {",
+        "    uint8_t opens_on; /* VEHICLE_CL250_WINDOW_OPEN_* */",
+        "    uint8_t condition_count;",
+        "    uint8_t stable_count;",
+        "    uint16_t record_did;       /* ride-summary DID the window reports in */",
+        "    uint32_t min_duration_ms;  /* conditions hold this long: the instance qualifies */",
+        "    uint32_t max_duration_ms;  /* the window closes by itself; 0: none */",
+        f"    vehicle_cl250_window_condition_t conditions[{p}_WINDOW_CONDITION_MAX];",
+        f"    vehicle_cl250_window_stable_t stable[{p}_WINDOW_STABLE_MAX];",
+        "} vehicle_cl250_window_t;",
+        "",
         f"extern const uint16_t vehicle_cl250_sensor_stale_after_ms[{p}_SENSOR_COUNT];",
         f"extern const vehicle_cl250_derived_t vehicle_cl250_derived[{p}_DERIVED_COUNT];",
+        f"extern const vehicle_cl250_window_t vehicle_cl250_window[{p}_WINDOW_COUNT];",
         "",
         "#ifdef __cplusplus",
         "}",
@@ -895,6 +938,25 @@ def generate_derived_c(doc: dict[str, Any], constants: dict[str, Any]) -> dict[s
             f"        {len(r)}u, {len(bins)}u,",
             "        { " + ", ".join(ins) + " },",
             "        { " + ", ".join(axes) + " }",
+            "    },",
+        ]
+    c += ["};", ""]
+    c.append(f"const vehicle_cl250_window_t vehicle_cl250_window[{p}_WINDOW_COUNT] = {{")
+    for key, w in windows.items():
+        conds = [
+            f"{{ {_derived_input_c(x['input'])}, {p}_WINDOW_OP_{x['op'].upper()}, {_c_float(x['value'])} }}"
+            for x in w["conditions"]
+        ] + ["{ { 0u, 0u }, 0u, 0.0f }"] * (cond_max - len(w["conditions"]))
+        stable = w.get("stable", [])
+        stables = [
+            f"{{ {_derived_input_c(x['input'])}, {_c_float(x['max_spread'])} }}" for x in stable
+        ] + ["{ { 0u, 0u }, 0.0f }"] * (stable_max - len(stable))
+        c += [
+            f"    {{ /* {key} */",
+            f"        {p}_WINDOW_OPEN_{w['opens_on'].upper()}, {len(w['conditions'])}u, {len(stable)}u,",
+            f"        {_record_c(w['record'])}, {w['min_duration_ms']}u, {w.get('max_duration_ms', 0)}u,",
+            "        { " + ", ".join(conds) + " },",
+            "        { " + ", ".join(stables) + " }",
             "    },",
         ]
     c += ["};", ""]

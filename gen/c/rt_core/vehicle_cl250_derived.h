@@ -38,7 +38,7 @@ extern "C" {
 #define VEHICLE_CL250_SENSOR_TESTER_NRC78_COUNT (16u) /* [count] */
 #define VEHICLE_CL250_SENSOR_TESTER_STEP_GAP_MAX (17u) /* [ms] */
 
-#define VEHICLE_CL250_DERIVED_COUNT (112u) /* classes A and B */
+#define VEHICLE_CL250_DERIVED_COUNT (141u) /* classes A and B */
 #define VEHICLE_CL250_DERIVED_GEARBOX_RATIO_MEASURED (0u) /* class A */
 #define VEHICLE_CL250_DERIVED_GEAR_ESTIMATE (1u) /* class A */
 #define VEHICLE_CL250_DERIVED_VEHICLE_ACCEL (2u) /* class A */
@@ -151,6 +151,35 @@ extern "C" {
 #define VEHICLE_CL250_DERIVED_RIDE_TESTER_RTT_MAX (109u) /* class B */
 #define VEHICLE_CL250_DERIVED_RIDE_TESTER_NRC78_COUNT (110u) /* class B */
 #define VEHICLE_CL250_DERIVED_RIDE_TESTER_STEP_GAP_MAX (111u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_REST_VOLTAGE (112u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_PUMP_PEAK_CURRENT (113u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_PUMP_PRIME_TIME (114u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_SENSOR_SPREAD (115u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_MAP_BARO_DELTA (116u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_WARM_RESTART (117u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_KEY_ON_COUNT (118u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRANK_MIN_VOLTAGE (119u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRANK_PEAK_CURRENT (120u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRANK_INTERNAL_RESISTANCE (121u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRANK_DURATION (122u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRANK_COUNT (123u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_RPM_SPREAD (124u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_RPM_DRIFT (125u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_MAP_SPREAD (126u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_STFT_MEAN (127u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_STFT_STD (128u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_VIBRATION_HALF_ORDER (129u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_VIBRATION_FIRST_ORDER (130u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_WARM_IDLE_COUNT (131u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRUISE_FINAL_DRIVE_RESIDUAL (132u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRUISE_VE_RESIDUAL (133u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRUISE_ENGINE_VIBRATION (134u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRUISE_SWINGARM_VIBRATION (135u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_CRUISE_COUNT (136u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_POST_STOP_COOLANT_TAU (137u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_POST_STOP_COOLANT_START (138u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_POST_STOP_COOLANT_END (139u) /* class B */
+#define VEHICLE_CL250_DERIVED_WINDOW_POST_STOP_COUNT (140u) /* class B */
 
 /* Ride-summary records (class B): rt-core UDS DIDs 0xFD40-0xFD5F (D-070 item 4). */
 #define VEHICLE_CL250_RIDE_USAGE_DID (0xFD40u)
@@ -163,7 +192,20 @@ extern "C" {
 #define VEHICLE_CL250_RIDE_CALIBRATION_DID (0xFD47u)
 #define VEHICLE_CL250_RIDE_RIDER_STYLE_DID (0xFD48u)
 #define VEHICLE_CL250_RIDE_ECU_HEALTH_DID (0xFD49u)
+#define VEHICLE_CL250_RIDE_WINDOW_KEY_ON_DID (0xFD4Au)
+#define VEHICLE_CL250_RIDE_WINDOW_CRANK_DID (0xFD4Bu)
+#define VEHICLE_CL250_RIDE_WINDOW_WARM_IDLE_DID (0xFD4Cu)
+#define VEHICLE_CL250_RIDE_WINDOW_CRUISE_DID (0xFD4Du)
+#define VEHICLE_CL250_RIDE_WINDOW_POST_STOP_DID (0xFD4Eu)
 #define VEHICLE_CL250_DERIVED_NO_RECORD (0x0000u) /* class A */
+
+/* Health-snapshot windows (D-079, provisional): index into vehicle_cl250_window[]. */
+#define VEHICLE_CL250_WINDOW_COUNT (5u)
+#define VEHICLE_CL250_WINDOW_W1_KEY_ON (0u) /* RIDE_WINDOW_KEY_ON */
+#define VEHICLE_CL250_WINDOW_W2_CRANK (1u) /* RIDE_WINDOW_CRANK */
+#define VEHICLE_CL250_WINDOW_W3_WARM_IDLE (2u) /* RIDE_WINDOW_WARM_IDLE */
+#define VEHICLE_CL250_WINDOW_W4_CRUISE (3u) /* RIDE_WINDOW_CRUISE */
+#define VEHICLE_CL250_WINDOW_W5_POST_STOP (4u) /* RIDE_WINDOW_POST_STOP */
 
 /* vehicle_cl250_derived_t.derived_class and vehicle_cl250_derived_input_t.kind.
  * Plain constants, not enums: the fields are uint8_t (MISRA 2.3). */
@@ -174,6 +216,19 @@ extern "C" {
 #define VEHICLE_CL250_DERIVED_INPUT_DERIVED (2u) /* VEHICLE_CL250_DERIVED_* */
 #define VEHICLE_CL250_DERIVED_INPUT_MAX (5u)
 #define VEHICLE_CL250_DERIVED_AXIS_MAX (2u)
+
+/* vehicle_cl250_window_t.opens_on and vehicle_cl250_window_condition_t.op. */
+#define VEHICLE_CL250_WINDOW_OPEN_KEY_ON (0u)
+#define VEHICLE_CL250_WINDOW_OPEN_ENGINE_START (1u)
+#define VEHICLE_CL250_WINDOW_OPEN_CONDITION (2u)
+#define VEHICLE_CL250_WINDOW_OPEN_ENGINE_STOP (3u)
+#define VEHICLE_CL250_WINDOW_OP_LT (0u) /* input lt value */
+#define VEHICLE_CL250_WINDOW_OP_LE (1u) /* input le value */
+#define VEHICLE_CL250_WINDOW_OP_GT (2u) /* input gt value */
+#define VEHICLE_CL250_WINDOW_OP_GE (3u) /* input ge value */
+#define VEHICLE_CL250_WINDOW_OP_EQ (4u) /* input eq value */
+#define VEHICLE_CL250_WINDOW_CONDITION_MAX (4u)
+#define VEHICLE_CL250_WINDOW_STABLE_MAX (2u)
 
 typedef struct {
     uint8_t kind; /* VEHICLE_CL250_DERIVED_INPUT_* */
@@ -207,8 +262,33 @@ typedef struct {
     vehicle_cl250_derived_axis_t axes[VEHICLE_CL250_DERIVED_AXIS_MAX];
 } vehicle_cl250_derived_t;
 
+/* All conditions must hold. The input is a DID, a sensor or a class-A derived signal. */
+typedef struct {
+    vehicle_cl250_derived_input_t input;
+    uint8_t op; /* VEHICLE_CL250_WINDOW_OP_* */
+    float value;
+} vehicle_cl250_window_condition_t;
+
+/* max - min of the input over the window stays within max_spread. */
+typedef struct {
+    vehicle_cl250_derived_input_t input;
+    float max_spread;
+} vehicle_cl250_window_stable_t;
+
+typedef struct {
+    uint8_t opens_on; /* VEHICLE_CL250_WINDOW_OPEN_* */
+    uint8_t condition_count;
+    uint8_t stable_count;
+    uint16_t record_did;       /* ride-summary DID the window reports in */
+    uint32_t min_duration_ms;  /* conditions hold this long: the instance qualifies */
+    uint32_t max_duration_ms;  /* the window closes by itself; 0: none */
+    vehicle_cl250_window_condition_t conditions[VEHICLE_CL250_WINDOW_CONDITION_MAX];
+    vehicle_cl250_window_stable_t stable[VEHICLE_CL250_WINDOW_STABLE_MAX];
+} vehicle_cl250_window_t;
+
 extern const uint16_t vehicle_cl250_sensor_stale_after_ms[VEHICLE_CL250_SENSOR_COUNT];
 extern const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT];
+extern const vehicle_cl250_window_t vehicle_cl250_window[VEHICLE_CL250_WINDOW_COUNT];
 
 #ifdef __cplusplus
 }

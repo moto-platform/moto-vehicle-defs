@@ -30,7 +30,7 @@ DERIVED_UNITS = frozenset({
     "s", "ms", "min", "h", "day",
     "m", "km", "m/s", "km/h", "m/s2", "m/s3", "deg", "deg/s", "1/s", "1/m", "1/km",
     "rpm", "Nm", "kW", "N", "kg/m", "m2",
-    "degC", "degC/s", "degC/min", "kPa", "kg/m3", "V", "V/day",
+    "degC", "degC/s", "degC/min", "kPa", "kg/m3", "V", "V/day", "A", "mOhm",
     "g/s", "L/h", "L", "L/100km", "km/L", "mg", "g/kWh", "count/krev",
 })  # fmt: skip
 
@@ -53,13 +53,21 @@ SIGNAL_OPTIONAL = (
     "bins",
     "per_gear",
     "record",
+    "window",
 )
 SENSOR_KEYS = {"description", "unit", "sample_period_ms", "stale_after_ms", "phase0", "rt_core"}
 RECORD_KEYS = {"did", "description"}
+WINDOW_KEYS = {"description", "opens_on", "conditions", "min_duration_ms", "record"}
+WINDOW_OPTIONAL = {"stable", "max_duration_ms"}
+# D-079: how a health-snapshot window opens (gen_c.py numbers them in this order).
+WINDOW_OPENS_ON = ("key_on", "engine_start", "condition", "engine_stop")
+WINDOW_OPS = ("lt", "le", "gt", "ge", "eq")  # gen_c.py numbers them in this order
+U32_MAX = 0xFFFFFFFF  # window durations are uint32_t in C
 BLE_GROUPS = ("telemetry", "imuBlock", "gpsBlock")
 
 _SNAKE = re.compile(r"^[a-z][a-z0-9_]*$")
 _UPPER = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_WINDOW_KEY = re.compile(r"^W[0-9]+_[A-Z][A-Z0-9_]*$")
 
 
 # --------------------------------------------------------------------------- resolvers
@@ -134,6 +142,22 @@ def ready(doc: dict[str, Any], name: str, where: str) -> bool:
 def rt_core_signals(doc: dict[str, Any]) -> list[str]:
     """Classes A and B in file order: the rt-core table (C/D are server-side)."""
     return [n for n, s in doc["signals"].items() if s["class"] in ("A", "B")]
+
+
+def window_input_ok(ref: Any, doc: dict[str, Any], vehicle: dict[str, Any]) -> bool:
+    """A window condition or stability input: a DID, a sensor or a class-A derived signal
+    (the rt-core table holds classes A and B; a window reads live values only)."""
+    if not isinstance(ref, str):
+        return False
+    kind, name = split_ref(ref)
+    if kind == "did":
+        return any(d["name"] == name for d in vehicle["dids"])
+    if kind == "sensor":
+        return name in doc["sensors"]
+    if kind == "derived":
+        sig = doc["signals"].get(name)
+        return isinstance(sig, dict) and sig.get("class") == "A"
+    return False
 
 
 def element_count(sig: dict[str, Any], constants: dict[str, Any]) -> int:
@@ -223,6 +247,104 @@ def _check_records(doc: dict[str, Any], used_dids: set[int]) -> list[str]:
     return errors
 
 
+def _check_window_conditions(
+    where: str, w: dict[str, Any], doc: dict[str, Any], vehicle: dict[str, Any]
+) -> list[str]:
+    errors: list[str] = []
+    conditions = w["conditions"]
+    if not isinstance(conditions, list):
+        return [f"{where}: conditions must be a list"]
+    if w["opens_on"] == "condition" and not conditions:
+        errors.append(f"{where}: opens_on condition needs at least one condition")
+    for i, c in enumerate(conditions):
+        if not isinstance(c, dict) or set(c) != {"input", "op", "value"}:
+            errors.append(f"{where}: conditions[{i}] needs exactly input, op, value")
+            continue
+        if not window_input_ok(c["input"], doc, vehicle):
+            errors.append(
+                f"{where}: conditions[{i}] input {c['input']!r} is not a did, a sensor"
+                " or a class-A derived signal of defs"
+            )
+        if c["op"] not in WINDOW_OPS:
+            errors.append(f"{where}: conditions[{i}] op must be one of {WINDOW_OPS}")
+        if not _is_real(c["value"]):
+            errors.append(f"{where}: conditions[{i}] value must be a number")
+    stable = w.get("stable", [])
+    if not isinstance(stable, list) or ("stable" in w and not stable):
+        return errors + [f"{where}: stable must be a non-empty list"]
+    for i, st in enumerate(stable):
+        if not isinstance(st, dict) or set(st) != {"input", "max_spread"}:
+            errors.append(f"{where}: stable[{i}] needs exactly input, max_spread")
+            continue
+        if not window_input_ok(st["input"], doc, vehicle):
+            errors.append(
+                f"{where}: stable[{i}] input {st['input']!r} is not a did, a sensor"
+                " or a class-A derived signal of defs"
+            )
+        if not _is_real(st["max_spread"]) or st["max_spread"] <= 0:
+            errors.append(f"{where}: stable[{i}] max_spread must be a number > 0")
+    return errors
+
+
+def _check_windows(doc: dict[str, Any], vehicle: dict[str, Any]) -> list[str]:
+    """`windows` (D-079): entries, then the links to the signals and records."""
+    windows = doc.get("windows")
+    if not isinstance(windows, dict) or not windows:
+        return ["derived: `windows` must be a non-empty mapping"]
+    errors: list[str] = []
+    records = doc["ride_summary_records"]
+    owner: dict[str, str] = {}
+    for key, w in windows.items():
+        where = f"derived window {key}"
+        if not isinstance(key, str) or not _WINDOW_KEY.match(key):
+            errors.append(f"{where}: key must look like W1_KEY_ON")
+        if not isinstance(w, dict) or not WINDOW_KEYS <= set(w) <= WINDOW_KEYS | WINDOW_OPTIONAL:
+            errors.append(
+                f"{where}: needs {sorted(WINDOW_KEYS)}, optional {sorted(WINDOW_OPTIONAL)}"
+            )
+            continue
+        if not isinstance(w["description"], str) or not w["description"].strip():
+            errors.append(f"{where}: description must be text")
+        if w["opens_on"] not in WINDOW_OPENS_ON:
+            errors.append(f"{where}: opens_on must be one of {WINDOW_OPENS_ON}")
+        errors += _check_window_conditions(where, w, doc, vehicle)
+        low, high = w["min_duration_ms"], w.get("max_duration_ms")
+        if not _is_pos_int(low) or low > U32_MAX:
+            errors.append(f"{where}: min_duration_ms must be an integer in 1..{U32_MAX}")
+        elif "max_duration_ms" in w and (not _is_pos_int(high) or high > U32_MAX or high < low):
+            errors.append(
+                f"{where}: max_duration_ms must be an integer in min_duration_ms..{U32_MAX}"
+            )
+        rec = w["record"]
+        if rec not in records:
+            errors.append(f"{where}: record {rec!r} is not a ride_summary_records entry")
+        elif not RECORD_DID_MIN <= records[rec]["did"] <= RECORD_DID_MAX:
+            errors.append(
+                f"{where}: record {rec} is outside 0x{RECORD_DID_MIN:04X}-0x{RECORD_DID_MAX:04X}"
+            )
+        elif rec in owner:
+            errors.append(f"{where}: record {rec} is also the record of {owner[rec]}")
+        else:
+            owner[rec] = key
+    users: dict[str, int] = dict.fromkeys(windows, 0)
+    for name, sig in doc["signals"].items():
+        win, rec = sig.get("window"), sig.get("record")
+        if win is not None:
+            if win not in windows:
+                errors.append(f"derived {name}: window {win!r} is not an entry of windows")
+                continue
+            users[win] += 1
+            if rec != windows[win]["record"]:
+                errors.append(
+                    f"derived {name}: a signal of window {win} reports in"
+                    f" {windows[win]['record']}, not {rec}"
+                )
+        elif rec in owner:
+            errors.append(f"derived {name}: record {rec} belongs to window {owner[rec]}")
+    errors += [f"derived window {k}: no signal reports it" for k, n in users.items() if n == 0]
+    return errors
+
+
 def _check_signal(
     name: str,
     sig: dict[str, Any],
@@ -302,6 +424,8 @@ def _check_signal(
             errors.append(f"{where}: class B needs a record of ride_summary_records")
     elif "record" in sig:
         errors.append(f"{where}: only class B has a record")
+    if "window" in sig and cls != "B":
+        errors.append(f"{where}: only class B has a window")
     return errors
 
 
@@ -381,6 +505,9 @@ def check_derived(
     for key in doc["ride_summary_records"]:
         if key not in used_records:
             errors.append(f"derived record {key}: no class-B signal reports in it")
+    if errors:
+        return errors
+    errors += _check_windows(doc, vehicle)
     if errors:
         return errors
     for name in rt_core_signals(doc):
