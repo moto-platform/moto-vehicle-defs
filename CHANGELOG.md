@@ -4,6 +4,10 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+### Docs
+- D-075 (provisional, user: "use changeable, standard-accepted values for now"): the D-068 stop state and the D-069 engine-start flag belong to a stop epoch that only the tester start and an ECU-lost re-confirmation open; an NRC 0x7E/0x7F re-confirmation keeps the stops and the tier rate, and 0x7E/0x7F on a never-answered unverified DID counts toward its stop like 0x31 (rt-core#33 MAJOR-2); the D-068 item 1 bounds are single-fault-class bounds, `stale_after_ms` covers the combined fault; the N_Bs hold stays. Provisional answers to Q-033 (own M4 indicator input, 1.5 s hold from UN ECE R6/R48), Q-029 (yes) and Q-023 items 1-4. No signal, DID, `tester_policy` or frame-gate change.
+- Q-034: enclosure and IMU placement on the CL250 for the H755 build; `hardware-integration.md` §4.1 compares the engine area, the E-Clutch spot and the rear subframe (recommended, with rules for the longer runs) and lists the measurements to take.
+
 ## [0.16.0] — 2026-10-18
 
 MINOR, additive (the D-072 item 7 codegen follow-up and a moto_defs export). No DBC message, signal, ID, layout, scale, DID, `tester_policy`, frame gate or BLE change; every existing `*_pack()`, `*_is_in_range()` and `DIDS` entry keeps its behaviour. Consumers: moto-safety-node and moto-rt-core can send through the checked pack once they bump (rt-core: 0x120 and the other sent messages with a value table); moto-server can read `DID_STALE_AFTER_MS` instead of 3 x the poll period.

@@ -96,6 +96,28 @@ Rules from `vehicle-work-plan.md` §3.2, §3.3 and §4; vehicle bus facts from D
 | Cables | Spiral wrap or conduit, clear of steering, suspension and chain, every end labelled, wiring diagram kept with this file | VWP §4.1 |
 | Rain | Glands on every cable entry; the enclosure must not collect water at the cable side | VWP §3.1 |
 
+### 4.1 Placement on the CL250 for the H755 build (Q-034, proposal)
+
+The under-seat rule above came from the ESP32-only build. The user found no free space under the seat above the battery (2026-10-18), and the Wave 1 enclosure for the NUCLEO-H755ZI-Q (board about 133 × 70 mm, box ~160 × 90 × 60 mm) is larger. Candidates and Claude's analysis (Q-034 until the user decides):
+
+| Candidate | Heat (≥ 15 cm rule) | Vibration | Noise | Verdict |
+|---|---|---|---|---|
+| (a) Around the engine block | fails: cylinder, head and exhaust header | strongest on the bike (combustion, crank) | next to the ignition coil and plug lead | rejected for the box. Only the D-044 engine accelerometer belongs here |
+| (b) E-Clutch unit's place | on the engine (Honda mounts the E-Clutch actuator on the engine's clutch side, **CONFIRM** for the CL250); without E-Clutch the spot is the clutch cover itself | engine vibration | near the engine | rejected for the same reasons as (a) |
+| (c) Rear subframe: tray or half-circle extension | good on the left; the CL250's upswept muffler is on the right (**CONFIRM** the distance) | lower than the engine; a cantilevered extension adds its own resonance | farthest from the ignition | **recommended** with the rules below |
+
+Rules for (c):
+- **Rigid tray inside the subframe outline** (under the rear fender/tail, between or on the subframe rails, left of centre), bolted at two or more points; a half-circle extension behind the tail only if the tray does not fit, then triangulated so it does not ring. The box sits on silicone mounts on the tray; glands point down, the box must not collect road spray.
+- **IMUs never on the tray or the extension.** The chassis IMU (M7) and the M4's own IMU (D-042, Q-023) each go on a rigid bracket on the main frame near the centre of mass, aligned with the bike's axes. Reason: a gyro sees the same angular rate anywhere on a rigid body, but an accelerometer at an offset r also sees ω × (ω × r) + α × r, and a bracket that flexes adds its own resonance. Record the offset r and the axis directions in the session metadata (§9). The M4 IMU's SPI run should stay short (≤ ~30 cm, shielded, with GND); if the frame point is farther from the box, the run length is checked on the desk with the logic analyzer before the build.
+- **Vehicle CAN stub.** The DLC Y-cable is an unterminated stub on the vehicle bus; its < 50 cm limit (§3.1) stays. If the DLC is under the seat or near the battery (**CONFIRM**, §10 item 1), the run to a rear tray is likely within it; measure before building. Never add termination to extend it. CAN itself is differential and twisted: the longer run adds little noise pickup, and the error counters and `can_bus_off_count` in telemetry show if it does.
+- **Platform CAN** (H755 FDCAN2 ↔ bike ESP32 and later the Raspi): a proper bus with 120 Ω at both physical ends, so its length is not the limit.
+- **Power.** The ignition-switched tap, fuse, reverse protection, TVS and LC filter sit at the box input (§3.2). The ground goes on its own wire straight to the battery negative (star point, no chassis return, no second ground path for the same unit). At well under 1 A the voltage drop of a longer run does not matter.
+- **Front-end lines get longer** (LED rings beside the gauge, mirror LEDs): the WS2812 data line is the sensitive one (single-ended, 800 kHz). Drive it through a 5 V buffer at the box (74AHCT125 class, also the 3.3 → 5 V level shift) with a ~330 Ω series resistor, run it twisted with its ground, and leave steering slack through the head stock. Test it at full length on the desk first.
+- **Rear-end lines get shorter:** both blind-spot radars (rear, facing rear-left and rear-right, mounting angle from the radar datasheet), the Q-033 indicator inputs (D-075 item 4) and the GPS antenna (on top under plastic, never under metal, clear of the ESP32 antenna) are close to a rear box. The immobilizer relay goes next to the starter relay wherever that is (**CONFIRM**), coil circuit only (invariant 6).
+- **Noise sources to keep the box and its cables away from:** ignition coil and plug lead, regulator/rectifier, starter motor cable (high cranking current), fuel pump and injector wiring. Magnetic near-field coupling falls off steeply with distance, so a rear box is quieter than one near the engine.
+
+**Measure on the bike before Q-034 is decided** (photos + dimensions; never commit photos showing the plate or the location): free volume under the tail/rear fender and between the subframe rails; muffler distance on both sides; DLC position and its cable path to the candidate spot; battery, starter relay, fuse box and regulator/rectifier positions; a frame point near the centre of mass for the IMU brackets; the indicator feed wires at the rear.
+
 ## 5. Firmware and software setup
 
 | Step | Command / action | Repo |
@@ -259,6 +281,7 @@ Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 
 | 2 | Parts actually on hand: ESP32-S3, MPU-6050, SN65HVD230 and NEO-M8N recorded (2026-10-11); board and IMU (MPU-6500) confirmed on the desk (2026-10-15); the the transceiver's termination resistor, the Y-cable, the power chain, the enclosure and the phone are still **CONFIRM** (§2) | Build start |
 | 3 | Ignition-switched tap point on the CL250 harness | §3.2 |
 | 4 | IMU bracket location and axis directions | §4, metadata |
+| 9 | Main enclosure placement for the H755 build (Q-034): the measurements of §4.1 | §4.1, Wave 1 on-bike build |
 | 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** (procedure §7.3) | T1 speed check, §9 |
 | 6 | ~~Listen-only capture tool for Q-001~~ decided in D-058 item 4 (conn `-listen-only` env) | §7 |
 | 7 | ~~ECU round-trip instrumentation~~ decided in D-058 items 1-3 (BLE telemetry v4) | D-029, A-4 |
