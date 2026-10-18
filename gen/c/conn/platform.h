@@ -46,24 +46,28 @@ extern "C" {
 
 /* Frame ids. */
 #define PLATFORM_VEHICLE_SPEED_FRAME_ID (0x21u)
+#define PLATFORM_SAFETY_WARNING_STATUS_FRAME_ID (0x23u)
 #define PLATFORM_HEARTBEAT_RT_CORE_FRAME_ID (0x81u)
 #define PLATFORM_HEARTBEAT_CONN_FRAME_ID (0x84u)
 #define PLATFORM_VEHICLE_ENGINE_FRAME_ID (0x110u)
 
 /* Frame lengths in bytes. */
 #define PLATFORM_VEHICLE_SPEED_LENGTH (8u)
+#define PLATFORM_SAFETY_WARNING_STATUS_LENGTH (8u)
 #define PLATFORM_HEARTBEAT_RT_CORE_LENGTH (8u)
 #define PLATFORM_HEARTBEAT_CONN_LENGTH (8u)
 #define PLATFORM_VEHICLE_ENGINE_LENGTH (8u)
 
 /* Extended or standard frame types. */
 #define PLATFORM_VEHICLE_SPEED_IS_EXTENDED (0)
+#define PLATFORM_SAFETY_WARNING_STATUS_IS_EXTENDED (0)
 #define PLATFORM_HEARTBEAT_RT_CORE_IS_EXTENDED (0)
 #define PLATFORM_HEARTBEAT_CONN_IS_EXTENDED (0)
 #define PLATFORM_VEHICLE_ENGINE_IS_EXTENDED (0)
 
 /* Frame cycle times in milliseconds. */
 #define PLATFORM_VEHICLE_SPEED_CYCLE_TIME_MS (50u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CYCLE_TIME_MS (20u)
 #define PLATFORM_HEARTBEAT_RT_CORE_CYCLE_TIME_MS (100u)
 #define PLATFORM_HEARTBEAT_CONN_CYCLE_TIME_MS (100u)
 #define PLATFORM_VEHICLE_ENGINE_CYCLE_TIME_MS (50u)
@@ -71,6 +75,32 @@ extern "C" {
 /* Signal choices. */
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_INVALID_CHOICE (0u)
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_VALID_CHOICE (1u)
+
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_GREEN_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_YELLOW_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_RED_CHOICE (3u)
+
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_NONE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_EKF_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_OWN_IMU_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_RESERVED_CHOICE (3u)
+
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_CLEAR_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_PRESENT_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_APPROACHING_CHOICE (3u)
+
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_UNAVAILABLE_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_CLEAR_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_PRESENT_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_APPROACHING_CHOICE (3u)
+
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNKNOWN_CHOICE (0u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_UNLOCKED_CHOICE (1u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_LOCKED_CHOICE (2u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_AUTH_PENDING_CHOICE (3u)
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_FAULT_CHOICE (4u)
 
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_INIT_CHOICE (0u)
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_NORMAL_CHOICE (1u)
@@ -103,6 +133,7 @@ extern "C" {
 
 /* Frame Names. */
 #define PLATFORM_VEHICLE_SPEED_NAME "VehicleSpeed"
+#define PLATFORM_SAFETY_WARNING_STATUS_NAME "SafetyWarningStatus"
 #define PLATFORM_HEARTBEAT_RT_CORE_NAME "HeartbeatRtCore"
 #define PLATFORM_HEARTBEAT_CONN_NAME "HeartbeatConn"
 #define PLATFORM_VEHICLE_ENGINE_NAME "VehicleEngine"
@@ -113,6 +144,13 @@ extern "C" {
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_VALID_NAME "VEHICLE_SPEED_VALID"
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_NAME "VEHICLE_SPEED"
 #define PLATFORM_VEHICLE_SPEED_VEHICLE_SPEED_AGE_NAME "VEHICLE_SPEED_AGE"
+#define PLATFORM_SAFETY_WARNING_STATUS_E2_E_CRC_NAME "E2E_CRC"
+#define PLATFORM_SAFETY_WARNING_STATUS_E2_E_COUNTER_NAME "E2E_COUNTER"
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_LEVEL_NAME "CORNERING_LEVEL"
+#define PLATFORM_SAFETY_WARNING_STATUS_CORNERING_SOURCE_NAME "CORNERING_SOURCE"
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_LEFT_NAME "BSM_LEFT"
+#define PLATFORM_SAFETY_WARNING_STATUS_BSM_RIGHT_NAME "BSM_RIGHT"
+#define PLATFORM_SAFETY_WARNING_STATUS_IMMOBILIZER_STATE_NAME "IMMOBILIZER_STATE"
 #define PLATFORM_HEARTBEAT_RT_CORE_E2_E_CRC_NAME "E2E_CRC"
 #define PLATFORM_HEARTBEAT_RT_CORE_E2_E_COUNTER_NAME "E2E_COUNTER"
 #define PLATFORM_HEARTBEAT_RT_CORE_NODE_MODE_NAME "NODE_MODE"
@@ -184,9 +222,77 @@ struct platform_vehicle_speed_t {
 };
 
 /**
+ * Signals in message SafetyWarningStatus.
+ *
+ * Safety partition output status (D-072 item 4c): the cornering warning level and its source (D-041, D-042), both blind-spot sides (hardware-architecture 5b.1) and the immobilizer state. The M4 writes it into the mailbox; rt-core forwards it verbatim and stops when the slot is not updated. Informational for every receiver (logging, phone, helmet HUD, D-073): the safety outputs are the LED ring and mirror LEDs, driven by the partition itself. No receiver may show a safe state from it; a timeout or E2E error means no status is available, never GREEN or CLEAR. Raw 0 is the no-information value of every field (codegen rule), so a zero-initialised or never-written field reads as unavailable.
+ *
+ * All signal values are as on the CAN bus.
+ */
+struct platform_safety_warning_status_t {
+    /**
+     * Range: 0..255 (0..255 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t e2_e_crc;
+
+    /**
+     * Range: 0..15 (0..15 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t e2_e_counter;
+
+    /**
+     * Level shown on the LED ring (D-041 item 1). UNAVAILABLE = no usable lean source (D-042 item 4). It comes with CORNERING_SOURCE = NONE and NONE comes with UNAVAILABLE; a receiver reads any other pairing (e.g. GREEN with NONE, UNAVAILABLE with EKF) as UNAVAILABLE. Test UNAVAILABLE by value, never by ordering.
+     *
+     * Range: 0..3 (0..3 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t cornering_level;
+
+    /**
+     * Lean source of the decision: NONE = no usable source; EKF = rt-core 0x020/0x022 usable; OWN_IMU = the D-042 fallback, shown on the ring as DEGRADED. 3 is reserved and is read as NONE.
+     *
+     * Range: 0..3 (0..3 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t cornering_source;
+
+    /**
+     * Left blind-spot state (hardware-architecture 5b.1): UNAVAILABLE = radar or decision not usable (also before the blind spot is implemented); CLEAR = no vehicle (mirror green); PRESENT = a vehicle on that side (solid red); APPROACHING = a vehicle approaching while signalling or changing lanes towards that side (blinking red).
+     *
+     * Range: 0..3 (0..3 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t bsm_left;
+
+    /**
+     * Right blind-spot state; same values as BSM_LEFT.
+     *
+     * Range: 0..3 (0..3 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t bsm_right;
+
+    /**
+     * Starter-relay immobilizer (invariant 6). UNKNOWN = the partition does not know the relay position (at boot, without position feedback; a boot never pulses the relay). UNLOCKED = relay released, the starter-relay coil circuit passes and the engine can start (default). LOCKED = the starter-relay coil circuit is interrupted. AUTH_PENDING = a lock request or an authorization (NFC, PIN) is being decided; it ends within 10 s in LOCKED or UNLOCKED, and in UNLOCKED if no decision is reached. FAULT = immobilizer out of service. Values 5-7 are read as UNKNOWN.
+     *
+     * Range: 0..4 (0..4 -)
+     * Scale: 1
+     * Offset: 0
+     */
+    uint8_t immobilizer_state;
+};
+
+/**
  * Signals in message HeartbeatRtCore.
  *
- * rt-core heartbeat (0x080 + node_id).
+ * rt-core heartbeat (0x080 + node_id). The safety partition receives it through the mailbox (D-042 item 3, D-072 item 4c).
  *
  * All signal values are as on the CAN bus.
  */
@@ -538,6 +644,246 @@ bool platform_vehicle_speed_vehicle_speed_age_is_in_range(uint8_t value);
  * @return true if in range, false otherwise.
  */
 bool platform_vehicle_speed_vehicle_speed_age_is_in_phys_range(float value);
+
+/**
+ * Unpack message SafetyWarningStatus.
+ *
+ * @param[out] dst_p Object to unpack the message into.
+ * @param[in] src_p Message to unpack.
+ * @param[in] size Size of src_p.
+ *
+ * @return zero(0) or negative error code.
+ */
+int platform_safety_warning_status_unpack(
+    struct platform_safety_warning_status_t *dst_p,
+    const uint8_t *src_p,
+    size_t size);
+
+/**
+ * Init message fields to default values from SafetyWarningStatus.
+ *
+ * @param[in] msg_p Message to init.
+ *
+ * @return zero(0) on success or (-1) in case of nullptr argument.
+ */
+int platform_safety_warning_status_init(struct platform_safety_warning_status_t *msg_p);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_e2_e_crc_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_e2_e_crc_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_e2_e_crc_is_in_phys_range(float value);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_e2_e_counter_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_e2_e_counter_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_e2_e_counter_is_in_phys_range(float value);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_cornering_level_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_cornering_level_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_cornering_level_is_in_phys_range(float value);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_cornering_source_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_cornering_source_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_cornering_source_is_in_phys_range(float value);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_bsm_left_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_bsm_left_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_bsm_left_is_in_phys_range(float value);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_bsm_right_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_bsm_right_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_bsm_right_is_in_phys_range(float value);
+
+/**
+ * Decode given signal by applying scaling and offset.
+ *
+ * @param[in] value Signal to decode.
+ *
+ * @return Decoded signal.
+ */
+float platform_safety_warning_status_immobilizer_state_decode(uint8_t value);
+
+/**
+ * Check that given signal is in allowed range.
+ *
+ * @param[in] value Signal to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_immobilizer_state_is_in_range(uint8_t value);
+
+/**
+ * Check that given physical value is in allowed range before encoding.
+ *
+ * Use this BEFORE calling _encode() to avoid silent integer overflow:
+ *   encode(-1.0) on a [0,100] signal wraps to 255 and passes is_in_range().
+ *   is_in_phys_range(-1.0) correctly returns false.
+ *
+ * @param[in] value Physical signal value to check.
+ *
+ * @return true if in range, false otherwise.
+ */
+bool platform_safety_warning_status_immobilizer_state_is_in_phys_range(float value);
 
 /**
  * Unpack message HeartbeatRtCore.

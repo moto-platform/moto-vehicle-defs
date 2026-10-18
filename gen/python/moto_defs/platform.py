@@ -4,7 +4,6 @@
 NODE_IDS = {
     "RT_CORE": 0x1,
     "SAFETY": 0x2,
-    "IO": 0x3,
     "CONN": 0x4,
     "LINUX": 0x5,
     "HIL_SIM": 0xE,
@@ -23,15 +22,15 @@ VEHICLE_SPEED_E2E_DATA_ID = 0x1021
 EKF_FRICTION_MASS_FRAME_ID = 0x022
 EKF_FRICTION_MASS_CYCLE_TIME_MS = 100
 EKF_FRICTION_MASS_E2E_DATA_ID = 0x1022
+SAFETY_WARNING_STATUS_FRAME_ID = 0x023
+SAFETY_WARNING_STATUS_CYCLE_TIME_MS = 20
+SAFETY_WARNING_STATUS_E2E_DATA_ID = 0x1023
 HEARTBEAT_RT_CORE_FRAME_ID = 0x081
 HEARTBEAT_RT_CORE_CYCLE_TIME_MS = 100
 HEARTBEAT_RT_CORE_E2E_DATA_ID = 0x1081
 HEARTBEAT_SAFETY_FRAME_ID = 0x082
 HEARTBEAT_SAFETY_CYCLE_TIME_MS = 100
 HEARTBEAT_SAFETY_E2E_DATA_ID = 0x1082
-HEARTBEAT_IO_FRAME_ID = 0x083
-HEARTBEAT_IO_CYCLE_TIME_MS = 100
-HEARTBEAT_IO_E2E_DATA_ID = 0x1083
 HEARTBEAT_CONN_FRAME_ID = 0x084
 HEARTBEAT_CONN_CYCLE_TIME_MS = 100
 HEARTBEAT_CONN_E2E_DATA_ID = 0x1084
@@ -40,15 +39,19 @@ HEARTBEAT_LINUX_CYCLE_TIME_MS = 100
 HEARTBEAT_LINUX_E2E_DATA_ID = 0x1085
 VEHICLE_ENGINE_FRAME_ID = 0x110
 VEHICLE_ENGINE_CYCLE_TIME_MS = 50
+SAFETY_REQUEST_FRAME_ID = 0x120
+SAFETY_REQUEST_CYCLE_TIME_MS = 100
+SAFETY_REQUEST_E2E_DATA_ID = 0x1120
 
 MESSAGES = {
     "EkfLean": {"frame_id": 0x020, "length": 8, "cycle_time_ms": 20, "sender": "RT_CORE", "e2e_data_id": 0x1020},
     "VehicleSpeed": {"frame_id": 0x021, "length": 8, "cycle_time_ms": 50, "sender": "RT_CORE", "e2e_data_id": 0x1021},
     "EkfFrictionMass": {"frame_id": 0x022, "length": 8, "cycle_time_ms": 100, "sender": "RT_CORE", "e2e_data_id": 0x1022},
+    "SafetyWarningStatus": {"frame_id": 0x023, "length": 8, "cycle_time_ms": 20, "sender": "SAFETY", "e2e_data_id": 0x1023},
     "HeartbeatRtCore": {"frame_id": 0x081, "length": 8, "cycle_time_ms": 100, "sender": "RT_CORE", "e2e_data_id": 0x1081},
     "HeartbeatSafety": {"frame_id": 0x082, "length": 8, "cycle_time_ms": 100, "sender": "SAFETY", "e2e_data_id": 0x1082},
-    "HeartbeatIo": {"frame_id": 0x083, "length": 8, "cycle_time_ms": 100, "sender": "IO", "e2e_data_id": 0x1083},
     "HeartbeatConn": {"frame_id": 0x084, "length": 8, "cycle_time_ms": 100, "sender": "CONN", "e2e_data_id": 0x1084},
     "HeartbeatLinux": {"frame_id": 0x085, "length": 8, "cycle_time_ms": 100, "sender": "LINUX", "e2e_data_id": 0x1085},
     "VehicleEngine": {"frame_id": 0x110, "length": 8, "cycle_time_ms": 50, "sender": "RT_CORE", "e2e_data_id": None},
+    "SafetyRequest": {"frame_id": 0x120, "length": 8, "cycle_time_ms": 100, "sender": "RT_CORE", "e2e_data_id": 0x1120},
 }

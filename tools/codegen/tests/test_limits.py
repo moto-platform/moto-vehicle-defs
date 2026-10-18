@@ -112,7 +112,7 @@ def test_speed_rules_never_reach_safety(limits, vehicle, platform_db):
     [
         (lambda s: s.pop("vehicle_speed"), "scope must list exactly"),
         (lambda s: s.update(extra=["RT_CORE"]), "scope must list exactly"),
-        (lambda s: s["cornering"].append("IO"), "not nodes with limits"),
+        (lambda s: s["cornering"].append("CONN"), "not nodes with limits"),
         (lambda s: s.update(cornering=[]), "non-empty list"),
         (lambda s: s["cornering"].remove("SAFETY"), "node SAFETY gets platform_limits.h"),
     ],

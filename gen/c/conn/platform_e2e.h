@@ -19,6 +19,13 @@ extern "C" {
 moto_e2e_status_t platform_vehicle_speed_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
 moto_e2e_status_t platform_vehicle_speed_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
 
+/* SafetyWarningStatus 0x023, cycle 20 ms, sender SAFETY */
+#define PLATFORM_SAFETY_WARNING_STATUS_E2E_DATA_ID (0x1023u)
+#define PLATFORM_SAFETY_WARNING_STATUS_E2E_TIMEOUT_MS (60u)
+#define PLATFORM_SAFETY_WARNING_STATUS_E2E_MAX_DELTA_COUNTER (1u)
+moto_e2e_status_t platform_safety_warning_status_e2e_check(const uint8_t *data, size_t size, moto_e2e_rx_state_t *state, uint32_t now_ms);
+moto_e2e_status_t platform_safety_warning_status_e2e_check_timeout(moto_e2e_rx_state_t *state, uint32_t now_ms);
+
 /* HeartbeatRtCore 0x081, cycle 100 ms, sender RT_CORE */
 #define PLATFORM_HEARTBEAT_RT_CORE_E2E_DATA_ID (0x1081u)
 #define PLATFORM_HEARTBEAT_RT_CORE_E2E_TIMEOUT_MS (300u)

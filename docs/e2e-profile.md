@@ -30,11 +30,11 @@ Call `platform_<msg>_e2e_check(data, size, &rx_state, now_ms)` for each received
 | `WRONG_CRC` | corrupted frame or wrong DataID | no |
 | `NO_NEW_DATA` | timeout expired (or never received); forces a resync | no |
 
-Only `OK`/`OK_SOME_LOST` (`moto_e2e_is_valid()`) allow use. `OK`, `OK_SOME_LOST` and `INITIAL` refresh the timeout; the others do not, so a frozen or corrupted stream ends in `NO_NEW_DATA`. Parameters: timeout = **3 × GenMsgCycleTime** (`PLATFORM_<MSG>_E2E_TIMEOUT_MS`), max delta counter = **1** (`..._E2E_MAX_DELTA_COUNTER`), so a single lost frame makes that cycle invalid. After an invalid status the consumer uses its own safe state; what safety-node does then is open (Q-002).
+Only `OK`/`OK_SOME_LOST` (`moto_e2e_is_valid()`) allow use. `OK`, `OK_SOME_LOST` and `INITIAL` refresh the timeout; the others do not, so a frozen or corrupted stream ends in `NO_NEW_DATA`. Parameters: timeout = **3 × GenMsgCycleTime** (`PLATFORM_<MSG>_E2E_TIMEOUT_MS`), max delta counter = **1** (`..._E2E_MAX_DELTA_COUNTER`), so a single lost frame makes that cycle invalid. After an invalid status the consumer uses its own safe state; safety-node then uses its own-IMU fallback (DEGRADED or UNAVAILABLE, D-042, which resolved Q-002).
 
 ## Sender restart
 
-A restarted sender begins again at counter 0: the receiver sees `WRONG_SEQUENCE`, then `OK` on the next frame. E2E therefore cannot tell fresh-but-unconverged data from good data. Senders of estimates (rt-core EKF) must transmit `*_STATE = INVALID` and `QUALITY = 0` until converged; a falling heartbeat `UPTIME` also reveals the restart. With max delta 1, one CAN error invalidates one cycle, so consumers need debouncing (part of Q-002).
+A restarted sender begins again at counter 0: the receiver sees `WRONG_SEQUENCE`, then `OK` on the next frame. E2E therefore cannot tell fresh-but-unconverged data from good data. Senders of estimates (rt-core EKF) must transmit `*_STATE = INVALID` and `QUALITY = 0` until converged; a falling heartbeat `UPTIME` also reveals the restart. With max delta 1, one CAN error invalidates one cycle, so consumers need debouncing (D-042; details in Q-023).
 
 ## Not covered
 

@@ -28,7 +28,7 @@ GEN_DIR = REPO_ROOT / "gen"
 NODE_IDS: dict[str, int] = {
     "RT_CORE": 1,
     "SAFETY": 2,
-    "IO": 3,
+    # 3 was IO (retired by D-072; the ID stays unused)
     "CONN": 4,
     "LINUX": 5,
     "HIL_SIM": 0xE,
@@ -64,7 +64,6 @@ C_TARGETS: tuple[CTarget, ...] = (
         vehicle_constants=True,
     ),
     CTarget("SAFETY", "safety", limits=True),
-    CTarget("IO", "io"),
     # Temporary sole vehicle-bus tester until rt-core polls (D-023).
     CTarget("CONN", "conn", vehicle_dids=True, uds_iso="client"),
     # Simulates the CL250 ECU and impersonates platform nodes on the HIL bench.
@@ -102,10 +101,29 @@ HEARTBEAT_CYCLE_MS = 100
 E2E_TIMEOUT_CYCLES = 3  # receiver timeout = 3 x cycle (ARCHITECTURE section 4)
 E2E_MAX_DELTA_COUNTER = 1  # conservative: any lost frame is reported as WRONG_SEQUENCE
 
-# D-041/D-042: the only platform messages safety-node may receive (lean, mu and the
-# rt-core heartbeat for the fallback). Vehicle speed in particular is not a
-# safety-node input; widening this list is a safety decision (safety-reviewer).
-SAFETY_RX_ALLOWED = frozenset({"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"})
+# D-041/D-042: the only safety inputs of safety-node (lean, mu and the rt-core heartbeat
+# for the fallback). Vehicle speed in particular is not a safety-node input.
+SAFETY_RX_SAFETY_INPUTS = frozenset({"EkfLean", "EkfFrictionMass", "HeartbeatRtCore"})
+# D-072 item 4c/7: QM requests used by the immobilizer alone. They never gate the
+# cornering decision, the blind spot, the LEDs, the D-042 source selection or the M4
+# power/clock state, and a missing frame never changes the immobilizer state.
+SAFETY_RX_QM_IMMOBILIZER = frozenset({"SafetyRequest"})
+# Everything safety-node may receive. Widening either list is a safety decision
+# (safety-reviewer).
+SAFETY_RX_ALLOWED = SAFETY_RX_SAFETY_INPUTS | SAFETY_RX_QM_IMMOBILIZER
+
+# D-072 item 7 (safety-reviewer MAJOR-1): in an E2E message sent by or to SAFETY, raw 0
+# of every value-table signal must mean "no information", so a zero-initialised,
+# never-written or NaN-encoded field cannot read as GREEN, CLEAR or UNLOCKED.
+NO_INFORMATION_NAMES = frozenset({"UNAVAILABLE", "NONE", "UNKNOWN", "INVALID", "INIT"})
+# Stable frames released before the rule; their raw 0 is a valid estimate state.
+NO_INFORMATION_EXEMPT = frozenset(
+    {
+        ("EkfLean", "LEAN_ANGLE_STATE"),
+        ("EkfFrictionMass", "FRICTION_COEFF_STATE"),
+        ("EkfFrictionMass", "TOTAL_MASS_STATE"),
+    }
+)
 
 # D-020 forbidden vehicle-bus services, repeated here as a second line of defence:
 # the checker rejects vehicle_cl250.yaml if its policy ever allows one of them.

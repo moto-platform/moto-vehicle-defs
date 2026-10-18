@@ -4,6 +4,24 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.15.0] — 2026-10-18
+
+Breaking (0.x: breaking changes bump the minor; D-072 item 7, layout confirmed by the user). The platform bus follows the STM32H755 architecture. `tester_policy`, the D-020 golden copy, the frame gate, every vehicle DID, VSS path and BLE layout are unchanged; 0x020, 0x022, 0x021, 0x081, 0x082, 0x084, 0x085 and 0x110 keep their layouts and E2E DataIDs. Consumers: moto-hil-bench (restbus: drop 0x083, add 0x023/0x120), moto-rt-core (forwards 0x023/0x082 verbatim, sends 0x120; gen/c/rt_core changes, stays on its pin until it builds the mailbox), moto-safety-node (no code yet), moto-connectivity-node (receives 0x023 for the phone and the helmet HUD; gen/c/conn changes, bump when it uses it), moto-linux-node (DBC at runtime). moto-server and moto-mobile: `gen/python/moto_defs/platform.py` drops the `HEARTBEAT_IO_*` names and the `HeartbeatIo` table entry; no code use was found, so their next bump needs no change. No sibling repo uses 0x083 or `gen/c/io` outside its pinned `external/` copy.
+
+### Removed
+- `dbc/platform.dbc`: node **IO** (node ID 3 stays unused) and **0x083 `HeartbeatIo`** (E2E DataID 0x1083 free); `uds/dids.yaml` node IO; codegen target `gen/c/io/` (moto-io-node is retired, D-072 item 6).
+
+### Added
+- **0x023 `SafetyWarningStatus`** (SAFETY → RT_CORE, CONN, LINUX; E2E, DataID 0x1023, 20 ms). Raw 0 of every field means no information: `CORNERING_LEVEL` (0 UNAVAILABLE, 1 GREEN, 2 YELLOW, 3 RED), `CORNERING_SOURCE` (0 NONE, 1 EKF, 2 OWN_IMU = DEGRADED; 3 reserved = NONE), `BSM_LEFT` / `BSM_RIGHT` (0 UNAVAILABLE, 1 CLEAR, 2 PRESENT, 3 APPROACHING), `IMMOBILIZER_STATE` (3 bits: 0 UNKNOWN, 1 UNLOCKED, 2 LOCKED, 3 AUTH_PENDING, 4 FAULT). Written by the M4 into the mailbox, forwarded verbatim by rt-core. Informational for every receiver: a timeout or E2E error means no status, never GREEN or CLEAR.
+- **0x120 `SafetyRequest`** (RT_CORE → SAFETY; E2E for integrity, DataID 0x1120, 100 ms; QM, used by the immobilizer alone): `IGNITION_STATE` (0 UNKNOWN, 1 OFF, 2 ON), `PARK_MODE` (0 UNKNOWN, 1 INACTIVE, 2 ACTIVE), `IMMOBILIZER_LOCK_REQUEST` (0 NONE, 3 LOCK; 1 and 2 reserved = NONE, so a single-bit error never forms or keeps a LOCK; no unlock request). A lock counts only on a NONE → LOCK edge with ignition OFF and the partition's own IMU stationary; a missing, stale or invalid frame is no request and never changes the immobilizer state (D-072 item 7, user 2026-10-18).
+- codegen: `SAFETY_RX_ALLOWED` = `SAFETY_RX_SAFETY_INPUTS` (EkfLean, EkfFrictionMass, HeartbeatRtCore) | `SAFETY_RX_QM_IMMOBILIZER` (SafetyRequest). New check: in an E2E message sent by or to SAFETY, raw 0 of every value-table signal must be a no-information name (UNAVAILABLE, NONE, UNKNOWN, INVALID, INIT); 0x020/0x022 are exempt as released frames. Tests pin both lists, the new value tables, the all-zero decode, the all-zero frame failing E2E for every counter (0x1023, 0x1120) and a 0x082 payload failing as 0x023.
+
+### Fixed
+- `gen/python/moto_defs/e2e.py` could not be imported (`SyntaxError`: the GENERATED docstring came before `from __future__`, safety-reviewer finding, present since the module was first copied). The banner is now a comment; a new test imports every generated Python module. moto-hil-bench and moto-server can now use the E2E reference.
+
+### Changed
+- `dbc/platform.dbc` comments: RT_CORE = STM32H755 Cortex-M7 and mailbox relay, SAFETY = Cortex-M4 safety partition, CONN = bike ESP32 (helmet unit BLE only, D-073); 0x020, 0x022, 0x081, 0x082 note the mailbox path. 0x081 no longer lists IO as a receiver.
+
 ### Docs
 - D-074: the vehicle bus stays at 500 kbps (the ECU, not the bus, is the limit); more vehicle data comes from the Q-001 listen-only capture, then a probe-env support test of multi-DID 0x22 / multi-PID 0x01 requests (own decision and `safety-reviewer` before any poller change), then D-068 tier tuning. Q-001 row and catalog §1 reference it. No signal, DID, `tester_policy` or frame-gate change.
 - D-072: one dual-core STM32H755 (NUCLEO-H755ZI-Q) replaces the H7 + G4 + G0 set; the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering, own IMU, blind spot, immobilizer, LED ring); io-node retired; resolves Q-019, Q-026, Q-003. D-073: helmet ESP32-S3 unit (visor HUD, microphone, voice), HUD warnings informational; Q-032. ARCHITECTURE, hardware-architecture (§5b.4a helmet unit), procurement list v2.0 (purchase waves with store links). `derived/cl250_derived.yaml`: header comment only. No signal, DID, DBC, VSS, BLE or `tester_policy` change; the `platform.dbc` IO node, 0x083 and the mailbox payloads follow in the next `/signal-change`.

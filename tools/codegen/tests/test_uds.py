@@ -98,10 +98,12 @@ def _rt(dids):
         (lambda d: _rt(d)["dtcs"][1].update(dtc=0xC10000, code="U0100-00"), "unique"),
         (lambda d: _rt(d)["dtcs"][0].update(dtc=0xFFFFFF), "unique"),
         (lambda d: d["transport"].update(functional_request_id=0x7DE), "0x7DF"),
-        (lambda d: d["nodes"]["IO"].update(dids=[{"did": 0xF189}]), "no server"),
+        (lambda d: d["nodes"]["SAFETY"].update(dids=[{"did": 0xF189}]), "no server"),
         (
-            lambda d: d["nodes"]["IO"].update(server=_rt(d)["server"], dids=[_rt(d)["dids"][4]]),
-            "0x730",
+            lambda d: d["nodes"]["SAFETY"].update(
+                server=_rt(d)["server"], dids=[_rt(d)["dids"][4]]
+            ),
+            "0x720",
         ),
     ],
 )
@@ -187,10 +189,10 @@ def test_lean_health_record_layout(dids):
 
 
 def test_vehicle_sample_needs_vehicle_node(dids, iso, vehicle):
-    io = dids["nodes"]["IO"]
-    io["server"] = copy.deepcopy(_rt(dids)["server"])
-    io["server"].update(physical_request_id=0x730, physical_response_id=0x738)
-    io["dids"] = [copy.deepcopy(_rt(dids)["dids"][4])]
+    safety = dids["nodes"]["SAFETY"]
+    safety["server"] = copy.deepcopy(_rt(dids)["server"])
+    safety["server"].update(physical_request_id=0x720, physical_response_id=0x728)
+    safety["dids"] = [copy.deepcopy(_rt(dids)["dids"][4])]
     assert any("vehicle_sample needs" in e for e in _errors(dids, iso, vehicle))
 
 
