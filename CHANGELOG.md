@@ -8,6 +8,7 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 - Q-034: enclosure and IMU placement on the CL250 for the H755 build; `hardware-integration.md` §4.1 compares the engine area, the E-Clutch spot and the rear subframe (recommended, with rules for the longer runs) and lists the measurements to take.
 - D-075 item 1 amended (provisional, safety-reviewer on rt-core#38): a counted 0x7E/0x7F refusal re-requests the session at once (no 2 s blackout of the verified DIDs), the engine-start "valid 0 seen" state survives a re-confirmation, the two-re-request bound is stated outside the quiet window, and the tester keeps a per-DID stop reason. No signal, DID, `tester_policy` or frame-gate change.
 - D-075 item 1 (e)-(f) (provisional, second safety review): conn's 2000 ms First-Frame hold and its First-Frame skip; an unverified DID that answered and later refuses with 0x7E/0x7F is counted in its own per-epoch counter and stopped after two refusals (no unbounded 2 s blackouts); 0x31 takes precedence as the stop reason.
+- D-075 item 1 (f) wording: 0x31 precedence applies to a never-answered DID, a late answer does not undo an (f) stop, and the disagreeing-response-ID case outside the bound is recorded.
 
 ## [0.16.0] — 2026-10-18
 
