@@ -2254,3 +2254,338 @@ bool platform_safety_request_immobilizer_lock_request_is_in_phys_range(float val
 {
     return ((value >= 0.0f) && (value <= 3.0f));
 }
+
+bool platform_ekf_lean_lean_angle_state_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 3u));
+}
+
+int platform_ekf_lean_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_ekf_lean_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_ekf_lean_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_ekf_lean_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_ekf_lean_lean_angle_state_is_in_range(src_p->lean_angle_state) &&
+        platform_ekf_lean_lean_angle_state_is_defined(src_p->lean_angle_state) &&
+        platform_ekf_lean_lean_angle_is_in_range(src_p->lean_angle) &&
+        platform_ekf_lean_lean_angle_quality_is_in_range(src_p->lean_angle_quality)) {
+        result = platform_ekf_lean_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_vehicle_speed_vehicle_speed_valid_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u));
+}
+
+int platform_vehicle_speed_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_vehicle_speed_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_vehicle_speed_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_vehicle_speed_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_vehicle_speed_vehicle_speed_valid_is_in_range(src_p->vehicle_speed_valid) &&
+        platform_vehicle_speed_vehicle_speed_valid_is_defined(src_p->vehicle_speed_valid) &&
+        platform_vehicle_speed_vehicle_speed_is_in_range(src_p->vehicle_speed) &&
+        platform_vehicle_speed_vehicle_speed_age_is_in_range(src_p->vehicle_speed_age)) {
+        result = platform_vehicle_speed_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_ekf_friction_mass_friction_coeff_state_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u));
+}
+
+bool platform_ekf_friction_mass_total_mass_state_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u));
+}
+
+int platform_ekf_friction_mass_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_ekf_friction_mass_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_ekf_friction_mass_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_ekf_friction_mass_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_ekf_friction_mass_friction_coeff_state_is_in_range(src_p->friction_coeff_state) &&
+        platform_ekf_friction_mass_friction_coeff_state_is_defined(src_p->friction_coeff_state) &&
+        platform_ekf_friction_mass_total_mass_state_is_in_range(src_p->total_mass_state) &&
+        platform_ekf_friction_mass_total_mass_state_is_defined(src_p->total_mass_state) &&
+        platform_ekf_friction_mass_friction_coeff_is_in_range(src_p->friction_coeff) &&
+        platform_ekf_friction_mass_friction_coeff_quality_is_in_range(src_p->friction_coeff_quality) &&
+        platform_ekf_friction_mass_total_mass_is_in_range(src_p->total_mass) &&
+        platform_ekf_friction_mass_total_mass_quality_is_in_range(src_p->total_mass_quality)) {
+        result = platform_ekf_friction_mass_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_safety_warning_status_cornering_level_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u));
+}
+
+bool platform_safety_warning_status_cornering_source_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u));
+}
+
+bool platform_safety_warning_status_bsm_left_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u));
+}
+
+bool platform_safety_warning_status_bsm_right_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u));
+}
+
+bool platform_safety_warning_status_immobilizer_state_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u) || (value == 4u));
+}
+
+int platform_safety_warning_status_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_safety_warning_status_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_safety_warning_status_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_safety_warning_status_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_safety_warning_status_cornering_level_is_in_range(src_p->cornering_level) &&
+        platform_safety_warning_status_cornering_level_is_defined(src_p->cornering_level) &&
+        platform_safety_warning_status_cornering_source_is_in_range(src_p->cornering_source) &&
+        platform_safety_warning_status_cornering_source_is_defined(src_p->cornering_source) &&
+        platform_safety_warning_status_bsm_left_is_in_range(src_p->bsm_left) &&
+        platform_safety_warning_status_bsm_left_is_defined(src_p->bsm_left) &&
+        platform_safety_warning_status_bsm_right_is_in_range(src_p->bsm_right) &&
+        platform_safety_warning_status_bsm_right_is_defined(src_p->bsm_right) &&
+        platform_safety_warning_status_immobilizer_state_is_in_range(src_p->immobilizer_state) &&
+        platform_safety_warning_status_immobilizer_state_is_defined(src_p->immobilizer_state)) {
+        result = platform_safety_warning_status_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_heartbeat_rt_core_node_mode_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u) || (value == 4u) || (value == 5u));
+}
+
+int platform_heartbeat_rt_core_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_rt_core_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_heartbeat_rt_core_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_heartbeat_rt_core_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_heartbeat_rt_core_node_mode_is_in_range(src_p->node_mode) &&
+        platform_heartbeat_rt_core_node_mode_is_defined(src_p->node_mode) &&
+        platform_heartbeat_rt_core_error_count_is_in_range(src_p->error_count) &&
+        platform_heartbeat_rt_core_uptime_is_in_range(src_p->uptime)) {
+        result = platform_heartbeat_rt_core_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_heartbeat_safety_node_mode_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u) || (value == 4u) || (value == 5u));
+}
+
+int platform_heartbeat_safety_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_safety_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_heartbeat_safety_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_heartbeat_safety_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_heartbeat_safety_node_mode_is_in_range(src_p->node_mode) &&
+        platform_heartbeat_safety_node_mode_is_defined(src_p->node_mode) &&
+        platform_heartbeat_safety_error_count_is_in_range(src_p->error_count) &&
+        platform_heartbeat_safety_uptime_is_in_range(src_p->uptime)) {
+        result = platform_heartbeat_safety_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_heartbeat_conn_node_mode_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u) || (value == 4u) || (value == 5u));
+}
+
+int platform_heartbeat_conn_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_conn_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_heartbeat_conn_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_heartbeat_conn_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_heartbeat_conn_node_mode_is_in_range(src_p->node_mode) &&
+        platform_heartbeat_conn_node_mode_is_defined(src_p->node_mode) &&
+        platform_heartbeat_conn_error_count_is_in_range(src_p->error_count) &&
+        platform_heartbeat_conn_uptime_is_in_range(src_p->uptime)) {
+        result = platform_heartbeat_conn_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_heartbeat_linux_node_mode_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u) || (value == 4u) || (value == 5u));
+}
+
+int platform_heartbeat_linux_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_linux_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_heartbeat_linux_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_heartbeat_linux_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_heartbeat_linux_node_mode_is_in_range(src_p->node_mode) &&
+        platform_heartbeat_linux_node_mode_is_defined(src_p->node_mode) &&
+        platform_heartbeat_linux_error_count_is_in_range(src_p->error_count) &&
+        platform_heartbeat_linux_uptime_is_in_range(src_p->uptime)) {
+        result = platform_heartbeat_linux_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_vehicle_engine_engine_speed_valid_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u));
+}
+
+bool platform_vehicle_engine_battery_voltage_valid_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u));
+}
+
+bool platform_vehicle_engine_coolant_temp_valid_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u));
+}
+
+bool platform_vehicle_engine_throttle_pos_valid_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u));
+}
+
+bool platform_vehicle_engine_ecu_present_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u));
+}
+
+int platform_vehicle_engine_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_vehicle_engine_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_vehicle_engine_engine_speed_is_in_range(src_p->engine_speed) &&
+        platform_vehicle_engine_battery_voltage_is_in_range(src_p->battery_voltage) &&
+        platform_vehicle_engine_coolant_temp_is_in_range(src_p->coolant_temp) &&
+        platform_vehicle_engine_throttle_pos_is_in_range(src_p->throttle_pos) &&
+        platform_vehicle_engine_engine_speed_valid_is_in_range(src_p->engine_speed_valid) &&
+        platform_vehicle_engine_engine_speed_valid_is_defined(src_p->engine_speed_valid) &&
+        platform_vehicle_engine_battery_voltage_valid_is_in_range(src_p->battery_voltage_valid) &&
+        platform_vehicle_engine_battery_voltage_valid_is_defined(src_p->battery_voltage_valid) &&
+        platform_vehicle_engine_coolant_temp_valid_is_in_range(src_p->coolant_temp_valid) &&
+        platform_vehicle_engine_coolant_temp_valid_is_defined(src_p->coolant_temp_valid) &&
+        platform_vehicle_engine_throttle_pos_valid_is_in_range(src_p->throttle_pos_valid) &&
+        platform_vehicle_engine_throttle_pos_valid_is_defined(src_p->throttle_pos_valid) &&
+        platform_vehicle_engine_ecu_present_is_in_range(src_p->ecu_present) &&
+        platform_vehicle_engine_ecu_present_is_defined(src_p->ecu_present)) {
+        result = platform_vehicle_engine_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}
+
+bool platform_safety_request_ignition_state_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u));
+}
+
+bool platform_safety_request_park_mode_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u));
+}
+
+bool platform_safety_request_immobilizer_lock_request_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 3u));
+}
+
+int platform_safety_request_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_safety_request_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_safety_request_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_safety_request_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_safety_request_ignition_state_is_in_range(src_p->ignition_state) &&
+        platform_safety_request_ignition_state_is_defined(src_p->ignition_state) &&
+        platform_safety_request_park_mode_is_in_range(src_p->park_mode) &&
+        platform_safety_request_park_mode_is_defined(src_p->park_mode) &&
+        platform_safety_request_immobilizer_lock_request_is_in_range(src_p->immobilizer_lock_request) &&
+        platform_safety_request_immobilizer_lock_request_is_defined(src_p->immobilizer_lock_request)) {
+        result = platform_safety_request_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}

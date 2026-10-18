@@ -764,3 +764,29 @@ bool platform_vehicle_engine_ecu_present_is_in_phys_range(float value)
 {
     return ((value >= 0.0f) && (value <= 1.0f));
 }
+
+bool platform_heartbeat_conn_node_mode_is_defined(uint8_t value)
+{
+    return ((value == 0u) || (value == 1u) || (value == 2u) || (value == 3u) || (value == 4u) || (value == 5u));
+}
+
+int platform_heartbeat_conn_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_conn_t *src_p,
+    size_t size)
+{
+    int result = (-EINVAL);
+
+    if ((dst_p != NULL) &&
+        (src_p != NULL) &&
+        platform_heartbeat_conn_e2_e_crc_is_in_range(src_p->e2_e_crc) &&
+        platform_heartbeat_conn_e2_e_counter_is_in_range(src_p->e2_e_counter) &&
+        platform_heartbeat_conn_node_mode_is_in_range(src_p->node_mode) &&
+        platform_heartbeat_conn_node_mode_is_defined(src_p->node_mode) &&
+        platform_heartbeat_conn_error_count_is_in_range(src_p->error_count) &&
+        platform_heartbeat_conn_uptime_is_in_range(src_p->uptime)) {
+        result = platform_heartbeat_conn_pack(dst_p, src_p, size);
+    }
+
+    return (result);
+}

@@ -4,6 +4,15 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.16.0] — 2026-10-18
+
+MINOR, additive (the D-072 item 7 codegen follow-up and a moto_defs export). No DBC message, signal, ID, layout, scale, DID, `tester_policy`, frame gate or BLE change; every existing `*_pack()`, `*_is_in_range()` and `DIDS` entry keeps its behaviour. Consumers: moto-safety-node and moto-rt-core can send through the checked pack once they bump (rt-core: 0x120 and the other sent messages with a value table); moto-server can read `DID_STALE_AFTER_MS` instead of 3 x the poll period.
+
+### Added
+- codegen (`gen_c.py`): for every message a node sends that has a value table (VAL_), `gen/c/<node>/platform.{h,c}` gets `platform_<msg>_pack_checked(dst_p, src_p, size)`. It calls the existing `*_is_in_range()` of every signal and, for every enum signal, the new `platform_<msg>_<signal>_is_defined(value)` (the value table without `RESERVED` names; `is_in_range()` only knows the DBC min/max, which is wider, e.g. 0x023 `IMMOBILIZER_STATE` 3 bits = 0..7 against 0..4 defined). If anything fails (or `dst_p`/`src_p` is NULL, or `size` is too small) it returns `-EINVAL` and writes nothing; otherwise it returns the plain pack's result. Raw 0 (no information) and `LOCK` = 3 pass; the reserved 0x120 lock requests 1 and 2, 0x023 `CORNERING_SOURCE` 3 and any undefined value are refused. One exit, no loops, no dynamic memory. The plain `*_pack()` still masks, as before.
+- `gen/python/moto_defs/vehicle_cl250.py`: `DID_STALE_AFTER_MS` (name -> ms), from the same `config.did_stale_after_ms()` as the C table's `stale_after_ms` field. `DIDS` tuples are unchanged, so existing unpacking keeps working.
+- Tests: `test_cantools_c.py` runs `pack_checked` on every sent enum message of every node (identical bytes to the plain pack for valid values, error and untouched buffer for every bad member, short buffers and NULL), plus the 0x023 and 0x120 cases; new `test_did_stale.py` compares the Python value with the compiled C table for every DID of every node that has it.
+
 ## [0.15.0] — 2026-10-18
 
 Breaking (0.x: breaking changes bump the minor; D-072 item 7, layout confirmed by the user). The platform bus follows the STM32H755 architecture. `tester_policy`, the D-020 golden copy, the frame gate, every vehicle DID, VSS path and BLE layout are unchanged; 0x020, 0x022, 0x021, 0x081, 0x082, 0x084, 0x085 and 0x110 keep their layouts and E2E DataIDs. Consumers: moto-hil-bench (restbus: drop 0x083, add 0x023/0x120), moto-rt-core (forwards 0x023/0x082 verbatim, sends 0x120; gen/c/rt_core changes, stays on its pin until it builds the mailbox), moto-safety-node (no code yet), moto-connectivity-node (receives 0x023 for the phone and the helmet HUD; gen/c/conn changes, bump when it uses it), moto-linux-node (DBC at runtime). moto-server and moto-mobile: `gen/python/moto_defs/platform.py` drops the `HEARTBEAT_IO_*` names and the `HeartbeatIo` table entry; no code use was found, so their next bump needs no change. No sibling repo uses 0x083 or `gen/c/io` outside its pinned `external/` copy.

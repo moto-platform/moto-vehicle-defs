@@ -102,6 +102,14 @@ def generate_vehicle_py(vehicle: dict[str, Any]) -> str:
             f'{d["poll_period_ms"]}, "{d["priority"]}"),'
         )
     lines += ["}", ""]
+    lines += [
+        "# name -> stale_after_ms: a value older than this must not be used or republished",
+        "# (the same value as the C table's stale_after_ms; > the DID's poll period)",
+        "DID_STALE_AFTER_MS = {",
+    ]
+    for d in vehicle["dids"]:
+        lines.append(f'    "{d["name"]}": {config.did_stale_after_ms(d)},')
+    lines += ["}", ""]
     policy = vehicle["tester_policy"]
     allowed = {e["sid"]: e.get("subfunctions") for e in policy["allowed"]}
     lines.append("# D-020: sid -> allowed sub-functions (None = any)")

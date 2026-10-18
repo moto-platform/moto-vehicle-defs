@@ -1543,6 +1543,35 @@ bool platform_vehicle_engine_ecu_present_is_in_range(uint8_t value);
  */
 bool platform_vehicle_engine_ecu_present_is_in_phys_range(float value);
 
+/**
+ * Check that given HeartbeatConn.NODE_MODE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_heartbeat_conn_node_mode_is_defined(uint8_t value);
+
+/**
+ * Pack message HeartbeatConn after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_heartbeat_conn_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_conn_t *src_p,
+    size_t size);
 
 #ifdef __cplusplus
 }

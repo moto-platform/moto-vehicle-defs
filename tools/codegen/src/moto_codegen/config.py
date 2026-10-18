@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parents[4]
 PLATFORM_DBC = REPO_ROOT / "dbc" / "platform.dbc"
@@ -227,3 +228,8 @@ def id_range_of(frame_id: int) -> IdRange | None:
         if r.contains(frame_id):
             return r
     return None
+
+
+def did_stale_after_ms(did: dict[str, Any]) -> int:
+    """A vehicle DID's stale_after_ms: the one value the C table and the Python catalog share."""
+    return int(did["stale_after_ms"])

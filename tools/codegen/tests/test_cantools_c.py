@@ -11,7 +11,7 @@ import random
 import re
 import shutil
 import subprocess
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
@@ -45,6 +45,8 @@ class CMessage:
     decode: dict[str, Any]  # struct member -> <msg>_<member>_decode()
     encode: dict[str, Any]  # struct member -> <msg>_<member>_encode()
     in_range: dict[str, Any]  # struct member -> <msg>_<member>_is_in_range()
+    pack_checked: Any | None = None  # <msg>_pack_checked(): messages with a value table only
+    is_defined: dict[str, Any] = field(default_factory=dict)  # enum member -> *_is_defined()
 
 
 def _build(sources: list, out, flags=FLAGS):
@@ -93,6 +95,14 @@ def load_api(so, header: str, prefix: str, db) -> dict[str, CMessage]:
                 member: f
                 for member, ctype in fields
                 if (f := bind(f"{fn}_{member}_is_in_range", ctypes.c_bool, [ctype])) is not None
+            },
+            pack_checked=bind(
+                f"{fn}_pack_checked", ctypes.c_int, [ctypes.c_char_p, ptr, ctypes.c_size_t]
+            ),
+            is_defined={
+                member: f
+                for member, ctype in fields
+                if (f := bind(f"{fn}_{member}_is_defined", ctypes.c_bool, [ctype])) is not None
             },
         )
     return api
@@ -287,6 +297,55 @@ def check_guards(cm: CMessage) -> None:
             assert buf.raw == b"\xa5" * n
 
 
+def _defined(sig: Signal) -> set[int]:
+    return {int(v) for v, name in (sig.choices or {}).items() if str(name) != "RESERVED"}
+
+
+def _checked_pack(cm: CMessage, raw: dict[str, int], size: int = 16) -> tuple[int, bytes]:
+    buf = ctypes.create_string_buffer(b"\xa5" * 16, 16)
+    return cm.pack_checked(buf, ctypes.byref(cm.struct(**raw)), size), buf.raw
+
+
+def check_pack_checked(cm: CMessage, rng: random.Random) -> None:
+    enums = {m: s for m, s in cm.signals.items() if s.choices}
+    assert set(cm.is_defined) == set(enums)
+    for member, sig in enums.items():  # is_defined() is the value table minus RESERVED
+        lo, hi = _raw_range(sig)
+        for v in range(lo, min(hi, 300) + 1):
+            assert bool(cm.is_defined[member](v)) == (v in _defined(sig)), (cm.msg.name, member, v)
+    base = {
+        m: min(_defined(s)) if m in enums else next(v for v in _boundaries(s) if cm.in_range[m](v))
+        for m, s in cm.signals.items()
+    }
+    plain = _c_pack(cm, base)
+    assert _checked_pack(cm, base) == (cm.msg.length, plain + b"\xa5" * (16 - cm.msg.length))
+    for _ in range(200):  # in-range values: identical to the plain pack
+        raw = {}
+        for m, sig in cm.signals.items():
+            lo, hi = _raw_range(sig)
+            raw[m] = rng.choice(sorted(_defined(sig))) if m in enums else rng.randint(lo, hi)
+            if m not in enums and not cm.in_range[m](raw[m]):
+                raw[m] = base[m]
+        rc, buf = _checked_pack(cm, raw)
+        assert rc == cm.msg.length and buf[: cm.msg.length] == _c_pack(cm, raw)
+    for member, sig in cm.signals.items():  # one bad member: error, buffer untouched
+        lo, hi = _raw_range(sig)
+        for v in range(lo, hi + 1) if hi - lo < 300 else [lo, hi, hi - 1]:
+            ok = bool(cm.in_range[member](v)) and (member not in enums or v in _defined(sig))
+            rc, buf = _checked_pack(cm, {**base, member: v})
+            if ok:
+                assert rc == cm.msg.length, (cm.msg.name, member, v)
+            else:
+                assert rc < 0 and buf == b"\xa5" * 16, (cm.msg.name, member, v)
+    for size in range(cm.msg.length):  # too small: error, untouched
+        rc, buf = _checked_pack(cm, base, size)
+        assert rc < 0 and buf == b"\xa5" * 16
+    buf = ctypes.create_string_buffer(b"\xa5" * 16, 16)
+    assert cm.pack_checked(None, ctypes.byref(cm.struct(**base)), 16) < 0
+    assert cm.pack_checked(buf, None, 16) < 0
+    assert buf.raw == b"\xa5" * 16
+
+
 @pytest.mark.parametrize("target", config.C_TARGETS, ids=lambda t: t.directory)
 def test_node_cantools_code_matches_cantools_python(target, platform_db, tmp_path):
     d = C_DIR / target.directory
@@ -302,6 +361,12 @@ def test_node_cantools_code_matches_cantools_python(target, platform_db, tmp_pat
     rng = random.Random(f"c7-{target.directory}")
     for cm in api.values():
         check_round_trip(cm, rng, RANDOM_PAYLOADS)
+    # pack_checked() exists for exactly the sent messages that have a value table; the plain
+    # pack is untouched (check_round_trip above).
+    with_enum = {n for n in sends if any(s.choices for s in by_name[n].msg.signals)}
+    assert {n for n, cm in by_name.items() if cm.pack_checked} == with_enum
+    for name in sorted(with_enum):
+        check_pack_checked(by_name[name], rng)
 
 
 # Every pattern _MISRA_FIXUPS rewrites: memset (pack), the one-line NULL guard (init),
@@ -382,3 +447,59 @@ def test_encode_rounding_rewrites_every_encode_and_refuses_an_unknown_body():
     changed = source.replace(body, body.replace("    return", "  return"), 1)
     with pytest.raises(ValueError, match="encode rounding"):
         gen_c._encode_rounding(changed, header)
+
+
+def _safety_messages(directory: str, tmp_path, platform_db) -> dict[str, CMessage]:
+    d = C_DIR / directory
+    so = _build([d / "platform.c"], tmp_path / "libplatform.so")
+    api = load_api(so, (d / "platform.h").read_text(), "platform", platform_db)
+    return {cm.msg.name: cm for cm in api.values()}
+
+
+def _packed(cm: CMessage, **raw: int) -> tuple[int, bytes]:
+    full = {m: 0 for m in cm.signals} | {k.lower(): v for k, v in raw.items()}
+    return _checked_pack(cm, full)
+
+
+def test_safety_warning_status_checked_pack(platform_db, tmp_path):
+    """0x023 (SAFETY sender): raw 0 is no information and packs; undefined values do not."""
+    cm = _safety_messages("safety", tmp_path, platform_db)["SafetyWarningStatus"]
+    assert cm.msg.frame_id == 0x023
+    plain_zero = _c_pack(cm, dict.fromkeys(cm.signals, 0))
+    rc, buf = _packed(cm)  # every field 0 = no information
+    assert rc == cm.msg.length and buf[:8] == plain_zero
+    for level in (1, 2, 3):
+        assert _packed(cm, cornering_level=level)[0] == 8
+    for member, last in (("bsm_left", 3), ("bsm_right", 3), ("immobilizer_state", 4)):
+        for v in range(last + 1):
+            assert _packed(cm, **{member: v})[0] == 8
+    for member, bad in (
+        ("cornering_source", 3),  # RESERVED
+        ("cornering_level", 4),
+        ("immobilizer_state", 5),
+        ("immobilizer_state", 7),
+        ("bsm_left", 4),
+        ("bsm_right", 255),
+    ):
+        rc, buf = _packed(cm, **{member: bad})
+        assert rc < 0 and buf == b"\xa5" * 16, (member, bad)
+
+
+def test_safety_request_checked_pack(platform_db, tmp_path):
+    """0x120 (RT_CORE sender): LOCK = 3 packs; the reserved 1 and 2 and undefined values do not."""
+    cm = _safety_messages("rt_core", tmp_path, platform_db)["SafetyRequest"]
+    assert cm.msg.frame_id == 0x120
+    assert _packed(cm)[0] == 8  # all 0 = UNKNOWN / NONE
+    rc, buf = _packed(cm, immobilizer_lock_request=3, ignition_state=1, park_mode=2)
+    plain = _c_pack(cm, {**dict.fromkeys(cm.signals, 0), "immobilizer_lock_request": 3,
+                         "ignition_state": 1, "park_mode": 2})  # fmt: skip
+    assert rc == 8 and buf[:8] == plain
+    for member, bad in (
+        ("immobilizer_lock_request", 1),
+        ("immobilizer_lock_request", 2),
+        ("ignition_state", 3),
+        ("park_mode", 3),
+        ("ignition_state", 200),
+    ):
+        rc, buf = _packed(cm, **{member: bad})
+        assert rc < 0 and buf == b"\xa5" * 16, (member, bad)
