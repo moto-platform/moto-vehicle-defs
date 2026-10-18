@@ -10,7 +10,13 @@ from pathlib import Path
 from . import config, gen_ble, gen_c, gen_catalog, gen_python, gen_uds, gen_vss
 from .dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
 from .derived import check_derived
-from .yaml_checks import check_limits, check_vehicle, check_vehicle_constants, load_yaml
+from .yaml_checks import (
+    check_dtc_snapshot,
+    check_limits,
+    check_vehicle,
+    check_vehicle_constants,
+    load_yaml,
+)
 
 
 def run_checks(with_vss: bool = True) -> list[str]:
@@ -23,6 +29,7 @@ def run_checks(with_vss: bool = True) -> list[str]:
     iso_errors = gen_uds.check_iso(iso)
     errors += iso_errors
     if not iso_errors:
+        errors += check_dtc_snapshot(load_yaml(config.VEHICLE_YAML), iso)
         errors += gen_uds.check_dids(
             load_yaml(config.DIDS_YAML), iso, load_yaml(config.VEHICLE_YAML)
         )
@@ -46,7 +53,7 @@ def run_checks(with_vss: bool = True) -> list[str]:
             load_yaml(config.DIDS_YAML),
         )
     errors += gen_catalog.check_catalog(
-        load_yaml(config.CANDIDATES_YAML), load_yaml(config.VEHICLE_YAML)
+        load_yaml(config.OBD_CATALOG_YAML), load_yaml(config.VEHICLE_YAML)
     )
     if with_vss:
         base = gen_vss.fetch_base()
@@ -91,7 +98,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     for name, text in gen_ble.generate_dart(ble).items():
         files[Path("dart") / "moto_defs" / name] = text
     # D-066: the signal catalog goes to host consumers only (no C target).
-    cand = load_yaml(config.CANDIDATES_YAML)
+    cand = load_yaml(config.OBD_CATALOG_YAML)
     files[Path("dart") / "moto_defs" / "lib" / "vehicle_signals.dart"] = gen_catalog.generate_dart(
         cand, vehicle
     )

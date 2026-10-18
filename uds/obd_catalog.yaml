@@ -1,0 +1,676 @@
+# Vehicle-independent OBD / UDS catalog (D-066, D-068, D-078 item 2). NOT POLLED.
+#
+# The standard SAE J1979 / ISO 15031-5 mode 0x01 PIDs, read over UDS 0x22 0xF4xx (ISO
+# 14229-1 maps OBD PID p to DID 0xF400 | p), and the ISO 14229-1 Annex C identification
+# DIDs. The formulas are the standard ones, not vehicle facts: whether a vehicle serves a
+# PID is unknown until its discovery scan (D-059) reports the 0x22 0xF4xx support bitmaps.
+# A vehicle's poll list (uds/vehicle_cl250.yaml today) polls a subset of this catalog;
+# the rest is defined here but never sent.
+#
+# Nothing here is sent. codegen emits this file for host consumers only (Python for
+# moto-server, Dart for moto-mobile), merged with the polled DIDs of the vehicle's poll
+# list into one catalog, so the app and the server can show every signal and mark which
+# ones flow. No C target gets it: no node polls a catalog entry.
+#
+# An entry becomes polled on a vehicle only through /signal-change (D-066, D-078 item 2):
+# it moves to the vehicle's poll list with `verified: false`, a poll_period_ms, a
+# stale_after_ms and priority normal, at the end of the table, and the D-029 budget stays
+# <= 0.8. This file therefore never carries poll_period_ms, stale_after_ms or priority
+# (codegen refuses them). Only a scalar entry can be moved: the tester decodes one number
+# per DID, so a multi-value entry (`fields`) stays a host-side definition.
+#
+# Entry: obd_pid, did (= 0xF400 | obd_pid), name (UPPER_SNAKE, unique across the catalog
+# and the poll list), label (short UI text), group, length (1/2/4 data bytes),
+# description, and either
+#   scalar:      factor_num, factor_den, offset, unit, min, max (raw 0 and raw
+#                2^(8*length)-1 through the formula; codegen checks both).
+#                physical = raw * factor_num / factor_den + offset, raw unsigned big-endian.
+#   multi-value: `fields`, for PIDs whose answer carries several values. The entry has no
+#                top-level factor_num/factor_den/offset/unit/min/max; `length` stays.
+# Field: name (UPPER_SNAKE, unique in the entry), byte (0 = A), either `size` (whole
+# bytes, big-endian unsigned) or `bit` + `bits` (inside that one byte, bit 0 = LSB), then
+# factor_num, factor_den, offset, unit ("" = raw), min, max (as for a scalar, with raw
+# 2^bits-1 or 2^(8*size)-1 as the top), and optionally
+#   enum:         {raw value: NAME}; keys inside the field's raw range, names unique.
+#                 The decoder returns the name (the raw value if it is not listed).
+#   not_used_raw: a raw value that means "not used" (the decoder returns None).
+# Fields lie inside `length` and never share a bit. Generated: decode_fields() in
+# gen/python/moto_defs/vehicle_catalog.py and the Dart equivalent; decode() stays
+# scalar only.
+#
+# O2 sensors: S1..S8 follow 0x13 (two banks) or 0x1D (four banks), whichever the ECU
+# supports, in the bit order of that present-sensor byte (S1 = bit 0, S2 = bit 1, ...);
+# this applies to 0x14-0x1B, 0x24-0x2B and 0x34-0x3B.
+# MONITOR_STATUS byte B is split around its ignition-type bit (B bit 3) so that no bit is
+# listed twice. 0x1C OBD_STANDARD and 0x51 FUEL_TYPE are raw bytes: the SAE J1979 tables
+# are long and are not decoded here.
+#
+# `identification`: ISO 14229-1 Annex C identification DIDs read with 0x22, ASCII,
+# variable length (no `length`). 0xF18C (ECU serial number) and 0xF190 (VIN) are
+# deliberately absent: personal data (D-059 keeps only the VIN's WMI, D-033). The
+# request [0x22, hi, lo] must pass tester_policy and the frame gate (codegen checks).
+#
+# Not here: 0x32 EVAP system vapor pressure (signed two's complement, which the scalar
+# schema does not carry).
+
+schema_version: 1
+decision: D-066
+reference: SAE J1979 / ISO 15031-5 mode 0x01 PIDs, over UDS 0x22 as DID 0xF400 | PID (ISO 14229-1)
+
+# UI group and label of the polled DIDs (uds/vehicle_cl250.yaml), so the merged catalog
+# carries them for every signal. Keys must match that file's DID names exactly.
+polled:
+  ENGINE_SPEED: {group: engine, label: Engine speed}
+  VEHICLE_SPEED: {group: motion, label: Speed}
+  THROTTLE_POS: {group: engine, label: Throttle}
+  COOLANT_TEMP: {group: temperature, label: Coolant}
+  BATTERY_VOLTAGE: {group: electrical, label: Battery}
+  ENGINE_LOAD: {group: engine, label: Engine load}
+  TIMING_ADVANCE: {group: engine, label: Ignition advance}
+  ABSOLUTE_LOAD: {group: engine, label: Absolute load}
+  RELATIVE_THROTTLE_POS: {group: engine, label: Relative throttle}
+  ABSOLUTE_THROTTLE_POS_B: {group: engine, label: Throttle B}
+  ACCEL_PEDAL_POS_D: {group: engine, label: Throttle grip D}
+  COMMANDED_THROTTLE: {group: engine, label: Commanded throttle}
+  RELATIVE_ACCEL_PEDAL_POS: {group: engine, label: Relative grip}
+  INTAKE_MAP: {group: air, label: Intake MAP}
+  MAF_RATE: {group: air, label: Air flow}
+  COMMANDED_EQUIV_RATIO: {group: air, label: Commanded lambda}
+  SHORT_TERM_FUEL_TRIM_B1: {group: fuel, label: Short fuel trim}
+  INJECTION_TIMING: {group: fuel, label: Injection timing}
+  ENGINE_FUEL_RATE: {group: fuel, label: Fuel rate}
+  DEMAND_TORQUE_PCT: {group: torque, label: Demanded torque}
+  ACTUAL_TORQUE_PCT: {group: torque, label: Actual torque}
+  BAROMETRIC_PRESSURE: {group: air, label: Barometric}
+  LONG_TERM_FUEL_TRIM_B1: {group: fuel, label: Long fuel trim}
+  FUEL_PRESSURE: {group: fuel, label: Fuel pressure}
+  FUEL_RAIL_PRESSURE_REL: {group: fuel, label: Rail pressure (rel)}
+  FUEL_RAIL_PRESSURE_GAUGE: {group: fuel, label: Rail pressure}
+  COMMANDED_EVAP_PURGE: {group: fuel, label: EVAP purge}
+  FUEL_LEVEL: {group: fuel, label: Fuel level}
+  ETHANOL_PERCENT: {group: fuel, label: Ethanol}
+  INTAKE_AIR_TEMP: {group: temperature, label: Intake air}
+  CATALYST_TEMP_B1S1: {group: temperature, label: Catalyst}
+  AMBIENT_AIR_TEMP: {group: temperature, label: Ambient}
+  ENGINE_OIL_TEMP: {group: temperature, label: Oil}
+  RUN_TIME_SINCE_START: {group: engine, label: Run time}
+  DISTANCE_WITH_MIL: {group: diagnostic, label: Distance with MIL}
+  WARMUPS_SINCE_CLEAR: {group: diagnostic, label: Warm-ups since clear}
+  DISTANCE_SINCE_CLEAR: {group: diagnostic, label: Distance since clear}
+  TIME_WITH_MIL: {group: diagnostic, label: Time with MIL}
+  TIME_SINCE_CLEAR: {group: diagnostic, label: Time since clear}
+  REFERENCE_TORQUE: {group: torque, label: Reference torque}
+
+groups: [engine, motion, air, fuel, temperature, electrical, torque, diagnostic]
+
+candidates:
+  - obd_pid: 0x01
+    did: 0xF401
+    name: MONITOR_STATUS
+    label: Monitor status
+    group: diagnostic
+    length: 4
+    description: "Monitor status since DTCs cleared (SAE J1979 PID 0x01): MIL, DTC count, ignition type and the readiness bytes B-D (raw, SAE J1979 table)."
+    fields:
+      - {name: MIL_ON, byte: 0, bit: 7, bits: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 1}
+      - {name: DTC_COUNT, byte: 0, bit: 0, bits: 7, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 127}
+      - {name: READINESS_B_LOW, byte: 1, bit: 0, bits: 3, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 7}
+      - {name: IGNITION_TYPE, byte: 1, bit: 3, bits: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 1, enum: {0: SPARK, 1: COMPRESSION}}
+      - {name: READINESS_B_HIGH, byte: 1, bit: 4, bits: 4, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 15}
+      - {name: READINESS_C, byte: 2, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255}
+      - {name: READINESS_D, byte: 3, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255}
+
+  - obd_pid: 0x03
+    did: 0xF403
+    name: FUEL_SYSTEM_STATUS
+    label: Fuel system status
+    group: fuel
+    length: 2
+    description: "Fuel system 1 and 2 status (SAE J1979 PID 0x03)."
+    fields:
+      - {name: FUEL_SYSTEM_1, byte: 0, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255, enum: {0: NOT_REPORTED, 1: OPEN_LOOP_INSUFFICIENT_TEMP, 2: CLOSED_LOOP, 4: OPEN_LOOP_LOAD_OR_DECEL, 8: OPEN_LOOP_SYSTEM_FAILURE, 16: CLOSED_LOOP_FEEDBACK_FAULT}}
+      - {name: FUEL_SYSTEM_2, byte: 1, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255, enum: {0: NOT_REPORTED, 1: OPEN_LOOP_INSUFFICIENT_TEMP, 2: CLOSED_LOOP, 4: OPEN_LOOP_LOAD_OR_DECEL, 8: OPEN_LOOP_SYSTEM_FAILURE, 16: CLOSED_LOOP_FEEDBACK_FAULT}}
+
+  - obd_pid: 0x08
+    did: 0xF408
+    name: SHORT_TERM_FUEL_TRIM_B2
+    label: Short fuel trim B2
+    group: fuel
+    length: 1
+    factor_num: 25
+    factor_den: 32
+    offset: -100
+    unit: "%"
+    min: -100
+    max: 99.21875
+    description: "Short term fuel trim, bank 2 (SAE J1979 PID 0x08)."
+
+  - obd_pid: 0x09
+    did: 0xF409
+    name: LONG_TERM_FUEL_TRIM_B2
+    label: Long fuel trim B2
+    group: fuel
+    length: 1
+    factor_num: 25
+    factor_den: 32
+    offset: -100
+    unit: "%"
+    min: -100
+    max: 99.21875
+    description: "Long term fuel trim, bank 2 (SAE J1979 PID 0x09)."
+
+  - obd_pid: 0x12
+    did: 0xF412
+    name: SECONDARY_AIR_STATUS
+    label: Secondary air
+    group: air
+    length: 1
+    description: "Commanded secondary air status (SAE J1979 PID 0x12)."
+    fields:
+      - {name: STATUS, byte: 0, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255, enum: {1: UPSTREAM, 2: DOWNSTREAM_OF_CATALYST, 4: OUTSIDE_OR_OFF, 8: PUMP_ON_FOR_DIAGNOSTICS}}
+
+  - obd_pid: 0x13
+    did: 0xF413
+    name: O2_SENSORS_PRESENT_2B
+    label: O2 sensors (2 banks)
+    group: air
+    length: 1
+    description: "Oxygen sensors present, 2 banks (SAE J1979 PID 0x13): raw bitfield, bit 0 = B1S1 ... bit 7 = B2S4."
+    fields:
+      - {name: PRESENT, byte: 0, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255}
+
+  - obd_pid: 0x14
+    did: 0xF414
+    name: O2_S1
+    label: O2 sensor 1
+    group: air
+    length: 2
+    description: "Oxygen sensor 1 voltage and short term fuel trim (SAE J1979 PID 0x14); trim 0xFF = sensor not used for the trim."
+    fields: &o2_conventional
+      - {name: VOLTAGE, byte: 0, size: 1, factor_num: 1, factor_den: 200, offset: 0, unit: V, min: 0, max: 1.275}
+      - {name: SHORT_TERM_TRIM, byte: 1, size: 1, factor_num: 25, factor_den: 32, offset: -100, unit: "%", min: -100, max: 99.21875, not_used_raw: 255}
+
+  - obd_pid: 0x15
+    did: 0xF415
+    name: O2_S2
+    label: O2 sensor 2
+    group: air
+    length: 2
+    description: "Oxygen sensor 2 voltage and short term fuel trim (SAE J1979 PID 0x15); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x16
+    did: 0xF416
+    name: O2_S3
+    label: O2 sensor 3
+    group: air
+    length: 2
+    description: "Oxygen sensor 3 voltage and short term fuel trim (SAE J1979 PID 0x16); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x17
+    did: 0xF417
+    name: O2_S4
+    label: O2 sensor 4
+    group: air
+    length: 2
+    description: "Oxygen sensor 4 voltage and short term fuel trim (SAE J1979 PID 0x17); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x18
+    did: 0xF418
+    name: O2_S5
+    label: O2 sensor 5
+    group: air
+    length: 2
+    description: "Oxygen sensor 5 voltage and short term fuel trim (SAE J1979 PID 0x18); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x19
+    did: 0xF419
+    name: O2_S6
+    label: O2 sensor 6
+    group: air
+    length: 2
+    description: "Oxygen sensor 6 voltage and short term fuel trim (SAE J1979 PID 0x19); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x1A
+    did: 0xF41A
+    name: O2_S7
+    label: O2 sensor 7
+    group: air
+    length: 2
+    description: "Oxygen sensor 7 voltage and short term fuel trim (SAE J1979 PID 0x1A); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x1B
+    did: 0xF41B
+    name: O2_S8
+    label: O2 sensor 8
+    group: air
+    length: 2
+    description: "Oxygen sensor 8 voltage and short term fuel trim (SAE J1979 PID 0x1B); trim 0xFF = sensor not used for the trim."
+    fields: *o2_conventional
+
+  - obd_pid: 0x1C
+    did: 0xF41C
+    name: OBD_STANDARD
+    label: OBD standard
+    group: diagnostic
+    length: 1
+    description: "OBD standards this vehicle conforms to (SAE J1979 PID 0x1C): raw code, SAE J1979 table."
+    fields:
+      - {name: STANDARD, byte: 0, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255}
+
+  - obd_pid: 0x1D
+    did: 0xF41D
+    name: O2_SENSORS_PRESENT_4B
+    label: O2 sensors (4 banks)
+    group: air
+    length: 1
+    description: "Oxygen sensors present, 4 banks (SAE J1979 PID 0x1D): raw bitfield, bit 0 = B1S1 ... bit 7 = B4S2."
+    fields:
+      - {name: PRESENT, byte: 0, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255}
+
+  - obd_pid: 0x1E
+    did: 0xF41E
+    name: AUX_INPUT_STATUS
+    label: Auxiliary input
+    group: engine
+    length: 1
+    description: "Auxiliary input status (SAE J1979 PID 0x1E): power take-off (PTO) state."
+    fields:
+      - {name: PTO_ACTIVE, byte: 0, bit: 0, bits: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 1}
+
+  - obd_pid: 0x24
+    did: 0xF424
+    name: O2_S1_WR_VOLTAGE
+    label: O2 sensor 1 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 1 wide range equivalence ratio and voltage (SAE J1979 PID 0x24)."
+    fields: &o2_wr_voltage
+      - {name: LAMBDA, byte: 0, size: 2, factor_num: 1, factor_den: 32768, offset: 0, unit: ratio, min: 0, max: 1.999969482421875}
+      - {name: VOLTAGE, byte: 2, size: 2, factor_num: 1, factor_den: 8192, offset: 0, unit: V, min: 0, max: 7.9998779296875}
+
+  - obd_pid: 0x25
+    did: 0xF425
+    name: O2_S2_WR_VOLTAGE
+    label: O2 sensor 2 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 2 wide range equivalence ratio and voltage (SAE J1979 PID 0x25)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x26
+    did: 0xF426
+    name: O2_S3_WR_VOLTAGE
+    label: O2 sensor 3 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 3 wide range equivalence ratio and voltage (SAE J1979 PID 0x26)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x27
+    did: 0xF427
+    name: O2_S4_WR_VOLTAGE
+    label: O2 sensor 4 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 4 wide range equivalence ratio and voltage (SAE J1979 PID 0x27)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x28
+    did: 0xF428
+    name: O2_S5_WR_VOLTAGE
+    label: O2 sensor 5 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 5 wide range equivalence ratio and voltage (SAE J1979 PID 0x28)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x29
+    did: 0xF429
+    name: O2_S6_WR_VOLTAGE
+    label: O2 sensor 6 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 6 wide range equivalence ratio and voltage (SAE J1979 PID 0x29)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x2A
+    did: 0xF42A
+    name: O2_S7_WR_VOLTAGE
+    label: O2 sensor 7 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 7 wide range equivalence ratio and voltage (SAE J1979 PID 0x2A)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x2B
+    did: 0xF42B
+    name: O2_S8_WR_VOLTAGE
+    label: O2 sensor 8 (WR)
+    group: air
+    length: 4
+    description: "Oxygen sensor 8 wide range equivalence ratio and voltage (SAE J1979 PID 0x2B)."
+    fields: *o2_wr_voltage
+
+  - obd_pid: 0x2C
+    did: 0xF42C
+    name: COMMANDED_EGR
+    label: Commanded EGR
+    group: air
+    length: 1
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    description: "Commanded EGR (SAE J1979 PID 0x2C)."
+
+  - obd_pid: 0x2D
+    did: 0xF42D
+    name: EGR_ERROR
+    label: EGR error
+    group: air
+    length: 1
+    factor_num: 25
+    factor_den: 32
+    offset: -100
+    unit: "%"
+    min: -100
+    max: 99.21875
+    description: "EGR error (SAE J1979 PID 0x2D)."
+
+  - obd_pid: 0x34
+    did: 0xF434
+    name: O2_S1_WR_CURRENT
+    label: O2 sensor 1 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 1 wide range equivalence ratio and current (SAE J1979 PID 0x34)."
+    fields: &o2_wr_current
+      - {name: LAMBDA, byte: 0, size: 2, factor_num: 1, factor_den: 32768, offset: 0, unit: ratio, min: 0, max: 1.999969482421875}
+      - {name: CURRENT, byte: 2, size: 2, factor_num: 1, factor_den: 256, offset: -128, unit: mA, min: -128, max: 127.99609375}
+
+  - obd_pid: 0x35
+    did: 0xF435
+    name: O2_S2_WR_CURRENT
+    label: O2 sensor 2 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 2 wide range equivalence ratio and current (SAE J1979 PID 0x35)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x36
+    did: 0xF436
+    name: O2_S3_WR_CURRENT
+    label: O2 sensor 3 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 3 wide range equivalence ratio and current (SAE J1979 PID 0x36)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x37
+    did: 0xF437
+    name: O2_S4_WR_CURRENT
+    label: O2 sensor 4 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 4 wide range equivalence ratio and current (SAE J1979 PID 0x37)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x38
+    did: 0xF438
+    name: O2_S5_WR_CURRENT
+    label: O2 sensor 5 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 5 wide range equivalence ratio and current (SAE J1979 PID 0x38)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x39
+    did: 0xF439
+    name: O2_S6_WR_CURRENT
+    label: O2 sensor 6 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 6 wide range equivalence ratio and current (SAE J1979 PID 0x39)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x3A
+    did: 0xF43A
+    name: O2_S7_WR_CURRENT
+    label: O2 sensor 7 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 7 wide range equivalence ratio and current (SAE J1979 PID 0x3A)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x3B
+    did: 0xF43B
+    name: O2_S8_WR_CURRENT
+    label: O2 sensor 8 (WR current)
+    group: air
+    length: 4
+    description: "Oxygen sensor 8 wide range equivalence ratio and current (SAE J1979 PID 0x3B)."
+    fields: *o2_wr_current
+
+  - obd_pid: 0x3D
+    did: 0xF43D
+    name: CATALYST_TEMP_B2S1
+    label: Catalyst B2S1
+    group: temperature
+    length: 2
+    factor_num: 1
+    factor_den: 10
+    offset: -40
+    unit: degC
+    min: -40
+    max: 6513.5
+    description: "Catalyst temperature, bank 2 sensor 1 (SAE J1979 PID 0x3D)."
+
+  - obd_pid: 0x3E
+    did: 0xF43E
+    name: CATALYST_TEMP_B1S2
+    label: Catalyst B1S2
+    group: temperature
+    length: 2
+    factor_num: 1
+    factor_den: 10
+    offset: -40
+    unit: degC
+    min: -40
+    max: 6513.5
+    description: "Catalyst temperature, bank 1 sensor 2 (SAE J1979 PID 0x3E)."
+
+  - obd_pid: 0x3F
+    did: 0xF43F
+    name: CATALYST_TEMP_B2S2
+    label: Catalyst B2S2
+    group: temperature
+    length: 2
+    factor_num: 1
+    factor_den: 10
+    offset: -40
+    unit: degC
+    min: -40
+    max: 6513.5
+    description: "Catalyst temperature, bank 2 sensor 2 (SAE J1979 PID 0x3F)."
+
+  - obd_pid: 0x48
+    did: 0xF448
+    name: ABSOLUTE_THROTTLE_POS_C
+    label: Throttle C
+    group: engine
+    length: 1
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    description: "Absolute throttle position C (SAE J1979 PID 0x48)."
+
+  - obd_pid: 0x4A
+    did: 0xF44A
+    name: ACCEL_PEDAL_POS_E
+    label: Throttle grip E
+    group: engine
+    length: 1
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    description: "Accelerator pedal (throttle grip) position E (SAE J1979 PID 0x4A)."
+
+  - obd_pid: 0x4B
+    did: 0xF44B
+    name: ACCEL_PEDAL_POS_F
+    label: Throttle grip F
+    group: engine
+    length: 1
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    description: "Accelerator pedal (throttle grip) position F (SAE J1979 PID 0x4B)."
+
+  - obd_pid: 0x51
+    did: 0xF451
+    name: FUEL_TYPE
+    label: Fuel type
+    group: fuel
+    length: 1
+    description: "Fuel type (SAE J1979 PID 0x51): raw code, SAE J1979 table."
+    fields:
+      - {name: TYPE, byte: 0, size: 1, factor_num: 1, factor_den: 1, offset: 0, unit: "", min: 0, max: 255}
+
+  - obd_pid: 0x59
+    did: 0xF459
+    name: FUEL_RAIL_ABS_PRESSURE
+    label: Rail pressure (abs)
+    group: fuel
+    length: 2
+    factor_num: 10
+    factor_den: 1
+    offset: 0
+    unit: kPa
+    min: 0
+    max: 655350
+    description: "Fuel rail absolute pressure (SAE J1979 PID 0x59)."
+
+  - obd_pid: 0x5B
+    did: 0xF45B
+    name: HYBRID_BATTERY_LIFE
+    label: Hybrid battery life
+    group: electrical
+    length: 1
+    factor_num: 100
+    factor_den: 255
+    offset: 0
+    unit: "%"
+    min: 0
+    max: 100
+    description: "Hybrid battery pack remaining life (SAE J1979 PID 0x5B)."
+
+  - obd_pid: 0x8E
+    did: 0xF48E
+    name: ENGINE_FRICTION_TORQUE_PCT
+    label: Friction torque
+    group: torque
+    length: 1
+    factor_num: 1
+    factor_den: 1
+    offset: -125
+    unit: "%"
+    min: -125
+    max: 130
+    description: "Engine friction percent torque (SAE J1979 PID 0x8E)."
+
+  - obd_pid: 0xA2
+    did: 0xF4A2
+    name: CYLINDER_FUEL_RATE
+    label: Cylinder fuel rate
+    group: fuel
+    length: 2
+    factor_num: 1
+    factor_den: 32
+    offset: 0
+    unit: mg/stroke
+    min: 0
+    max: 2047.96875
+    description: "Cylinder fuel rate (SAE J1979 PID 0xA2)."
+
+  - obd_pid: 0xA6
+    did: 0xF4A6
+    name: ODOMETER
+    label: Odometer
+    group: motion
+    length: 4
+    factor_num: 1
+    factor_den: 10
+    offset: 0
+    unit: km
+    min: 0
+    max: 429496729.5
+    description: "Odometer (SAE J1979 PID 0xA6)."
+
+identification:
+  - did: 0xF187
+    name: SPARE_PART_NUMBER
+    label: Spare part number
+    description: "Vehicle manufacturer spare part number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF188
+    name: ECU_SOFTWARE_NUMBER
+    label: ECU software number
+    description: "Vehicle manufacturer ECU software number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF189
+    name: ECU_SOFTWARE_VERSION
+    label: ECU software version
+    description: "Vehicle manufacturer ECU software version number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF18A
+    name: SYSTEM_SUPPLIER_ID
+    label: System supplier
+    description: "System supplier identifier (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF191
+    name: ECU_HARDWARE_NUMBER
+    label: ECU hardware number
+    description: "Vehicle manufacturer ECU hardware number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF192
+    name: SUPPLIER_HARDWARE_NUMBER
+    label: Supplier HW number
+    description: "System supplier ECU hardware number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF193
+    name: SUPPLIER_HARDWARE_VERSION
+    label: Supplier HW version
+    description: "System supplier ECU hardware version number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF194
+    name: SUPPLIER_SOFTWARE_NUMBER
+    label: Supplier SW number
+    description: "System supplier ECU software number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF195
+    name: SUPPLIER_SOFTWARE_VERSION
+    label: Supplier SW version
+    description: "System supplier ECU software version number (ISO 14229-1 Annex C)."
+    encoding: ascii
+  - did: 0xF197
+    name: SYSTEM_NAME
+    label: System name
+    description: "System name or engine type (ISO 14229-1 Annex C)."
+    encoding: ascii

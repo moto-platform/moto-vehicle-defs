@@ -82,6 +82,68 @@ def single_frame(vehicle: dict[str, Any], payload: list[int]) -> bytes:
     return bytes([len(payload), *payload, *pad])
 
 
+# D-080: a DTC freeze-frame read is at most this many DTCs per run (the 0x19 0x02 list may
+# hold more; the rest waits for the next run).
+DTC_SNAPSHOT_MAX_PER_RUN = 8
+
+
+def dtc_snapshot_requests(snap: dict[str, Any]) -> dict[str, list[int]]:
+    """The four requests of the D-080 freeze-frame read (the DTC bytes of 0x04/0x06 are a
+    placeholder: the tester fills in each listed DTC)."""
+    mask = snap["status_mask"]
+    return {
+        "count": [0x19, 0x01, mask],
+        "list": [0x19, 0x02, mask],
+        "snapshot": [0x19, 0x04, 0x00, 0x00, 0x00, snap["snapshot_record"]],
+        "ext_data": [0x19, 0x06, 0x00, 0x00, 0x00, snap["ext_data_record"]],
+    }
+
+
+def check_dtc_snapshot(data: dict[str, Any], iso: dict[str, Any] | None = None) -> list[str]:
+    """D-080: the `dtc_snapshot` constants are sane and all four requests pass
+    tester_policy and the frame gate as padded Single Frames. With `iso`, the status mask
+    must be made of its dtc_status_bits and the 0x04/0x06 sub-functions must exist there."""
+    snap = data.get("dtc_snapshot")
+    if not isinstance(snap, dict):
+        return ["vehicle: dtc_snapshot missing (D-080)"]
+    errors: list[str] = []
+    if snap.get("decision") != "D-080":
+        errors.append("vehicle: dtc_snapshot.decision must be D-080")
+    if not isinstance(snap.get("provisional"), bool):
+        errors.append("vehicle: dtc_snapshot.provisional must be true or false")
+    for key in ("status_mask", "snapshot_record", "ext_data_record"):
+        if not (type(snap.get(key)) is int and 0 <= snap[key] <= 0xFF):
+            errors.append(f"vehicle: dtc_snapshot.{key} must be a byte")
+    mask = snap.get("status_mask")
+    if type(mask) is int and not 1 <= mask <= 0xFF:
+        errors.append("vehicle: dtc_snapshot.status_mask must be in 1..0xFF")
+    count = snap.get("max_dtcs_per_run")
+    if not (type(count) is int and 1 <= count <= DTC_SNAPSHOT_MAX_PER_RUN):
+        errors.append(
+            f"vehicle: dtc_snapshot.max_dtcs_per_run must be in 1..{DTC_SNAPSHOT_MAX_PER_RUN}"
+        )
+    if errors:
+        return errors
+    if iso is not None:
+        known = 0
+        for bit in iso["dtc_status_bits"]:
+            known |= bit["mask"]
+        if mask & ~known:
+            errors.append(
+                f"vehicle: dtc_snapshot.status_mask 0x{mask:02X} is not made of dtc_status_bits"
+            )
+        subs = {s["id"] for s in iso["read_dtc_subfunctions"]}
+        for sub in (0x01, 0x02, 0x04, 0x06):
+            if sub not in subs:
+                errors.append(f"vehicle: iso14229 read_dtc_subfunctions lacks 0x{sub:02X} (D-080)")
+    for name, req in dtc_snapshot_requests(snap).items():
+        if not request_allowed(data["tester_policy"], req):
+            errors.append(f"vehicle: dtc_snapshot {name} request {req} violates tester_policy")
+        elif not frame_allowed(data, single_frame(data, req)):
+            errors.append(f"vehicle: dtc_snapshot {name} request {req} refused by the frame gate")
+    return errors
+
+
 # D-059: the generated scan table holds requests of up to this many bytes.
 SCAN_REQUEST_MAX = 3
 SCAN_BITMAP_IDS = 0x20  # ids per 4-byte support bitmap

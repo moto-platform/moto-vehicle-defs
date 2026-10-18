@@ -71,6 +71,15 @@ def generate_vehicle_py(vehicle: dict[str, Any]) -> str:
             + "),"
         )
     lines.append(")")
+    snap = vehicle["dtc_snapshot"]
+    lines.append("# D-080 (provisional): freeze-frame read of a DTC, only when a DTC is present.")
+    lines.append("# 0x19 0x01 mask (count); if > 0 0x19 0x02 mask (list); per DTC, at most")
+    lines.append("# DTC_MAX_PER_RUN: 0x19 0x04 <DTC> DTC_SNAPSHOT_RECORD, 0x19 0x06 <DTC>")
+    lines.append("# DTC_EXT_DATA_RECORD (0xFF = all records).")
+    lines.append(f"DTC_STATUS_MASK = 0x{snap['status_mask']:02X}")
+    lines.append(f"DTC_MAX_PER_RUN = {snap['max_dtcs_per_run']}")
+    lines.append(f"DTC_SNAPSHOT_RECORD = 0x{snap['snapshot_record']:02X}")
+    lines.append(f"DTC_EXT_DATA_RECORD = 0x{snap['ext_data_record']:02X}")
     watch = addr["functional_watch"]["ids"]
     lines.append("# Q-021/D-040: watch-only functional request IDs (id, extended); never sent")
     lines.append(

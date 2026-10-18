@@ -64,6 +64,17 @@ extern const uint8_t vehicle_cl250_fc_cts[VEHICLE_CL250_FRAME_DLC];
 #define VEHICLE_CL250_RESPONSE_TIMEOUT_BASE_MS (100u)
 #define VEHICLE_CL250_RESPONSE_TIMEOUT_MAX_MS (2000u)
 
+/* D-080 (PROVISIONAL): read a DTC's freeze frame only when a DTC is present. Four
+ * padded Single Frames through vehicle_cl250_frame_allowed(), one in flight:
+ * 0x19 0x01 STATUS_MASK (count); if > 0, 0x19 0x02 STATUS_MASK (list); then per
+ * listed DTC, at most DTC_MAX_PER_RUN per run, 0x19 0x04 <DTC 3 bytes>
+ * DTC_SNAPSHOT_RECORD and 0x19 0x06 <DTC 3 bytes> DTC_EXT_DATA_RECORD. Record 0xFF =
+ * all records. Constants only: sending and parsing belong to the tester. */
+#define VEHICLE_CL250_DTC_STATUS_MASK (0x0Cu) /* pending | confirmed */
+#define VEHICLE_CL250_DTC_MAX_PER_RUN (8u)
+#define VEHICLE_CL250_DTC_SNAPSHOT_RECORD (0xFFu) /* all records */
+#define VEHICLE_CL250_DTC_EXT_DATA_RECORD (0xFFu) /* all records */
+
 #define VEHICLE_CL250_DID_COUNT (40u)
 #define VEHICLE_CL250_DID_ENGINE_SPEED (0xF40Cu) /* (A*256+B)/4 */
 #define VEHICLE_CL250_DID_VEHICLE_SPEED (0xF40Du) /* A */
