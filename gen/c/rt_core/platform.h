@@ -2892,6 +2892,297 @@ bool platform_safety_request_immobilizer_lock_request_is_in_range(uint8_t value)
  */
 bool platform_safety_request_immobilizer_lock_request_is_in_phys_range(float value);
 
+/**
+ * Check that given EkfLean.LEAN_ANGLE_STATE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_ekf_lean_lean_angle_state_is_defined(uint8_t value);
+
+/**
+ * Pack message EkfLean after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_ekf_lean_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_ekf_lean_t *src_p,
+    size_t size);
+
+/**
+ * Check that given VehicleSpeed.VEHICLE_SPEED_VALID raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_vehicle_speed_vehicle_speed_valid_is_defined(uint8_t value);
+
+/**
+ * Pack message VehicleSpeed after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_vehicle_speed_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_vehicle_speed_t *src_p,
+    size_t size);
+
+/**
+ * Check that given EkfFrictionMass.FRICTION_COEFF_STATE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_ekf_friction_mass_friction_coeff_state_is_defined(uint8_t value);
+
+/**
+ * Check that given EkfFrictionMass.TOTAL_MASS_STATE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_ekf_friction_mass_total_mass_state_is_defined(uint8_t value);
+
+/**
+ * Pack message EkfFrictionMass after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_ekf_friction_mass_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_ekf_friction_mass_t *src_p,
+    size_t size);
+
+/**
+ * Check that given HeartbeatRtCore.NODE_MODE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_heartbeat_rt_core_node_mode_is_defined(uint8_t value);
+
+/**
+ * Pack message HeartbeatRtCore after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_heartbeat_rt_core_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_heartbeat_rt_core_t *src_p,
+    size_t size);
+
+/**
+ * Check that given VehicleEngine.ENGINE_SPEED_VALID raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_vehicle_engine_engine_speed_valid_is_defined(uint8_t value);
+
+/**
+ * Check that given VehicleEngine.BATTERY_VOLTAGE_VALID raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_vehicle_engine_battery_voltage_valid_is_defined(uint8_t value);
+
+/**
+ * Check that given VehicleEngine.COOLANT_TEMP_VALID raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_vehicle_engine_coolant_temp_valid_is_defined(uint8_t value);
+
+/**
+ * Check that given VehicleEngine.THROTTLE_POS_VALID raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_vehicle_engine_throttle_pos_valid_is_defined(uint8_t value);
+
+/**
+ * Check that given VehicleEngine.ECU_PRESENT raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_vehicle_engine_ecu_present_is_defined(uint8_t value);
+
+/**
+ * Pack message VehicleEngine after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_vehicle_engine_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_vehicle_engine_t *src_p,
+    size_t size);
+
+/**
+ * Check that given SafetyRequest.IGNITION_STATE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_safety_request_ignition_state_is_defined(uint8_t value);
+
+/**
+ * Check that given SafetyRequest.PARK_MODE raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_safety_request_park_mode_is_defined(uint8_t value);
+
+/**
+ * Check that given SafetyRequest.IMMOBILIZER_LOCK_REQUEST raw value is a defined enum value
+ * (a value-table name other than RESERVED).
+ *
+ * @param[in] value Raw signal value to check.
+ *
+ * @return true if defined, false otherwise.
+ */
+bool platform_safety_request_immobilizer_lock_request_is_defined(uint8_t value);
+
+/**
+ * Pack message SafetyRequest after checking every signal.
+ *
+ * Like the plain pack, but nothing is written to dst_p unless every signal passes
+ * its is_in_range() check and every enum signal holds a defined value (the plain
+ * pack masks a value into its bit field). E2E CRC and counter are checked for
+ * range only; they are the E2E wrapper's job.
+ *
+ * Every signal is checked on its own. Rules across fields (e.g. 0x023
+ * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.
+ *
+ * On a negative return dst_p is unchanged and must not be E2E-protected or
+ * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =
+ * INVALID, 0x023 all raw 0) or nothing.
+ *
+ * @param[out] dst_p Buffer to pack the message into.
+ * @param[in] src_p Data to pack.
+ * @param[in] size Size of dst_p.
+ *
+ * @return Size of packed data, or negative error code (-EINVAL: bad argument,
+ *         value out of range, undefined enum value or buffer too small).
+ */
+int platform_safety_request_pack_checked(
+    uint8_t *dst_p,
+    const struct platform_safety_request_t *src_p,
+    size_t size);
 
 #ifdef __cplusplus
 }

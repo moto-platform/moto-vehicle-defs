@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from typing import Any
 
-from cantools.database.can import Database, Message
+from cantools.database.can import Database, Message, Signal
 from cantools.database.can.c_source import camel_to_snake_case, generate
 
 from . import config, derived
@@ -124,7 +124,152 @@ def generate_platform_c(db: Database, target: config.CTarget) -> dict[str, str]:
         node_name=None if target.all_messages else target.node,
     )
     source = _encode_rounding(_misra_fixups(_strip_date(source)), header)
-    return {"platform.h": _strip_date(header), "platform.c": source}
+    header = _strip_date(header)
+    sent = [m for m in db.messages if _sends(target, m)]
+    header, source = _checked_pack(header, source, [m for m in sent if _enum_signals(m)])
+    return {"platform.h": header, "platform.c": source}
+
+
+# D-072 item 7 follow-up: the cantools *_pack() masks every member into its bit field, so an
+# out-of-range or undefined enum value is sent as a different, valid-looking value. For each
+# sent message with a value table, <msg>_pack_checked() validates first and calls the plain
+# pack only if everything passes: it returns -EINVAL and leaves the destination untouched
+# otherwise. Additive: *_pack() is unchanged. The checks are the cantools *_is_in_range() of
+# every signal plus <msg>_<signal>_is_defined() of every enum signal (is_in_range() only
+# knows the DBC min/max, which may be wider than the defined values). A value whose name is
+# RESERVED is not defined: a sender never emits it, a receiver still treats it as the
+# documented fallback. One exit, no loops, no recursion, no dynamic memory.
+_RESERVED_NAME = "RESERVED"
+# Any other spelling of a reserved entry (Reserved, RESERVED_1, RSVD, RES) would silently
+# count as defined, so codegen refuses it: the name must be exactly RESERVED.
+_RESERVED_LIKE = re.compile(r"^(rsvd|res(erved)?)([^a-z]|$)", re.IGNORECASE)
+
+
+def _enum_signals(msg: Message) -> list[Signal]:
+    return [s for s in msg.signals if s.choices]
+
+
+def _defined_values(sig: Signal) -> list[int]:
+    return sorted(int(v) for v, name in sig.choices.items() if str(name) != _RESERVED_NAME)
+
+
+def _raw_bounds(sig: Signal) -> tuple[int, int]:
+    """Raw range of the signal's bit field."""
+    if sig.is_signed:
+        return -(1 << (sig.length - 1)), (1 << (sig.length - 1)) - 1
+    return 0, (1 << sig.length) - 1
+
+
+def _validate_signal(msg: Message, sig: Signal) -> None:
+    """Refuse a DBC that would make the checked pack's two checks disagree silently."""
+    where = f"{msg.name}.{sig.name}"
+    lo, hi = _raw_bounds(sig)
+    raw_min, raw_max = lo, hi
+    if sig.minimum is not None and sig.maximum is not None:
+        raw_min = round(sig.conversion.scaled_to_raw(sig.minimum))
+        raw_max = round(sig.conversion.scaled_to_raw(sig.maximum))
+        if raw_min < lo or raw_max > hi:
+            raise ValueError(
+                f"{where}: raw [min|max] {raw_min}..{raw_max} is outside the "
+                f"{sig.length}-bit field {lo}..{hi}"
+            )
+    for value, name in (sig.choices or {}).items():
+        if not raw_min <= int(value) <= raw_max:
+            raise ValueError(
+                f"{where}: value-table key {value} is outside raw [{raw_min}|{raw_max}]"
+            )
+        if str(name) != _RESERVED_NAME and _RESERVED_LIKE.match(str(name)):
+            raise ValueError(
+                f"{where}: value-table name {str(name)!r} looks reserved; spell it exactly "
+                f"{_RESERVED_NAME!r} or rename it"
+            )
+
+
+def _c_literal(sig: Signal, value: int) -> str:
+    return f"({value})" if value < 0 else (f"{value}" if sig.is_signed else f"{value}u")
+
+
+def _c_type(sig: Signal) -> str:
+    bits = 8 if sig.length <= 8 else 16 if sig.length <= 16 else 32 if sig.length <= 32 else 64
+    return f"{'' if sig.is_signed else 'u'}int{bits}_t"
+
+
+def _checked_pack(header: str, source: str, messages: list[Message]) -> tuple[str, str]:
+    if not messages:
+        return header, source
+    h_parts: list[str] = []
+    c_parts: list[str] = []
+    for msg in messages:
+        base = f"platform_{camel_to_snake_case(msg.name)}"
+        checks = []
+        for sig in msg.signals:
+            _validate_signal(msg, sig)
+            member = camel_to_snake_case(sig.name)
+            ctype = _c_type(sig)
+            checks.append(f"{base}_{member}_is_in_range(src_p->{member})")
+            if not sig.choices:
+                continue
+            values = _defined_values(sig)
+            if not values:
+                raise ValueError(f"{msg.name}.{sig.name}: every enum value is {_RESERVED_NAME}")
+            h_parts.append(
+                "/**\n"
+                f" * Check that given {msg.name}.{sig.name} raw value is a defined enum value\n"
+                f" * (a value-table name other than {_RESERVED_NAME}).\n"
+                " *\n"
+                " * @param[in] value Raw signal value to check.\n"
+                " *\n"
+                " * @return true if defined, false otherwise.\n"
+                " */\n"
+                f"bool {base}_{member}_is_defined({ctype} value);\n"
+            )
+            terms = " || ".join(f"(value == {_c_literal(sig, v)})" for v in values)
+            c_parts.append(
+                f"bool {base}_{member}_is_defined({ctype} value)\n{{\n    return ({terms});\n}}\n"
+            )
+            checks.append(f"{base}_{member}_is_defined(src_p->{member})")
+        condition = " &&\n        ".join(["(dst_p != NULL)", "(src_p != NULL)", *checks])
+        signature = (
+            f"int {base}_pack_checked(\n    uint8_t *dst_p,\n"
+            f"    const struct {base}_t *src_p,\n    size_t size)"
+        )
+        h_parts.append(
+            "/**\n"
+            f" * Pack message {msg.name} after checking every signal.\n"
+            " *\n"
+            " * Like the plain pack, but nothing is written to dst_p unless every signal passes\n"
+            " * its is_in_range() check and every enum signal holds a defined value (the plain\n"
+            " * pack masks a value into its bit field). E2E CRC and counter are checked for\n"
+            " * range only; they are the E2E wrapper's job.\n"
+            " *\n"
+            " * Every signal is checked on its own. Rules across fields (e.g. 0x023\n"
+            " * CORNERING_LEVEL GREEN with CORNERING_SOURCE NONE) are not checked here.\n"
+            " *\n"
+            " * On a negative return dst_p is unchanged and must not be E2E-protected or\n"
+            " * transmitted; send the message's defined fallback (e.g. 0x020 LEAN_ANGLE_STATE =\n"
+            " * INVALID, 0x023 all raw 0) or nothing.\n"
+            " *\n"
+            " * @param[out] dst_p Buffer to pack the message into.\n"
+            " * @param[in] src_p Data to pack.\n"
+            " * @param[in] size Size of dst_p.\n"
+            " *\n"
+            " * @return Size of packed data, or negative error code (-EINVAL: bad argument,\n"
+            " *         value out of range, undefined enum value or buffer too small).\n"
+            " */\n"
+            f"{signature};\n"
+        )
+        c_parts.append(
+            f"{signature}\n{{\n"
+            "    int result = (-EINVAL);\n\n"
+            f"    if ({condition}) {{\n"
+            f"        result = {base}_pack(dst_p, src_p, size);\n"
+            "    }\n\n"
+            "    return (result);\n}\n"
+        )
+    tail = "\n#ifdef __cplusplus\n}\n#endif"
+    cut = header.rindex(tail)
+    header = header[:cut] + "\n".join(h_parts) + header[cut:]
+    return header, source.rstrip("\n") + "\n\n" + "\n".join(c_parts)
 
 
 # --------------------------------------------------------------------------- E2E wrappers
@@ -410,7 +555,7 @@ def generate_vehicle_c(vehicle: dict[str, Any]) -> dict[str, str]:
         c.append(
             f"    {{ {p}_DID_{d['name']}, {d['length']}u, "
             f"{p}_PRIORITY_{d['priority'].upper()}, "
-            f"{d['poll_period_ms']}u, {d['stale_after_ms']}u, "
+            f"{d['poll_period_ms']}u, {config.did_stale_after_ms(d)}u, "
             f"{d['factor_num']}, {d['factor_den']}, {d['offset']}, "
             f"{_c_float(d['min'])}, {_c_float(d['max'])}, {'true' if d['verified'] else 'false'} }},"
         )
