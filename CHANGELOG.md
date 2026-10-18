@@ -4,10 +4,6 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
-### Docs
-- D-074: the vehicle bus stays at 500 kbps (the ECU, not the bus, is the limit); more vehicle data comes from the Q-001 listen-only capture, then a probe-env support test of multi-DID 0x22 / multi-PID 0x01 requests (own decision and `safety-reviewer` before any poller change), then D-068 tier tuning. Q-001 row and catalog §1 reference it. No signal, DID, `tester_policy` or frame-gate change.
-- D-072: one dual-core STM32H755 (NUCLEO-H755ZI-Q) replaces the H7 + G4 + G0 set; the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering, own IMU, blind spot, immobilizer, LED ring); io-node retired; resolves Q-019, Q-026, Q-003. D-073: helmet ESP32-S3 unit (visor HUD, microphone, voice), HUD warnings informational; Q-032. ARCHITECTURE, hardware-architecture (§5b.4a helmet unit), procurement list v2.0 (purchase waves with store links). `derived/cl250_derived.yaml`: header comment only. No signal, DID, DBC, VSS, BLE or `tester_policy` change; the `platform.dbc` IO node, 0x083 and the mailbox payloads follow in the next `/signal-change`.
-
 ## [0.15.0] — 2026-10-18
 
 Breaking (0.x: breaking changes bump the minor; D-072 item 7, layout confirmed by the user). The platform bus follows the STM32H755 architecture. `tester_policy`, the D-020 golden copy, the frame gate, every vehicle DID, VSS path and BLE layout are unchanged; 0x020, 0x022, 0x021, 0x081, 0x082, 0x084, 0x085 and 0x110 keep their layouts and E2E DataIDs. Consumers: moto-hil-bench (restbus: drop 0x083, add 0x023/0x120), moto-rt-core (forwards 0x023/0x082 verbatim, sends 0x120; gen/c/rt_core changes, stays on its pin until it builds the mailbox), moto-safety-node (no code yet), moto-connectivity-node (receives 0x023 for the phone and the helmet HUD; gen/c/conn changes, bump when it uses it), moto-linux-node (DBC at runtime). moto-server and moto-mobile: `gen/python/moto_defs/platform.py` drops the `HEARTBEAT_IO_*` names and the `HeartbeatIo` table entry; no code use was found, so their next bump needs no change. No sibling repo uses 0x083 or `gen/c/io` outside its pinned `external/` copy.
@@ -25,6 +21,10 @@ Breaking (0.x: breaking changes bump the minor; D-072 item 7, layout confirmed b
 
 ### Changed
 - `dbc/platform.dbc` comments: RT_CORE = STM32H755 Cortex-M7 and mailbox relay, SAFETY = Cortex-M4 safety partition, CONN = bike ESP32 (helmet unit BLE only, D-073); 0x020, 0x022, 0x081, 0x082 note the mailbox path. 0x081 no longer lists IO as a receiver.
+
+### Docs
+- D-074: the vehicle bus stays at 500 kbps (the ECU, not the bus, is the limit); more vehicle data comes from the Q-001 listen-only capture, then a probe-env support test of multi-DID 0x22 / multi-PID 0x01 requests (own decision and `safety-reviewer` before any poller change), then D-068 tier tuning. Q-001 row and catalog §1 reference it. No signal, DID, `tester_policy` or frame-gate change.
+- D-072: one dual-core STM32H755 (NUCLEO-H755ZI-Q) replaces the H7 + G4 + G0 set; the Cortex-M7 runs rt-core, the Cortex-M4 is the safety partition (cornering, own IMU, blind spot, immobilizer, LED ring); io-node retired; resolves Q-019, Q-026, Q-003. D-073: helmet ESP32-S3 unit (visor HUD, microphone, voice), HUD warnings informational; Q-032. ARCHITECTURE, hardware-architecture (§5b.4a helmet unit), procurement list v2.0 (purchase waves with store links). `derived/cl250_derived.yaml`: header comment only. No signal, DID, DBC, VSS, BLE or `tester_policy` change; the `platform.dbc` IO node, 0x083 and the mailbox payloads follow in the next `/signal-change`.
 
 ## [0.14.0] — 2026-10-17
 
