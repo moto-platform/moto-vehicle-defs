@@ -119,3 +119,8 @@ constants:
     unit: ""
     status: provisional
     source: generic E0 gasoline (E10 is about 14.1); not in the vehicle docs
+  window_cold_soak_max_delta_degc:
+    value: 5.0
+    unit: degC
+    status: provisional
+    source: D-079 (provisional); coolant within this of ambient at key-on = cold soak, else a warm restart

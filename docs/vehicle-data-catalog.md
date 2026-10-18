@@ -242,6 +242,16 @@ Added 2026-10-15 (same rules: offline first, nothing safety-related outside rt-c
 | Misfire rate | misfire monitor (0xF6xx, if served), IMU/engine accelerometer vibration | counts per 1000 revolutions; vibration order features | ignition/fuelling anomaly label |
 | ECU software change | identification DIDs (0xF181/0xF188/0xF189, CalID/CVN) | value differs from the previous ride | split data sets by calibration |
 
+Added 2026-10-19 (D-079, provisional): five health-snapshot windows, each a class-B record that opens on its entry condition, accumulates online and closes into a fixed-size ride-summary record (first complete instance of the ride plus a count; `windows` in `derived/cl250_derived.yaml`):
+
+| Derived signal | From | How | Use |
+|---|---|---|---|
+| Health window: key-on | battery voltage, fuel-pump current (pending), coolant, IAT, ambient, MAP, baro; engine speed 0 | rest voltage, pump prime profile, sensor spread, MAP vs baro; warm-restart flag | battery, pump, sensor drift |
+| Health window: crank | 1 kHz battery voltage and current (pending), engine speed 0 → > 0 | minimum voltage, peak current, dV/dI, crank duration | battery and starter health |
+| Health window: warm idle | coolant > 80 °C, speed 0, idle band, 20 s; RPM, MAP, STFT, engine accelerometer (pending) | RPM spread and drift, MAP spread, STFT statistics, 0.5x/1x order RMS | idle control, misfire hint |
+| Health window: cruise | gear estimate ≥ 4, speed ±2 km/h for 10 s, steady throttle; engine and swing-arm accelerometers (pending) | final-drive and VE residuals, vibration RMS | drivetrain wear, intake |
+| Health window: post-stop | coolant, ambient, engine stopped with key on | coolant decay time constant | cooling system |
+
 ### 5.1 Where each derived signal is computed (D-070)
 
 Classes of D-070 item 1: **A** live on rt-core, **B** per-ride summary on rt-core, **C** across rides on moto-server/moto-ml (from class-B values), **D** server only (off-vehicle inputs). Before the rt-core board exists every class is computed offline by the Python reference on recorded data (D-070 item 2). "Needs" lists what must exist first besides the 40 DIDs on rt-core (E-19).
@@ -290,6 +300,11 @@ Classes of D-070 item 1: **A** live on rt-core, **B** per-ride summary on rt-cor
 | Rider aggressiveness score | B | — |
 | Misfire rate | A | 0xF6xx defined, or vibration features |
 | ECU software change | B | identification DIDs defined |
+| Health window: key-on | B | fuel-pump current sensor (pending) for the pump profile |
+| Health window: crank | B | 1 kHz battery voltage and current sample (pending) |
+| Health window: warm idle | B | engine accelerometer, Q-025 (pending) for the vibration |
+| Health window: cruise | B | gear estimate; engine and swing-arm accelerometers (pending) for the vibration |
+| Health window: post-stop | B | — |
 | ECU/bus health per ride | B | — |
 | ECU/bus health trends | C | per-ride health |
 | Data quality per sample | A | — |

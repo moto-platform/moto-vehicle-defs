@@ -28,6 +28,29 @@
 #   0xFD40-0xFD5F reserved by uds/dids.yaml (D-070 item 4). Their byte layout goes to
 #   uds/dids.yaml (encoding: record) with the rt-core module that fills them.
 #
+# windows: the five health-snapshot windows (D-079, provisional values). Each is a class-B
+#   derived record: it opens when its entry condition holds, accumulates online and
+#   closes into a fixed-size ride-summary record; per ride it keeps the first complete
+#   instance and counts the qualifying instances (each window's `<window>_count` signal).
+#   description    one line
+#   opens_on       key_on | engine_start (engine speed from a valid 0 to > 0) | condition
+#                  (every `conditions` entry holds) | engine_stop (engine stopped after a run,
+#                  key still on)
+#   conditions     entry/hold conditions, all must hold: [{input, op, value}], op lt | le | gt |
+#                  ge | eq; input = did.<NAME> | sensor.<name> | derived.<name> (class A),
+#                  resolved like signal inputs; an invalid or stale input = not met
+#   stable         optional: [{input, max_spread}]; max - min of the input over the window
+#                  stays within max_spread (a +-x band is max_spread 2x)
+#   min_duration_ms  the conditions (and stability) must hold this long for an instance to
+#                  qualify
+#   max_duration_ms  optional: the window closes by itself after this long
+#   record         the ride_summary_records entry the window's signals report in; one window
+#                  per record, and a window record holds that window's signals only
+#   Window signals (class B) carry `window: <key>` and the window's record. They are
+#   definitions only: the thresholds are values here, the accumulation is rt-core's logic.
+#   An input defined in no defs file yet is named in pending_inputs (the signal stays never
+#   valid until then); a cold-soak or warm-restart split is a flag field, not a condition.
+#
 # signals (order matters: a `derived.` input must be defined above its user):
 #   class          A live on rt-core | B per ride on rt-core | C across rides, server
 #                  (inputs: class-B/C signals only) | D server, off-vehicle inputs
@@ -52,6 +75,7 @@
 #                  uniform bins over an input of `inputs`
 #   per_gear       optional, true: one value per gear (const.gear_count of them)
 #   record         class B: the ride_summary_records entry it is reported in
+#   window         optional, class B: the `windows` entry whose instance it reports (D-079)
 #   output         A: [log]; B: [log, ride_summary]; C and D: [server]. No platform CAN message
 #                  or VSS path until a live consumer needs one (D-070 item 4, D-004).
 
@@ -216,6 +240,74 @@ ride_summary_records:
   RIDE_ECU_HEALTH:
     did: 0xFD49
     description: Vehicle-bus and tester health counters of the ride and the ECU software change flag.
+  # D-079 (provisional): one record per health-snapshot window, see `windows` below.
+  RIDE_WINDOW_KEY_ON:
+    did: 0xFD4A
+    description: Key-on health window W1, engine off - rest voltage, fuel-pump prime, sensor spread, MAP vs barometric.
+  RIDE_WINDOW_CRANK:
+    did: 0xFD4B
+    description: Cranking health window W2 - minimum voltage, peak current, internal resistance, crank duration.
+  RIDE_WINDOW_WARM_IDLE:
+    did: 0xFD4C
+    description: Warm-idle health window W3 - idle RPM and MAP stability, fuel-trim statistics, engine-order vibration.
+  RIDE_WINDOW_CRUISE:
+    did: 0xFD4D
+    description: Steady-cruise health window W4 - final-drive and volumetric-efficiency residuals, vibration.
+  RIDE_WINDOW_POST_STOP:
+    did: 0xFD4E
+    description: Post-stop health window W5 - coolant decay time constant while the ECU still answers.
+
+# D-079 (provisional values): the five health-snapshot windows. The inputs come at their
+# existing DID tiers (no new DID, no poll change); the 1 kHz battery sample, the fuel-pump
+# current and the accelerometers are pending_inputs of the window signals below.
+windows:
+  W1_KEY_ON:
+    description: Key on, engine off - battery rest voltage, fuel-pump prime, sensor spread, MAP vs barometric.
+    opens_on: key_on
+    conditions:
+      - {input: did.ENGINE_SPEED, op: eq, value: 0.0}
+    min_duration_ms: 2000 # the fuel-pump prime lasts about 2 s
+    max_duration_ms: 10000
+    record: RIDE_WINDOW_KEY_ON
+  W2_CRANK:
+    description: Engine speed from a valid 0 to above 0 - the start, from a 1 kHz battery sample.
+    opens_on: engine_start
+    conditions: []
+    min_duration_ms: 100
+    max_duration_ms: 3000
+    record: RIDE_WINDOW_CRANK
+  W3_WARM_IDLE:
+    description: Warm engine idling at a standstill, stable for 20 s.
+    opens_on: condition
+    conditions:
+      - {input: did.COOLANT_TEMP, op: gt, value: 80.0}
+      - {input: did.VEHICLE_SPEED, op: eq, value: 0.0}
+      # Idle band: provisional and wide (no idle-speed constant in defs yet, the CL250
+      # idle speed is not verified); replaced by the band measured on the first rides.
+      - {input: did.ENGINE_SPEED, op: ge, value: 1000.0}
+      - {input: did.ENGINE_SPEED, op: le, value: 1800.0}
+    min_duration_ms: 20000
+    max_duration_ms: 60000
+    record: RIDE_WINDOW_WARM_IDLE
+  W4_CRUISE:
+    description: Steady cruise in gear 4 or higher - speed and throttle steady for 10 s.
+    opens_on: condition
+    conditions:
+      - {input: derived.gear_estimate, op: ge, value: 4.0}
+    stable:
+      - {input: did.VEHICLE_SPEED, max_spread: 4.0} # within +-2 km/h
+      - {input: did.THROTTLE_POS, max_spread: 5.0} # provisional "throttle steady" band
+    min_duration_ms: 10000
+    max_duration_ms: 60000
+    record: RIDE_WINDOW_CRUISE
+  W5_POST_STOP:
+    description: Engine stopped after a run, key still on - coolant decay while the ECU still answers.
+    opens_on: engine_stop
+    conditions:
+      - {input: did.ENGINE_SPEED, op: eq, value: 0.0}
+    min_duration_ms: 60000
+    max_duration_ms: 1800000
+    record: RIDE_WINDOW_POST_STOP
 
 signals:
   # ---- drivetrain basics (the gear estimate comes early: many signals use it) ----
@@ -1545,6 +1637,347 @@ signals:
     resolution: 1.0
     inputs: [sensor.tester_step_gap_max]
     record: RIDE_ECU_HEALTH
+    output: [log, ride_summary]
+
+  # ---- D-079 health-snapshot windows (class B, one record each; provisional) ----
+  window_key_on_rest_voltage:
+    class: B
+    description: Battery voltage at rest (key on, engine off) in the first complete key-on window.
+    catalog: "Health window: key-on"
+    unit: V
+    range: [0.0, 16.0]
+    resolution: 0.01
+    inputs: [did.BATTERY_VOLTAGE, did.ENGINE_SPEED]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_key_on_pump_peak_current:
+    class: B
+    description: Peak fuel-pump current of the prime (about 2 s) in the first complete key-on window.
+    catalog: "Health window: key-on"
+    pending_inputs:
+      - fuel-pump current sample (ACS758 on rt-core, not defined in defs)
+    unit: A
+    range: [0.0, 30.0]
+    resolution: 0.1
+    inputs: [did.ENGINE_SPEED]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_key_on_pump_prime_time:
+    class: B
+    description: Duration of the fuel-pump prime current in the first complete key-on window.
+    catalog: "Health window: key-on"
+    pending_inputs:
+      - fuel-pump current sample (ACS758 on rt-core, not defined in defs)
+    unit: s
+    range: [0.0, 10.0]
+    resolution: 0.1
+    inputs: [did.ENGINE_SPEED]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_key_on_sensor_spread:
+    class: B
+    description: Largest difference between coolant, intake-air and ambient temperature at key-on.
+    catalog: "Health window: key-on"
+    unit: degC
+    range: [0.0, 100.0]
+    resolution: 0.1
+    inputs: [did.COOLANT_TEMP, did.INTAKE_AIR_TEMP, did.AMBIENT_AIR_TEMP]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_key_on_map_baro_delta:
+    class: B
+    description: Intake MAP minus barometric pressure at key-on, engine off.
+    catalog: "Health window: key-on"
+    unit: kPa
+    range: [-50.0, 50.0]
+    resolution: 0.1
+    inputs: [did.INTAKE_MAP, did.BAROMETRIC_PRESSURE]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_key_on_warm_restart:
+    class: B
+    description: 1 = coolant not within const.window_cold_soak_max_delta_degc of ambient at key-on (a warm restart, recorded not dropped), 0 = cold soak.
+    catalog: "Health window: key-on"
+    unit: flag
+    range: [0.0, 1.0]
+    resolution: 1.0
+    inputs: [did.COOLANT_TEMP, did.AMBIENT_AIR_TEMP, const.window_cold_soak_max_delta_degc]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_key_on_count:
+    class: B
+    description: Qualifying key-on windows in the ride.
+    catalog: "Health window: key-on"
+    unit: count
+    range: [0.0, 255.0]
+    resolution: 1.0
+    inputs: [did.ENGINE_SPEED]
+    window: W1_KEY_ON
+    record: RIDE_WINDOW_KEY_ON
+    output: [log, ride_summary]
+  window_crank_min_voltage:
+    class: B
+    description: Lowest battery voltage during the start, from the 1 kHz sample.
+    catalog: "Health window: crank"
+    pending_inputs:
+      - 1 kHz battery voltage and current sample on rt-core (not defined in defs)
+    unit: V
+    range: [0.0, 16.0]
+    resolution: 0.01
+    inputs: [did.ENGINE_SPEED]
+    window: W2_CRANK
+    record: RIDE_WINDOW_CRANK
+    output: [log, ride_summary]
+  window_crank_peak_current:
+    class: B
+    description: Peak starter current during the start, from the 1 kHz sample.
+    catalog: "Health window: crank"
+    pending_inputs:
+      - 1 kHz battery voltage and current sample on rt-core (not defined in defs)
+    unit: A
+    range: [0.0, 400.0]
+    resolution: 0.5
+    inputs: [did.ENGINE_SPEED]
+    window: W2_CRANK
+    record: RIDE_WINDOW_CRANK
+    output: [log, ride_summary]
+  window_crank_internal_resistance:
+    class: B
+    description: Battery internal resistance dV/dI at the start, from the 1 kHz sample.
+    catalog: "Health window: crank"
+    pending_inputs:
+      - 1 kHz battery voltage and current sample on rt-core (not defined in defs)
+    unit: mOhm
+    range: [0.0, 200.0]
+    resolution: 0.1
+    inputs: [did.ENGINE_SPEED]
+    window: W2_CRANK
+    record: RIDE_WINDOW_CRANK
+    output: [log, ride_summary]
+  window_crank_duration:
+    class: B
+    description: Time from the first crank to the engine speed running on its own.
+    catalog: "Health window: crank"
+    pending_inputs:
+      - 1 kHz battery voltage and current sample on rt-core (not defined in defs)
+    unit: ms
+    range: [0.0, 3000.0]
+    resolution: 10.0
+    inputs: [did.ENGINE_SPEED]
+    window: W2_CRANK
+    record: RIDE_WINDOW_CRANK
+    output: [log, ride_summary]
+  window_crank_count:
+    class: B
+    description: Qualifying starts in the ride.
+    catalog: "Health window: crank"
+    unit: count
+    range: [0.0, 255.0]
+    resolution: 1.0
+    inputs: [did.ENGINE_SPEED]
+    window: W2_CRANK
+    record: RIDE_WINDOW_CRANK
+    output: [log, ride_summary]
+  window_warm_idle_rpm_spread:
+    class: B
+    description: Largest minus smallest engine speed in the first complete warm-idle window.
+    catalog: "Health window: warm idle"
+    unit: rpm
+    range: [0.0, 500.0]
+    resolution: 1.0
+    inputs: [did.ENGINE_SPEED]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_rpm_drift:
+    class: B
+    description: Drift of the mean engine speed across the warm-idle window.
+    catalog: "Health window: warm idle"
+    unit: rpm
+    range: [-500.0, 500.0]
+    resolution: 1.0
+    inputs: [did.ENGINE_SPEED]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_map_spread:
+    class: B
+    description: Largest minus smallest intake MAP in the warm-idle window.
+    catalog: "Health window: warm idle"
+    unit: kPa
+    range: [0.0, 50.0]
+    resolution: 0.1
+    inputs: [did.INTAKE_MAP]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_stft_mean:
+    class: B
+    description: Mean short-term fuel trim in the warm-idle window (its normal 2 s tier).
+    catalog: "Health window: warm idle"
+    unit: "%"
+    range: [-100.0, 100.0]
+    resolution: 0.1
+    inputs: [did.SHORT_TERM_FUEL_TRIM_B1]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_stft_std:
+    class: B
+    description: Standard deviation of the short-term fuel trim in the warm-idle window.
+    catalog: "Health window: warm idle"
+    unit: "%"
+    range: [0.0, 100.0]
+    resolution: 0.1
+    inputs: [did.SHORT_TERM_FUEL_TRIM_B1]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_vibration_half_order:
+    class: B
+    description: Engine-block vibration RMS at the 0.5x engine order in the warm-idle window.
+    catalog: "Health window: warm idle"
+    pending_inputs:
+      - engine accelerometer (catalog 5, Q-025, not defined)
+    unit: m/s2
+    range: [0.0, 50.0]
+    resolution: 0.01
+    inputs: [did.ENGINE_SPEED]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_vibration_first_order:
+    class: B
+    description: Engine-block vibration RMS at the 1x engine order in the warm-idle window.
+    catalog: "Health window: warm idle"
+    pending_inputs:
+      - engine accelerometer (catalog 5, Q-025, not defined)
+    unit: m/s2
+    range: [0.0, 50.0]
+    resolution: 0.01
+    inputs: [did.ENGINE_SPEED]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_warm_idle_count:
+    class: B
+    description: Qualifying warm-idle windows in the ride.
+    catalog: "Health window: warm idle"
+    unit: count
+    range: [0.0, 255.0]
+    resolution: 1.0
+    inputs: [did.ENGINE_SPEED]
+    window: W3_WARM_IDLE
+    record: RIDE_WINDOW_WARM_IDLE
+    output: [log, ride_summary]
+  window_cruise_final_drive_residual:
+    class: B
+    description: Final-drive ratio measured in the cruise window minus the defs constant.
+    catalog: "Health window: cruise"
+    unit: ratio
+    range: [-0.5, 0.5]
+    resolution: 0.001
+    inputs: [derived.gearbox_ratio_measured, derived.gear_estimate, did.VEHICLE_SPEED, const.secondary_reduction_ratio]
+    window: W4_CRUISE
+    record: RIDE_WINDOW_CRUISE
+    output: [log, ride_summary]
+  window_cruise_ve_residual:
+    class: B
+    description: Volumetric efficiency in the cruise window minus its expected value at that gear and speed.
+    catalog: "Health window: cruise"
+    unit: "%"
+    range: [-50.0, 50.0]
+    resolution: 0.1
+    inputs: [derived.volumetric_efficiency, derived.gear_estimate, did.THROTTLE_POS]
+    window: W4_CRUISE
+    record: RIDE_WINDOW_CRUISE
+    output: [log, ride_summary]
+  window_cruise_engine_vibration:
+    class: B
+    description: Engine-block vibration RMS in the cruise window.
+    catalog: "Health window: cruise"
+    pending_inputs:
+      - engine accelerometer (catalog 5, Q-025, not defined)
+    unit: m/s2
+    range: [0.0, 50.0]
+    resolution: 0.01
+    inputs: [did.ENGINE_SPEED]
+    window: W4_CRUISE
+    record: RIDE_WINDOW_CRUISE
+    output: [log, ride_summary]
+  window_cruise_swingarm_vibration:
+    class: B
+    description: Swing-arm vibration RMS in the cruise window.
+    catalog: "Health window: cruise"
+    pending_inputs:
+      - swing-arm accelerometer (not defined)
+    unit: m/s2
+    range: [0.0, 50.0]
+    resolution: 0.01
+    inputs: [did.ENGINE_SPEED]
+    window: W4_CRUISE
+    record: RIDE_WINDOW_CRUISE
+    output: [log, ride_summary]
+  window_cruise_count:
+    class: B
+    description: Qualifying cruise windows in the ride.
+    catalog: "Health window: cruise"
+    unit: count
+    range: [0.0, 255.0]
+    resolution: 1.0
+    inputs: [derived.gear_estimate]
+    window: W4_CRUISE
+    record: RIDE_WINDOW_CRUISE
+    output: [log, ride_summary]
+  window_post_stop_coolant_tau:
+    class: B
+    description: Coolant decay time constant after the engine stops, key still on (cool-down across key-off is class C).
+    catalog: "Health window: post-stop"
+    unit: s
+    range: [0.0, 7200.0]
+    resolution: 1.0
+    inputs: [did.COOLANT_TEMP, did.AMBIENT_AIR_TEMP, did.ENGINE_SPEED]
+    window: W5_POST_STOP
+    record: RIDE_WINDOW_POST_STOP
+    output: [log, ride_summary]
+  window_post_stop_coolant_start:
+    class: B
+    description: Coolant temperature when the post-stop window opened.
+    catalog: "Health window: post-stop"
+    unit: degC
+    range: [-40.0, 150.0]
+    resolution: 0.1
+    inputs: [did.COOLANT_TEMP]
+    window: W5_POST_STOP
+    record: RIDE_WINDOW_POST_STOP
+    output: [log, ride_summary]
+  window_post_stop_coolant_end:
+    class: B
+    description: Coolant temperature when the post-stop window closed.
+    catalog: "Health window: post-stop"
+    unit: degC
+    range: [-40.0, 150.0]
+    resolution: 0.1
+    inputs: [did.COOLANT_TEMP]
+    window: W5_POST_STOP
+    record: RIDE_WINDOW_POST_STOP
+    output: [log, ride_summary]
+  window_post_stop_count:
+    class: B
+    description: Qualifying post-stop windows in the ride.
+    catalog: "Health window: post-stop"
+    unit: count
+    range: [0.0, 255.0]
+    resolution: 1.0
+    inputs: [did.ENGINE_SPEED]
+    window: W5_POST_STOP
+    record: RIDE_WINDOW_POST_STOP
     output: [log, ride_summary]
 
   # ---- class C: across rides, moto-server / moto-ml ----

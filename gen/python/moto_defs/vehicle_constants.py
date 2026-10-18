@@ -23,4 +23,5 @@ CONSTANTS = {
     "rear_wheel_circumference_m": (2.016, "m", "calculated"),
     "fuel_density_kg_per_l": (0.745, "kg/L", "provisional"),
     "stoichiometric_afr": (14.7, "", "provisional"),
+    "window_cold_soak_max_delta_degc": (5.0, "degC", "provisional"),
 }
