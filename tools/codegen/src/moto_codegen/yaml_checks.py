@@ -144,6 +144,66 @@ def check_dtc_snapshot(data: dict[str, Any], iso: dict[str, Any] | None = None) 
     return errors
 
 
+DTC_WARM_IDLE_OPS = ("lt", "le", "gt", "ge", "eq")  # numbered in this order by gen_c.py
+
+
+def check_dtc_warm_idle(data: dict[str, Any], derived_doc: dict[str, Any]) -> list[str]:
+    """D-080 item 1: `dtc_snapshot.warm_idle_window` names a D-079 window of the derived
+    file whose entry condition a tester can evaluate from the DID table alone."""
+    snap = data.get("dtc_snapshot")
+    name = snap.get("warm_idle_window") if isinstance(snap, dict) else None
+    if not isinstance(name, str) or not name:
+        return ["vehicle: dtc_snapshot.warm_idle_window must name a window of the derived file"]
+    where = f"vehicle: dtc_snapshot.warm_idle_window {name!r}"
+    windows = derived_doc.get("windows")
+    win = windows.get(name) if isinstance(windows, dict) else None
+    if not isinstance(win, dict):
+        return [f"{where} is not in derived windows"]
+    errors: list[str] = []
+    if win.get("opens_on") != "condition":
+        errors.append(f"{where} must have opens_on: condition")
+    if win.get("stable"):
+        errors.append(f"{where} has stable entries, which the tester trigger cannot evaluate")
+    conds = win.get("conditions")
+    if not isinstance(conds, list) or not conds:
+        errors.append(f"{where} needs at least one condition")
+        conds = []
+    did_names = {d["name"] for d in data.get("dids", [])}
+    for i, c in enumerate(conds):
+        ref = c.get("input") if isinstance(c, dict) else None
+        if not (isinstance(ref, str) and ref.startswith("did.")):
+            errors.append(f"{where} conditions[{i}] input {ref!r} must be did.<NAME>")
+        elif ref[4:] not in did_names:
+            errors.append(
+                f"{where} conditions[{i}] input {ref!r} is not a DID of the vehicle table"
+            )
+        if c.get("op") not in DTC_WARM_IDLE_OPS:
+            errors.append(f"{where} conditions[{i}] op must be one of {DTC_WARM_IDLE_OPS}")
+        value = c.get("value")
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            errors.append(f"{where} conditions[{i}] value must be a number")
+    dur = win.get("min_duration_ms")
+    if not (type(dur) is int and 1 <= dur <= 65535):
+        errors.append(f"{where} min_duration_ms must be an integer in 1..65535")
+    return errors
+
+
+def dtc_warm_idle(data: dict[str, Any], derived_doc: dict[str, Any]) -> dict[str, Any]:
+    """The checked trigger: min_duration_ms and (did name, did index, op, value) tuples."""
+    errors = check_dtc_warm_idle(data, derived_doc)
+    if errors:
+        raise ValueError("; ".join(errors))
+    win = derived_doc["windows"][data["dtc_snapshot"]["warm_idle_window"]]
+    index = {d["name"]: i for i, d in enumerate(data["dids"])}
+    return {
+        "min_duration_ms": win["min_duration_ms"],
+        "conditions": [
+            (c["input"][4:], index[c["input"][4:]], c["op"], float(c["value"]))
+            for c in win["conditions"]
+        ],
+    }
+
+
 # D-059: the generated scan table holds requests of up to this many bytes.
 SCAN_REQUEST_MAX = 3
 SCAN_BITMAP_IDS = 0x20  # ids per 4-byte support bitmap
