@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-19
+
 MINOR, additive (D-080 for the tester). No DID, poll, `tester_policy`, D-020 golden copy or frame-gate change.
 
 - D-080 item 1: `uds/vehicle_cl250.yaml` `dtc_snapshot.warm_idle_window: W3_WARM_IDLE` names the D-079 window whose entry condition starts the second 0x19 run of an ignition. Codegen resolves it from `derived/cl250_derived.yaml` (window must exist, `opens_on: condition`, no `stable` entries, every input a `did.<NAME>` of the vehicle table, op in lt/le/gt/ge/eq, `min_duration_ms` in 1..65535) and emits it to every target with the DID table (rt_core, conn, hil_sim): `vehicle_cl250.h` gets `VEHICLE_CL250_DTC_WARM_IDLE_MIN_DURATION_MS`, `_DTC_WARM_IDLE_CONDITION_COUNT`, `_DTC_OP_LT/LE/GT/GE/EQ`, `vehicle_cl250_dtc_condition_t` and `vehicle_cl250_dtc_warm_idle[]` (`did_index`, `op`, `value`; `.c` indexes by `VEHICLE_CL250_IDX_*`). `gen/python/moto_defs/vehicle_cl250.py` gets `DTC_WARM_IDLE_MIN_DURATION_MS` and `DTC_WARM_IDLE_CONDITIONS` (DID name, op, value). Consumers: **moto-connectivity-node** (temporary tester) and later **moto-rt-core** read the trigger from here, no literals.
