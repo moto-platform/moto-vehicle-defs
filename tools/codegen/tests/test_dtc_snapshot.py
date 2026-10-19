@@ -1,11 +1,15 @@
 """D-080: DTC freeze-frame constants and the four requests built from them."""
 
+import copy
+
 import pytest
 
 from moto_codegen import config
 from moto_codegen.yaml_checks import (
     check_dtc_snapshot,
+    check_dtc_warm_idle,
     dtc_snapshot_requests,
+    dtc_warm_idle,
     frame_allowed,
     load_yaml,
     request_allowed,
@@ -121,3 +125,89 @@ def test_generated_python_and_c_carry_the_constants(vehicle):
         assert "#define VEHICLE_CL250_DTC_MAX_PER_RUN (8u)" in header
         assert "#define VEHICLE_CL250_DTC_SNAPSHOT_RECORD (0xFFu)" in header
         assert "#define VEHICLE_CL250_DTC_EXT_DATA_RECORD (0xFFu)" in header
+
+
+# --------------------------------------------------------------------------- D-080 item 1
+
+
+@pytest.fixture
+def derived():
+    return copy.deepcopy(load_yaml(config.DERIVED_YAML))
+
+
+def _w3(derived):
+    return derived["windows"]["W3_WARM_IDLE"]
+
+
+def test_warm_idle_trigger_is_resolved_from_the_w3_window(vehicle, derived):
+    assert check_dtc_warm_idle(vehicle, derived) == []
+    warm = dtc_warm_idle(vehicle, derived)
+    assert warm["min_duration_ms"] == 20000
+    assert [(n, op, v) for n, _i, op, v in warm["conditions"]] == [
+        ("COOLANT_TEMP", "gt", 80.0),
+        ("VEHICLE_SPEED", "eq", 0.0),
+        ("ENGINE_SPEED", "ge", 1000.0),
+        ("ENGINE_SPEED", "le", 1800.0),
+    ]
+    names = [d["name"] for d in vehicle["dids"]]
+    assert all(names[i] == n for n, i, _op, _v in warm["conditions"])
+
+
+def test_warm_idle_window_must_be_named(vehicle, derived):
+    del vehicle["dtc_snapshot"]["warm_idle_window"]
+    assert any("must name a window" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+def test_warm_idle_window_must_exist(vehicle, derived):
+    vehicle["dtc_snapshot"]["warm_idle_window"] = "W9_NOPE"
+    assert any("not in derived windows" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+def test_warm_idle_window_must_open_on_a_condition(vehicle, derived):
+    vehicle["dtc_snapshot"]["warm_idle_window"] = "W5_POST_STOP"
+    assert any("opens_on: condition" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+def test_warm_idle_window_needs_a_condition(vehicle, derived):
+    _w3(derived)["conditions"] = []
+    assert any("at least one condition" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+@pytest.mark.parametrize("ref", ["derived.gear_estimate", "sensor.BME280_TEMP", "did.NO_SUCH_DID"])
+def test_warm_idle_inputs_must_be_dids_of_the_table(vehicle, derived, ref):
+    _w3(derived)["conditions"][0]["input"] = ref
+    assert any("conditions[0] input" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+def test_warm_idle_op_must_be_known(vehicle, derived):
+    _w3(derived)["conditions"][0]["op"] = "ne"
+    assert any("op must be one of" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+def test_warm_idle_window_refuses_stable_entries(vehicle, derived):
+    _w3(derived)["stable"] = [{"input": "did.VEHICLE_SPEED", "max_spread": 4.0}]
+    assert any("stable" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+@pytest.mark.parametrize("duration", [0, 65536, -1, 2.5, None])
+def test_warm_idle_duration_must_fit_uint16(vehicle, derived, duration):
+    _w3(derived)["min_duration_ms"] = duration
+    assert any("min_duration_ms" in e for e in check_dtc_warm_idle(vehicle, derived))
+
+
+def test_generated_warm_idle_table(vehicle):
+    py = (config.GEN_DIR / "python" / "moto_defs" / "vehicle_cl250.py").read_text()
+    assert "DTC_WARM_IDLE_MIN_DURATION_MS = 20000" in py
+    assert '("COOLANT_TEMP", "gt", 80.0),' in py
+    for target in config.C_TARGETS:
+        if not target.vehicle_dids:
+            continue
+        d = config.GEN_DIR / "c" / target.directory
+        header = (d / "vehicle_cl250.h").read_text()
+        assert "#define VEHICLE_CL250_DTC_WARM_IDLE_MIN_DURATION_MS (20000u)" in header
+        assert "#define VEHICLE_CL250_DTC_WARM_IDLE_CONDITION_COUNT (4u)" in header
+        assert "#define VEHICLE_CL250_DTC_OP_EQ (4u)" in header
+        source = (d / "vehicle_cl250.c").read_text()
+        assert (
+            "{ (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP, VEHICLE_CL250_DTC_OP_GT, 80.0f }," in source
+        )

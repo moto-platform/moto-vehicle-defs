@@ -259,6 +259,8 @@ def test_client_subset_names_nothing_outside_d020():
     assert "UDS_SESSION_PROGRAMMING" not in defs
     assert "UDS_GROUP_OF_DTC_ALL" not in defs
     assert {k for k in defs if k.startswith("UDS_NRC_")} == {
+        "UDS_NRC_SERVICE_NOT_SUPPORTED",  # D-080: tester records 0x19 as not served
+        "UDS_NRC_SUBFUNCTION_NOT_SUPPORTED",  # D-080
         "UDS_NRC_RESPONSE_PENDING",
         "UDS_NRC_SUBFUNCTION_NOT_SUPPORTED_IN_ACTIVE_SESSION",
         "UDS_NRC_SERVICE_NOT_SUPPORTED_IN_ACTIVE_SESSION",

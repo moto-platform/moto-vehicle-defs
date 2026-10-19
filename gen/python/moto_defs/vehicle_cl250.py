@@ -47,6 +47,17 @@ DTC_STATUS_MASK = 0x0C
 DTC_MAX_PER_RUN = 8
 DTC_SNAPSHOT_RECORD = 0xFF
 DTC_EXT_DATA_RECORD = 0xFF
+# D-080 item 1 (provisional): the second run of each ignition starts when these
+# conditions of the D-079 W3_WARM_IDLE window held for
+# DTC_WARM_IDLE_MIN_DURATION_MS. (DID name, op, physical value in the DID's unit);
+# an invalid or stale value = not met.
+DTC_WARM_IDLE_MIN_DURATION_MS = 20000
+DTC_WARM_IDLE_CONDITIONS = (
+    ("COOLANT_TEMP", "gt", 80.0),
+    ("VEHICLE_SPEED", "eq", 0.0),
+    ("ENGINE_SPEED", "ge", 1000.0),
+    ("ENGINE_SPEED", "le", 1800.0),
+)
 # Q-021/D-040: watch-only functional request IDs (id, extended); never sent
 FUNCTIONAL_WATCH_IDS = ((0x7DF, False), (0x18DB33F1, True),)
 SESSION_REQUEST = bytes([0x10, 0x03])

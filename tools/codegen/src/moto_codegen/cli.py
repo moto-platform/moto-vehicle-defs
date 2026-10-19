@@ -12,6 +12,7 @@ from .dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
 from .derived import check_derived
 from .yaml_checks import (
     check_dtc_snapshot,
+    check_dtc_warm_idle,
     check_limits,
     check_vehicle,
     check_vehicle_constants,
@@ -30,6 +31,9 @@ def run_checks(with_vss: bool = True) -> list[str]:
     errors += iso_errors
     if not iso_errors:
         errors += check_dtc_snapshot(load_yaml(config.VEHICLE_YAML), iso)
+        errors += check_dtc_warm_idle(
+            load_yaml(config.VEHICLE_YAML), load_yaml(config.DERIVED_YAML)
+        )
         errors += gen_uds.check_dids(
             load_yaml(config.DIDS_YAML), iso, load_yaml(config.VEHICLE_YAML)
         )
@@ -78,7 +82,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
         out = Path("c") / target.directory
         parts = {**gen_c.generate_platform_c(db, target), **gen_c.generate_e2e_c(db, target)}
         if target.vehicle_dids:
-            parts.update(gen_c.generate_vehicle_c(vehicle))
+            parts.update(gen_c.generate_vehicle_c(vehicle, derived))
         if target.limits:
             parts.update(gen_c.generate_limits_c(limits, target.node))
         if target.vehicle_constants:
@@ -105,7 +109,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     py = Path("python") / "moto_defs"
     files[py / "__init__.py"] = gen_python.generate_init_py()
     files[py / "platform.py"] = gen_python.generate_platform_py(db)
-    files[py / "vehicle_cl250.py"] = gen_python.generate_vehicle_py(vehicle)
+    files[py / "vehicle_cl250.py"] = gen_python.generate_vehicle_py(vehicle, derived)
     files[py / "e2e.py"] = gen_python.generate_e2e_py()
     files[py / "limits.py"] = gen_python.generate_limits_py(limits)
     files[py / "vehicle_constants.py"] = gen_python.generate_vehicle_constants_py(constants)

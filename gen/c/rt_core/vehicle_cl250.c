@@ -84,6 +84,13 @@ const vehicle_cl250_did_t vehicle_cl250_dids[VEHICLE_CL250_DID_COUNT] = {
     { VEHICLE_CL250_DID_REFERENCE_TORQUE, 2u, VEHICLE_CL250_PRIORITY_NORMAL, 10000u, 30000u, 1, 1, 0, 0.0f, 65535.0f, false },
 };
 
+const vehicle_cl250_dtc_condition_t vehicle_cl250_dtc_warm_idle[VEHICLE_CL250_DTC_WARM_IDLE_CONDITION_COUNT] = {
+    { (uint8_t)VEHICLE_CL250_IDX_COOLANT_TEMP, VEHICLE_CL250_DTC_OP_GT, 80.0f }, /* COOLANT_TEMP gt */
+    { (uint8_t)VEHICLE_CL250_IDX_VEHICLE_SPEED, VEHICLE_CL250_DTC_OP_EQ, 0.0f }, /* VEHICLE_SPEED eq */
+    { (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED, VEHICLE_CL250_DTC_OP_GE, 1000.0f }, /* ENGINE_SPEED ge */
+    { (uint8_t)VEHICLE_CL250_IDX_ENGINE_SPEED, VEHICLE_CL250_DTC_OP_LE, 1800.0f }, /* ENGINE_SPEED le */
+};
+
 const vehicle_cl250_did_t *vehicle_cl250_find(uint16_t did)
 {
     const vehicle_cl250_did_t *found = NULL;

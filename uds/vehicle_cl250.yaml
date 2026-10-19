@@ -178,6 +178,10 @@ dtc_snapshot:
   max_dtcs_per_run: 8
   snapshot_record: 0xFF
   ext_data_record: 0xFF
+  # D-080 item 1: the second run of each ignition starts at the first time this D-079
+  # window's conditions held for its min_duration_ms. Resolved by codegen from
+  # derived/cl250_derived.yaml (DTC_WARM_IDLE_*), so the condition is defined once.
+  warm_idle_window: W3_WARM_IDLE
 
 session:
   start:
