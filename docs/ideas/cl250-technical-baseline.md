@@ -1,7 +1,9 @@
 # Honda CL250 (8BK-MC57) — Technical Baseline & Service Specifications
 
+> Idea note (Antigravity, 2026-10-20), not a decision; values without a cited source are CONFIRM.
+
 > [!NOTE]
-> **Status:** GREEN zone (`docs/ideas/*`). Idea and technical baseline reference note.
+> **Status:** GREEN zone (`docs/ideas/*`). Idea and technical baseline reference note. No source is cited for the part numbers and figures below, so every one of them is **CONFIRM** against the service manual or a datasheet before use.
 > **Scope:** Compiles factory service, diagnostic, and electrical baseline specifications for the Honda CL250 (Type: 8BK-MC57, 249cc DOHC single-cylinder) and shared platform sister models (Rebel 250 / CMX250 MC49, CB250R MC52, CRF250L MD44/MD47).
 > **Rule Alignment:** Invariant 2 (Never invent signals; factual cross-references only).
 
@@ -15,7 +17,7 @@
 - **Bore × Stroke:** 76.0 mm × 55.0 mm
 - **Compression Ratio:** 10.7 : 1
 - **Fuel System:** PGM-FI (Programmed Fuel Injection), 38 mm throttle body
-- **Diagnostic Interface:** ISO 19689 4-pin Euro 5 DLC (under-seat, Red connector)
+- **Diagnostic Interface:** ISO 19689 4-pin Euro 5 DLC (under-seat, red connector): **CONFIRM** the standard, pin count, colour and position on the bike (hardware-integration §10 item 1)
 
 ---
 
@@ -32,7 +34,7 @@
   - Undercharged (needs charge): **< 12.3 V**
   - Severely discharged: < 11.8 V
 - **Charging Current Standard:** 0.7 A (Standard, 5–10 h) / 3.5 A (Quick charge, max 1 h)
-- **Internal Resistance ($R_0$ typical fresh):** **16 – 22 mΩ** @ 25 °C
+- **Internal Resistance (R0, typical fresh):** **16 – 22 mΩ** @ 25 °C (**CONFIRM**)
 
 ### 2.2 Alternator / AC Generator (Stator)
 - **Type:** 3-Phase AC Synchronous Generator with Permanent Magnet Rotor
@@ -41,8 +43,8 @@
 - **Stator Coil Resistance:** ~0.2 – 0.6 Ω (phase-to-phase between yellow leads @ 20 °C)
 - **Unloaded AC Voltage (disconnected):** > 45 – 55 VAC @ 5,000 RPM
 - **Pole Configuration:** 18 stator teeth / 12 rotor magnets (6 pole pairs)
-- **Electrical Frequency:** $f_{elec} = \frac{\text{RPM}}{60} \times 6\text{ pole pairs}$. At 1,400 RPM idle: ~140 Hz. At 5,000 RPM: ~500 Hz.
-- **Rectified Ripple Fundamental ($6\times$):** At 1,400 RPM: ~840 Hz. At 5,000 RPM: ~3,000 Hz. At 9,000 RPM: ~5,400 Hz.
+- **Electrical Frequency:** f_elec = RPM / 60 x 6 pole pairs (**CONFIRM** the pole count). At 1,400 RPM idle: ~140 Hz. At 5,000 RPM: ~500 Hz.
+- **Rectified Ripple Fundamental (6 x f_elec):** At 1,400 RPM: ~840 Hz. At 5,000 RPM: ~3,000 Hz. At 9,000 RPM: ~5,400 Hz. A 1 kHz ADC cannot resolve this ripple (Nyquist limit 500 Hz); ripple analysis needs a high-rate burst, which is open (Q-036, D-082 item 4).
 
 ### 2.3 Regulator / Rectifier (R/R)
 - **Type:** Shunt / Solid-State Regulator with 3-Phase Full-Wave Bridge
@@ -54,7 +56,7 @@
 - **OEM Part Number:** `31200-KZZ-901` (Mitsuba PMDD series)
 - **Rated Output:** **~400 W (0.4 kW)**
 - **Rotation:** Counter-Clockwise (CCW), 9-tooth drive pinion
-- **Inrush Peak Current ($I_{peak}$):** **60 – 90 A** (initial stall current for first 5–20 ms)
+- **Inrush Peak Current (I_peak):** **60 – 90 A** (initial stall current for first 5–20 ms)
 - **Steady Cranking Current:** **35 – 50 A** (compression stroke peak-to-valley oscillation)
 - **Cranking Speed:** ~350 – 550 RPM (healthy engine and warm oil)
 - **Cranking Duration:** Typically 400 – 900 ms from starter push to self-sustained idle
@@ -70,8 +72,8 @@
 
 | Measurement | Selected Sensor | Range & Rating | Why Selected |
 |---|---|---|---|
-| **Total Battery & Starter Current** | **Allegro ACS758LCB-200B** | ±200 A bidirectional ($10\text{ mV/A}$) | 50 A model saturates on starter inrush ($60-90\text{ A}$). 200B covers both starting and charging without clipping. |
-| **Kelvin Battery Sense** | Fused direct $22\text{ AWG}$ tap | 0 – 16 V DC | Isolates wiring harness voltage drop from battery internal resistance $R_0$. |
+| **Total Battery & Starter Current** | **Allegro ACS758LCB-200B** (D-082 item 3) | ±200 A bidirectional (10 mV/A, **CONFIRM**) | The 50 A model saturates on the 60-90 A starter inrush; the 200B covers starting and charging without clipping. Series element in the battery/starter cable: own mounting and fuse/cable plan (**CONFIRM** on the bike). |
+| **Kelvin Battery Sense** | Fused direct 22 AWG tap | 0 – 16 V DC | Isolates wiring harness voltage drop from battery internal resistance R0. |
 | **R/R Surface Temperature** | 10k NTC Thermistor | -40 to +125 °C | Detects regulator thermal runaway and connector oxidation. |
 | **Battery Terminal Temperature** | 10k NTC Thermistor | -40 to +85 °C | Electro-chemical temperature compensation for battery aging algorithms. |
-| **High-Speed Voltage ADC** | 16-bit ADC DMA on STM32H755 | 0 – 16 V (1 kHz / 20-50 kHz burst) | Captures 6-pulse alternator ripple harmonics and starter commutator ripple. |
+| **Battery Voltage ADC** | ADC with DMA on STM32H755 (resolution **CONFIRM**) | 0 – 16 V, 1 kHz sampling (D-079) | Cranking V_min and dV/dt. A high-rate burst for charging-ripple analysis and raw SD logging is open (Q-036). |
