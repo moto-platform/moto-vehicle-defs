@@ -146,6 +146,7 @@ tests/host/             host-native unit tests with Unity (pure logic: EKF, ISO-
 | Cloud (D-077) | Kuksa → local moto-server on the Raspi (every ride, offline) → live stream (MQTT/Zenoh or HTTP, open) + end-of-ride batch → remote moto-server (user's machine now, VPS-ready: containers, TLS proxy, per-device token) | Wi-Fi/LTE | latency-tolerant |
 | LLM assistant | moto-mcp (read-only) on the Raspi (localhost, offline) and on the remote moto-server (TLS + auth, D-077) → LLM; position and windowed slices allowed provisionally (D-076, Q-035); the LLM does no math | local/HTTPS | none |
 | OTA | moto-server → Raspi → UDS bootloader (platform CAN) → MCU A/B bank | CAN | controlled |
+| Engineering analysis (D-081) | vehicle + platform CAN (USB adapter, listen-only), recorded logs or the moto-server live stream → moto-analyzer (web host, later Tauri desktop); decodes only from the pinned defs, never transmits on a vehicle bus | USB/local/HTTPS | none |
 
 ---
 
@@ -168,7 +169,7 @@ Requirement–test traceability (Ç8): requirement IDs (`REQ-<DOMAIN>-NNN`) appe
 2. `moto-hil-bench` host (Python, hardware-free) + Renode
 3. `moto-connectivity-node` (migration of existing code)
 4. `moto-rt-core` (once the NUCLEO-H755ZI-Q arrives, D-072)
-5. `moto-server` → 6. `moto-ml` → 7. `moto-safety-node` (the M4 image, D-072) → ~~8. `moto-io-node`~~ (retired, D-072) → 9. `moto-linux-node` + `moto-mcp` → 10. `moto-mobile`
+5. `moto-server` → 6. `moto-ml` → 7. `moto-safety-node` (the M4 image, D-072) → ~~8. `moto-io-node`~~ (retired, D-072) → 9. `moto-linux-node` + `moto-mcp` → 10. `moto-mobile` → 11. `moto-analyzer` (D-081; started early by an external tool, 2026-10-20)
 
 The thesis core (Ç1-Ç8) is covered by steps 1-4 above, plus HIL, in this order.
 
