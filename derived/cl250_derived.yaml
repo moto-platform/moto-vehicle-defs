@@ -1006,6 +1006,10 @@ signals:
     class: A
     description: Peak-to-peak ripple of the battery voltage while charging.
     catalog: Charging health, cranking dip
+    # The stator ripple fundamental is ~0.8-5.4 kHz (6 pole pairs); the ~1.25 Hz DID poll
+    # and the 1 kHz battery ADC cannot resolve it (Nyquist). Waits for Q-036 (D-082 item 4).
+    pending_inputs:
+      - battery voltage high-rate burst (Q-036, not defined)
     unit: V
     range: [0.0, 3.0]
     resolution: 0.01

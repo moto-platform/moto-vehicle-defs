@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+- `derived/cl250_derived.yaml`: `charging_ripple` gets a `pending_inputs` entry (battery voltage high-rate burst, Q-036), so `ready_phase0` and `ready_rt_core` become `False` in the generated tables. Its inputs (the ~1.25 Hz battery-voltage DID) cannot resolve the 0.8-5.4 kHz stator ripple (Nyquist; Antigravity log 2026-10-20, D-082 item 4). No layout, scale, DID, record or bus change; no consumer computes it yet (moto-server reference, rt-core golden vectors), so no consumer change is needed at the next bump.
+
 ## [0.18.0] — 2026-10-19
 
 MINOR, additive (D-080 for the tester). No DID, poll, `tester_policy`, D-020 golden copy or frame-gate change.

@@ -469,7 +469,7 @@ const vehicle_cl250_derived_t vehicle_cl250_derived[VEHICLE_CL250_DERIVED_COUNT]
         { { 0u, 0u, 0.0f, 0.0f }, { 0u, 0u, 0.0f, 0.0f } }
     },
     { /* charging_ripple [V] */
-        VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, true,
+        VEHICLE_CL250_DERIVED_CLASS_LIVE, false, false, false,
         110u, 2400u, 10000u, VEHICLE_CL250_DERIVED_NO_RECORD, 1u,
         0.0f, 3.0f, 0.01f,
         2u, 0u,
