@@ -1,5 +1,7 @@
 # moto-platform CAN Analyzer & Telemetry Cockpit — Master Plan & Market Benchmark
 
+> **Superseded as a task list (Claude, 2026-10-24).** The analyzer became its own repo (D-081), not `moto-server/web`, and phases 0 and 3-6 are largely built. The live task list is `moto-analyzer/docs/ROADMAP.md`; the layer split (analyzer / moto-mcp / rider layer) is D-085. The market benchmark (§2) and the functional inventory (§3) stay valid as background.
+
 **Status:** Idea / Architecture Proposal (Green Zone)  
 **Date:** 2026-10-19  
 **Target:** Web Host (Stage 1) → Cross-Platform Desktop (Mac / Linux / Windows via Tauri 2.0, Stage 2)  
