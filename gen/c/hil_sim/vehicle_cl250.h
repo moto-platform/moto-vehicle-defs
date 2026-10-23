@@ -75,6 +75,26 @@ extern const uint8_t vehicle_cl250_fc_cts[VEHICLE_CL250_FRAME_DLC];
 #define VEHICLE_CL250_DTC_SNAPSHOT_RECORD (0xFFu) /* all records */
 #define VEHICLE_CL250_DTC_EXT_DATA_RECORD (0xFFu) /* all records */
 
+/* D-080 item 1 (PROVISIONAL): the second run of each ignition starts when these
+ * conditions of the D-079 W3_WARM_IDLE window (derived/cl250_derived.yaml) held for
+ * DTC_WARM_IDLE_MIN_DURATION_MS. Every input is a DID of vehicle_cl250_dids[] (index);
+ * an invalid or stale value = not met. */
+#define VEHICLE_CL250_DTC_WARM_IDLE_MIN_DURATION_MS (20000u)
+#define VEHICLE_CL250_DTC_WARM_IDLE_CONDITION_COUNT (4u)
+#define VEHICLE_CL250_DTC_OP_LT (0u)
+#define VEHICLE_CL250_DTC_OP_LE (1u)
+#define VEHICLE_CL250_DTC_OP_GT (2u)
+#define VEHICLE_CL250_DTC_OP_GE (3u)
+#define VEHICLE_CL250_DTC_OP_EQ (4u)
+
+typedef struct {
+    uint8_t did_index; /* index into vehicle_cl250_dids[] */
+    uint8_t op;        /* VEHICLE_CL250_DTC_OP_* */
+    float value;       /* physical value, the DID's unit */
+} vehicle_cl250_dtc_condition_t;
+
+extern const vehicle_cl250_dtc_condition_t vehicle_cl250_dtc_warm_idle[VEHICLE_CL250_DTC_WARM_IDLE_CONDITION_COUNT];
+
 #define VEHICLE_CL250_DID_COUNT (40u)
 #define VEHICLE_CL250_DID_ENGINE_SPEED (0xF40Cu) /* (A*256+B)/4 */
 #define VEHICLE_CL250_DID_VEHICLE_SPEED (0xF40Du) /* A */

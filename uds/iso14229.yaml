@@ -64,8 +64,8 @@ dtc_status_bits:
 # tester-only subset keeps it.
 nrcs:
   - {nrc: 0x10, name: GENERAL_REJECT}
-  - {nrc: 0x11, name: SERVICE_NOT_SUPPORTED}
-  - {nrc: 0x12, name: SUBFUNCTION_NOT_SUPPORTED}
+  - {nrc: 0x11, name: SERVICE_NOT_SUPPORTED, client: true}  # D-080: tester records 0x19 as not served
+  - {nrc: 0x12, name: SUBFUNCTION_NOT_SUPPORTED, client: true}  # D-080: tester records 0x19 as not served
   - {nrc: 0x13, name: INCORRECT_MESSAGE_LENGTH_OR_INVALID_FORMAT}
   - {nrc: 0x14, name: RESPONSE_TOO_LONG}
   - {nrc: 0x21, name: BUSY_REPEAT_REQUEST}

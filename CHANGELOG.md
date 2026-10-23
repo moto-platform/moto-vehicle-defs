@@ -4,6 +4,13 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+## [0.18.0] — 2026-10-19
+
+MINOR, additive (D-080 for the tester). No DID, poll, `tester_policy`, D-020 golden copy or frame-gate change.
+
+- D-080 item 1: `uds/vehicle_cl250.yaml` `dtc_snapshot.warm_idle_window: W3_WARM_IDLE` names the D-079 window whose entry condition starts the second 0x19 run of an ignition. Codegen resolves it from `derived/cl250_derived.yaml` (window must exist, `opens_on: condition`, no `stable` entries, every input a `did.<NAME>` of the vehicle table, op in lt/le/gt/ge/eq, `min_duration_ms` in 1..65535) and emits it to every target with the DID table (rt_core, conn, hil_sim): `vehicle_cl250.h` gets `VEHICLE_CL250_DTC_WARM_IDLE_MIN_DURATION_MS`, `_DTC_WARM_IDLE_CONDITION_COUNT`, `_DTC_OP_LT/LE/GT/GE/EQ`, `vehicle_cl250_dtc_condition_t` and `vehicle_cl250_dtc_warm_idle[]` (`did_index`, `op`, `value`; `.c` indexes by `VEHICLE_CL250_IDX_*`). `gen/python/moto_defs/vehicle_cl250.py` gets `DTC_WARM_IDLE_MIN_DURATION_MS` and `DTC_WARM_IDLE_CONDITIONS` (DID name, op, value). Consumers: **moto-connectivity-node** (temporary tester) and later **moto-rt-core** read the trigger from here, no literals.
+- D-080 item 2: NRC 0x11 SERVICE_NOT_SUPPORTED and 0x12 SUBFUNCTION_NOT_SUPPORTED are now client NRCs, so `UDS_NRC_SERVICE_NOT_SUPPORTED` and `UDS_NRC_SUBFUNCTION_NOT_SUPPORTED` appear in the client header `gen/c/conn/uds_iso14229.h` (the tester records 0x19 as "not served").
+
 ## [0.17.0] — 2026-10-19
 
 MINOR, additive (D-078 item 2, D-079, D-080, the D-068 "Still open" multi-value PIDs). No change to `tester_policy`, the D-020 golden copy, the frame gate, any polled DID, its tier or the polling budget, `dbc/platform.dbc`, VSS or the BLE schema; every existing generated symbol keeps its behaviour. `uds/vehicle_cl250_candidates.yaml` is now `uds/obd_catalog.yaml`; the generated module names are unchanged. Consumers: moto-server (catalog `decode_fields()`, identification DIDs, the `WINDOWS` table and the D-079 window signals in `moto_defs.vehicle_derived`), moto-mobile (the same catalog in Dart; its CI compiles it on the bump), moto-rt-core (the window table and records 0xFD4A-0xFD4E in `vehicle_cl250_derived.{h,c}`, the `VEHICLE_CL250_DTC_*` macros), moto-connectivity-node and moto-hil-bench (the `VEHICLE_CL250_DTC_*` macros). Nothing changes behaviour until a tester implements D-080 with `safety-reviewer`. The docs-only entries below (D-075, Q-034) landed after v0.16.0.
