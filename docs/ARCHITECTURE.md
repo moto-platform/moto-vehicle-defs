@@ -147,6 +147,7 @@ tests/host/             host-native unit tests with Unity (pure logic: EKF, ISO-
 | LLM assistant | moto-mcp (read-only) on the Raspi (localhost, offline) and on the remote moto-server (TLS + auth, D-077) → LLM; position and windowed slices allowed provisionally (D-076, Q-035); the LLM does no math | local/HTTPS | none |
 | OTA | moto-server → Raspi → UDS bootloader (platform CAN) → MCU A/B bank | CAN | controlled |
 | Engineering analysis (D-081) | vehicle + platform CAN (USB adapter, listen-only), recorded logs or the moto-server live stream → moto-analyzer (web host, later Tauri desktop); decodes only from the pinned defs, never transmits on a vehicle bus | USB/local/HTTPS | none |
+| Rider layer (D-085) | own motorcycle (Raspi, remote moto-server) → rider front end (repo open, Q-037); explanations from the LLM through moto-mcp; high-severity catalog results shown directly, without the LLM | local/HTTPS | none (advice, QM) |
 
 ---
 
