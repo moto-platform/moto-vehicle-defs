@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+- Docs: D-080 rt-core implementation note (slot rule, single-link late-answer rule, FC prefix and per-request FF_DL cap, hold values, sink; follow-up: narrow the 0x19 request gate).
+
 - Docs: D-086 (rt-core: a registered EKF whose 0x020 sender is not open reads as a stalled EKF; ISSUES E-22 item 1).
 
 ## [0.18.1] — 2026-10-24
