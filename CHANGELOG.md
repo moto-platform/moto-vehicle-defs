@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+- Docs: D-086 (rt-core: a registered EKF whose 0x020 sender is not open reads as a stalled EKF; ISSUES E-22 item 1).
+
 ## [0.18.1] — 2026-10-24
 
 PATCH, a correction in the generated derived tables plus docs. No DBC signal, ID, layout, scale, VSS path, DID, poll, `tester_policy`, D-020 golden copy or frame-gate change; a consumer bump is optional (rt-core and server only see `charging_ripple` reported as not ready).
