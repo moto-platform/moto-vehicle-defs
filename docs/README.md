@@ -12,7 +12,7 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `vehicle-work-plan.md` | On-vehicle plan (bus access per D-037) | CL250 data, mounting, field test protocols T0-T4, virtual dyno |
 | `phase0-data-collection-plan.md` | Authoritative (data), superseded in part (D-032, D-045) | Recording format, metadata schema, work packages WP-1..WP-7 |
 | `feature-pool.md` | Pool | All feature candidates (IDs F1.., K1.., ...), open-source references |
-| `hardware-procurement-list.md` | Current (v2.7, 2026-10-23, D-072/D-073, D-082) | Full parts list by purchase wave, with Turkish store links and prices, items on hand |
+| `hardware-procurement-list.md` | Current (v2.8, 2026-10-24, D-072/D-073, D-082) | Full parts list by purchase wave, with Turkish store links and prices, items on hand |
 | `hardware-integration.md` | Working guide (2026-10-03) | Phase 0 on-vehicle build: parts, wiring, mounting, bring-up gates, first measurements, open items |
 | `vehicle-data-catalog.md` | Working list (2026-10-15), **not a decision** | Every signal read today, pollable, discoverable or derivable; standard data outside the polled table; on-bike proprietary-DID discovery procedure; vehicle bus load; switch/ABS acquisition paths; per-repo code coverage |
 | `ideas/*` | Idea notes (drafted with Gemini, 2026-10-05), **not decisions** | `can-data-expansion.md` (CAN/UDS expansion, tasks V-01..V-16), `mcp-scenarios.md` (moto-mcp scenarios), `vehicle-signal-taxonomy.md` (groups G/I beyond the CL250, scale tiers, anomaly-model direction; Antigravity, 2026-10-18), `can-analyzer-master-plan.md` (CAN analyzer benchmark and phased plan; Antigravity, 2026-10-19; the repo itself is D-081), `physics-informed-anomaly.md` (D-083 stage 0 physics models, D-084 fault-catalog schema and the deep-research brief), `cl250-technical-baseline.md` (CL250 electrical figures, mostly CONFIRM; Antigravity, 2026-10-20). Each lists its known conflicts with recorded decisions at the top; nothing applies without a D-xxx |
@@ -65,9 +65,9 @@ Superseded-in-part note (D-032, D-045) at the top, line 5 · §1 work packages 2
 
 §1-13 categories 26-311 (vehicle functions §9 173, comfort/energy §9c 223, vision §10 254) · §14 top ten 312 · §15 out of pool 332 · §16 prioritization 345 · §17 hardware analysis 361-404 · §18 open-source ecosystem 405-624 (SDV §18.3 446, test/sim §18.5 479, data/ML §18.6 495, reference projects §18.7 510, costs §18.9 545)
 
-## hardware-procurement-list.md (148 lines)
+## hardware-procurement-list.md (297 lines)
 
-On hand 9 · Wave 1 board + on-bike build 22 · Wave 2 anomaly sensors 66 · Wave 3 helmet unit 84 · Wave 4 safety outputs/blind spot/immobilizer 101 · Wave 5 Raspi 114 · Wave 6 HIL 124 · later/Phase 2 133 · removed from v1.0 143
+On hand 13 · Part 1 core, power chain, boards A/B/C1/C2, boxes 29 · Part 2 anomaly sensors 94 (2A 98, 2B 108, 2C 126, 2D boxes 138) · Part 3 safety 158 (3A M4 partition 162, 3B camera 182, 3C boxes 189) · Part 4 helmet 206 · Part 5 Pi 5 + HIL 231 (5A 233, 5B 246) · board/box master reference 260 · budget 282 · removed from v1.0 292
 
 ## archive/tr/ (for the user; not read by Claude, D-038)
 
