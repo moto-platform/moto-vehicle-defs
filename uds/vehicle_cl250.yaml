@@ -102,7 +102,7 @@ tester_policy:
     - {sid: 0x10, name: DiagnosticSessionControl, subfunctions: [0x01, 0x03]}
     - {sid: 0x3E, name: TesterPresent, subfunctions: [0x00]}
     - {sid: 0x22, name: ReadDataByIdentifier}
-    - {sid: 0x19, name: ReadDTCInformation}
+    - {sid: 0x19, name: ReadDTCInformation, subfunctions: [0x01, 0x02, 0x04, 0x06]}  # D-080 + D-059 scan only (ISSUES E-23)
     - {sid: 0x01, name: OBD show current data}
     - {sid: 0x09, name: OBD request vehicle information}
   forbidden: [0x11, 0x14, 0x27, 0x2E, 0x2F, 0x31, 0x34, 0x36, 0x37]

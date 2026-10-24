@@ -485,7 +485,9 @@ def test_policy_with_no_allowed_subfunction_builds_and_refuses(vehicle, tmp_path
     from moto_codegen.yaml_checks import request_allowed
 
     policy = vehicle["tester_policy"]
-    narrowed = [e for e in policy["allowed"] if e.get("subfunctions")]
+    # 0x19 (sub-functions since E-23) stays: the D-080 dtc_snapshot and the D-059 scan
+    # requests must pass the policy, so codegen refuses an empty 0x19 list.
+    narrowed = [e for e in policy["allowed"] if e.get("subfunctions") and e["sid"] != 0x19]
     assert narrowed, "the policy has no service with sub-functions"
     for entry in narrowed:
         entry["subfunctions"] = []

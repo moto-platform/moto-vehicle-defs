@@ -136,7 +136,7 @@ ALLOWED_VEHICLE_SERVICES: dict[int, frozenset[int] | None] = {
     0x10: frozenset({0x01, 0x03}),  # DiagnosticSessionControl: default / extended only
     0x3E: frozenset({0x00}),  # TesterPresent
     0x22: None,  # ReadDataByIdentifier
-    0x19: None,  # ReadDTCInformation
+    0x19: frozenset({0x01, 0x02, 0x04, 0x06}),  # ReadDTCInformation: D-080 + scan (E-23)
     0x01: None,  # OBD show current data
     0x09: None,  # OBD request vehicle information
 }

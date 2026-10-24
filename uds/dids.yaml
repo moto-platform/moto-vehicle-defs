@@ -179,10 +179,10 @@ nodes:
           - {byte: 0, mask: 0x08, name: SPEED_PRODUCER_FAULT, description: The comms task latched a fault publishing the speed snapshot (read at request time).}
           - {byte: 0, mask: 0x10, name: OUTPUT_CONSUMER_FAULT, description: The comms task latched a fault reading the lean output snapshot (read at request time).}
           - {byte: 0, mask: 0x20, name: SPEED_CONSUMER_FAULT, description: The EKF task latched a fault reading the speed snapshot (from the last record).}
-          - {byte: 0, mask: 0x40, name: EKF_ALIVE_OK, description: "An EKF is registered with the comms task (comms_ekf_registered) and its alive supervision passes (heartbeat ekf_stalled clear); clear without a registered EKF. Read at request time."}
+          - {byte: 0, mask: 0x40, name: EKF_ALIVE_OK, description: "An EKF is registered with the comms task (comms_ekf_registered), its 0x020 sender is open (D-086) and its alive supervision passes (heartbeat ekf_stalled clear); clear without a registered EKF. Read at request time."}
           - {byte: 0, mask: 0x80, name: RESERVED, description: Always 0.}
           - {byte: 1, length: 2, name: OFFSET_REJECTS, description: "Learning windows rejected since boot (imu reject_count, OFFSET_RANGE), saturating at 0xFFFF."}
-          - {byte: 3, length: 2, name: UNLEARNED_S, description: "Seconds the current run without a learnt z offset has lasted (since boot if never learnt), 0 while one is learnt; UNKNOWN without a fresh record, and saturating at the same value (both read as not learnt)."}
+          - {byte: 3, length: 2, name: UNLEARNED_S, description: "Seconds the current run without a learnt z offset has lasted (since the EKF's first step if never learnt), 0 while one is learnt; UNKNOWN without a fresh record, and saturating at the same value (both read as not learnt)."}
         values:
           UNLEARNED_S: {UNKNOWN: 0xFFFF}
     dtcs:
