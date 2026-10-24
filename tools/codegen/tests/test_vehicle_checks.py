@@ -116,6 +116,12 @@ def test_duplicate_did(vehicle, platform_db):
         ([0x3E, 0x01], False),
         ([0x22, 0xF4, 0x0C], True),
         ([0x19, 0x02, 0xFF], True),
+        ([0x19, 0x01, 0x0C], True),
+        ([0x19, 0x04, 0x01, 0x02, 0x03, 0xFF], True),
+        ([0x19, 0x06, 0x01, 0x02, 0x03, 0xFF], True),
+        ([0x19, 0x0A], False),  # E-23: only the D-080 / scan sub-functions
+        ([0x19, 0x03], False),
+        ([0x19], False),
         ([0x01, 0x0C], True),
         ([0x09, 0x02], True),
         ([], False),
@@ -135,9 +141,16 @@ def test_policy_wider_than_d020_fails(vehicle, platform_db, sid):
         config.assert_policy_within_d020(vehicle["tester_policy"])
 
 
-def test_tester_present_any_subfunction_fails(vehicle, platform_db):
-    tp = next(e for e in vehicle["tester_policy"]["allowed"] if e["sid"] == 0x3E)
-    del tp["subfunctions"]
+@pytest.mark.parametrize("sid", [0x3E, 0x19])
+def test_any_subfunction_fails(vehicle, platform_db, sid):
+    entry = next(e for e in vehicle["tester_policy"]["allowed"] if e["sid"] == sid)
+    del entry["subfunctions"]
+    assert any("exceed D-020" in e for e in check_vehicle(vehicle, platform_db))
+
+
+def test_read_dtc_extra_subfunction_fails(vehicle, platform_db):
+    entry = next(e for e in vehicle["tester_policy"]["allowed"] if e["sid"] == 0x19)
+    entry["subfunctions"].append(0x0A)  # E-23: reportSupportedDTC is not on the list
     assert any("exceed D-020" in e for e in check_vehicle(vehicle, platform_db))
 
 

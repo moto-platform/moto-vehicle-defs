@@ -128,6 +128,10 @@ def client_subset(iso: dict[str, Any]) -> dict[str, Any]:
     ]
     if 0x19 not in golden:
         sub["read_dtc_subfunctions"] = []
+    elif golden[0x19] is not None:  # E-23: only the report types the gate passes
+        sub["read_dtc_subfunctions"] = [
+            s for s in iso["read_dtc_subfunctions"] if s["id"] in golden[0x19]
+        ]
     sub["nrcs"] = [n for n in iso["nrcs"] if n.get("client")]
     sub["group_of_dtc_all"] = None  # 0x14 only
     sub["functional_suppressed_nrcs"] = []  # server only

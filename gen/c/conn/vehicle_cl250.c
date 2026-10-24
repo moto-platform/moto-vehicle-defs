@@ -162,7 +162,13 @@ bool vehicle_cl250_request_allowed(const uint8_t *payload, size_t size)
             ok = true;
             break;
         case 0x19u: /* ReadDTCInformation */
-            ok = true;
+            if (size < 2u) {
+                ok = false;
+            } else {
+                uint8_t sub = (uint8_t)(payload[1] & 0x7Fu); /* ignore suppressPosRsp bit */
+
+                ok = (sub == 0x01u) || (sub == 0x02u) || (sub == 0x04u) || (sub == 0x06u);
+            }
             break;
         case 0x01u: /* OBD show current data */
             ok = true;
