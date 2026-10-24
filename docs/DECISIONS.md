@@ -702,6 +702,13 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Not chosen: a rider view inside moto-analyzer (mixes an engineering tool with rider wording); the rider layer showing raw technical panels instead of explanations.
 - Why: each layer has one audience and one job; the analyzer stays a precise engineering tool, the tools stay checkable, and the rider never depends on a slow or offline LLM for a warning.
 
+**D-086 — rt-core: a registered EKF whose 0x020 sender is not open reads as a stalled EKF** (2026-10-24, user chose "count it as stalled" after Claude's options; ISSUES E-22 item 1, safety-reviewer MINOR on rt-core#46; D-042, D-064 item 4, D-065 item 2 and its amendment, D-067)
+1. **Rule.** In the comms pass, an EKF alive counter that is registered while the 0x020 sender (`lean_tx`) is not open makes the pass read the EKF as stalled: heartbeat 0x081 NODE_MODE DEGRADED and the 0xFD03 `EKF_ALIVE_OK` flag clear. Before, a failed `lean_tx_open()` (e.g. the dedicated TX buffer refused) left the heartbeat NORMAL and `EKF_ALIVE_OK` set while 0x020 never went out; only the cornering README asked the boot to treat it as fatal.
+2. **Where.** `app/comms`, shared by the host program and the future H7 comms task, so the rule holds whatever the boot does; the host boot still aborts on the failure. "No EKF registered" (zeroed supervision, no 0x020) stays not stalled.
+- Safety-node is unchanged: it already falls back on the 0x020 E2E timeout (D-042); the change only makes rt-core's own health report agree with it (fail-safe side).
+- Not chosen: enforcing it only in the H7 boot (no H7 boot exists yet, and a boot path is easy to get wrong without a test); leaving the healthy-looking report (a silent 0x020 with a NORMAL heartbeat misleads the field and the bench).
+- Why: a lean that never reaches the bus is a lost EKF output for every receiver, so rt-core should report it as one.
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
