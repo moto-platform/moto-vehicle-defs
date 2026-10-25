@@ -33,3 +33,70 @@ def test_heartbeat_payload_fails_as_warning_status():
     e2e.protect(0x1082, frame, e2e.TxState())
     status = e2e.check(0x1023, 1, 60, bytes(frame), e2e.RxState(), 0)
     assert status == e2e.E2EStatus.WRONG_CRC
+
+
+def _platform_module(monkeypatch):
+    monkeypatch.syspath_prepend(str(PKG_DIR))
+    for name in [n for n in sys.modules if n == "moto_defs" or n.startswith("moto_defs.")]:
+        monkeypatch.delitem(sys.modules, name)
+    return importlib.import_module("moto_defs.platform")
+
+
+def _pack(table, values):
+    """Pack physical values with only the generated table (little-endian, as moto-server does)."""
+    raw_frame = 0
+    for sig in table:
+        assert sig.byte_order == "little_endian"
+        raw = round((values[sig.name] - sig.offset) / sig.factor)
+        raw &= (1 << sig.length) - 1
+        raw_frame |= raw << sig.start
+    return raw_frame
+
+
+def test_signal_table_matches_cantools(monkeypatch, platform_db):
+    platform = _platform_module(monkeypatch)
+    assert list(platform.SIGNALS) == [
+        m.name for m in sorted(platform_db.messages, key=lambda m: m.frame_id)
+    ]
+    for msg in platform_db.messages:
+        table = platform.SIGNALS[msg.name]
+        assert [s.name for s in table] == [s.name for s in msg.signals]
+        for t, s in zip(table, msg.signals, strict=True):
+            assert (t.start, t.length, t.byte_order, t.is_signed) == (
+                s.start,
+                s.length,
+                s.byte_order,
+                s.is_signed,
+            )
+            assert (t.factor, t.offset, t.minimum, t.maximum) == (
+                s.scale,
+                s.offset,
+                s.minimum,
+                s.maximum,
+            )
+            assert t.unit == (s.unit or "")
+            assert t.receivers == tuple(s.receivers)
+            expect = {k: str(v) for k, v in s.choices.items()} if s.choices else None
+            assert t.choices == expect
+            assert (t.is_multiplexer, t.multiplexer_signal) == (
+                s.is_multiplexer,
+                s.multiplexer_signal,
+            )
+
+
+def test_signal_table_packs_like_cantools(monkeypatch, platform_db):
+    platform = _platform_module(monkeypatch)
+    for msg in platform_db.messages:
+        table = platform.SIGNALS[msg.name]
+        # skip protected E2E bytes: compare only the payload bits the table describes
+        values = {}
+        for t in table:
+            lo = t.minimum if t.minimum is not None else 0
+            hi = t.maximum if t.maximum is not None else lo
+            values[t.name] = (lo + hi) / 2 if not t.choices else min(t.choices)
+        expected = int.from_bytes(msg.encode(values, scaling=True, strict=False), "little")
+        mask = 0
+        for t in table:
+            mask |= ((1 << t.length) - 1) << t.start
+        got = _pack(table, values)
+        assert got & mask == expected & mask, msg.name

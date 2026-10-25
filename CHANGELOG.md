@@ -6,7 +6,9 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [0.19.0] — 2026-10-25
 
-MINOR: the D-020 vehicle-bus gate is narrowed (refuses requests it used to accept); no DBC, DID, VSS, BLE or polling change.
+MINOR: the D-020 vehicle-bus gate is narrowed (refuses requests it used to accept) and `moto_defs.platform` gains per-signal tables (additive); no DBC, DID, VSS, BLE or polling change.
+
+- **Per-signal tables in `moto_defs.platform` (ISSUES E-20 (1), MINOR, additive):** new `Signal` NamedTuple (name, start, length, byte_order, is_signed, factor, offset, minimum, maximum, unit, receivers, choices, is_multiplexer, multiplexer_signal, multiplexer_ids) and `SIGNALS: dict[str, tuple[Signal, ...]]` keyed by message name (like `MESSAGES`), every message of `dbc/platform.dbc` as cantools exposes it. No DBC, ID, layout or existing-name change. Consumers: **moto-server** can drop its DBC reader in `can_codec.py` at its next bump; **moto-analyzer** later (ROADMAP A9).
 
 - **Narrowed D-020 gate (ISSUES E-23 (1), MINOR):** `tester_policy` and the codegen golden copy allow `0x19` ReadDTCInformation only with sub-functions 0x01, 0x02, 0x04 and 0x06 (the D-080 run and the D-059 scan); every other 0x19 sub-function, and a 0x19 without one, is refused by the generated `vehicle_cl250_request_allowed()` / `vehicle_cl250_frame_allowed()` (C: rt_core, conn, hil_sim) and `moto_defs.vehicle_cl250.request_allowed()`. Narrowing only (D-027); request lengths are not part of the gate, and bit 7 is masked as for 0x10/0x3E (a 0x81 passes as 0x01: still a read; safety-reviewer accepted). conn's client subset `uds_iso14229.h` no longer names 0x19 0x0A (D-040 item 1). Consumers: **moto-rt-core** and **moto-connectivity-node** send only these four (no behaviour change); **moto-hil-bench** gen copy. Comment-only (E-23 (2)): `uds/dids.yaml` 0xFD03 `EKF_ALIVE_OK` names the open 0x020 sender (D-086), `UNLEARNED_S` counts from the EKF's first step (rt_core `platform_uds.h` comment).
 
