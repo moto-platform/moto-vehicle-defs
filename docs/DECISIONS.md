@@ -710,6 +710,12 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Not chosen: enforcing it only in the H7 boot (no H7 boot exists yet, and a boot path is easy to get wrong without a test); leaving the healthy-looking report (a silent 0x020 with a NORMAL heartbeat misleads the field and the bench).
 - Why: a lean that never reaches the bus is a lost EKF output for every receiver, so rt-core should report it as one.
 
+**D-087 — Derived signals: an event's DID input is judged by the DID's own `stale_after_ms`; a ride on rt-core is one D-075 stop epoch** (2026-10-25, user: "the DID's own limit; ride = D-075 stop epoch", after Claude's options; ISSUES E-24 (1) and (2); D-070 items 1 and 5 and parts 2-3, D-075 item 1, D-069 item 3)
+1. **Event inputs.** An event signal (`event: true`, e.g. `stop_event`) has no `stale_after_ms` of its own; each of its DID inputs is usable while it is younger than that DID's own `stale_after_ms` in `uds/vehicle_cl250.yaml`, like every other derived input (D-070 part 2). This replaces the 3-poll age (`DID_AGE_LIMIT_POLLS` × poll period, e.g. 330 ms for VEHICLE_SPEED against its own 300 ms) in the moto-server reference and in rt-core. One rule for every input; the golden vectors are regenerated.
+2. **Ride boundary on rt-core.** A class-B ride summary covers one D-075 stop epoch: it opens at the epoch start (the first session confirmation after the tester starts or after the ECU was lost for `ecu_absent_timeout_ms`) and closes when that epoch ends (the ECU goes absent) or at a power-down that rt-core sees. An ECU drop-out shorter than the absent time stays in the ride, as it stays in the epoch. The D-080 "per ignition" and the D-069 one-shots already use the same epoch, so a ride, its freeze-frame runs and its engine-start re-ask line up. The moto-server reference keeps "one session = one ride" for phone-recorded sessions (no tester epochs there).
+- Not chosen: the 3-poll event age (a second staleness rule for one signal family); ignition on/off as the ride (rt-core has no key-switch input yet; the epoch is the tester's own view of the ignition); a time or distance gap as the ride boundary (a new parameter with no source).
+- Why: one staleness rule for all inputs keeps the outputs honest and the reference and rt-core identical; the stop epoch already defines "ignition" for every other tester feature.
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
