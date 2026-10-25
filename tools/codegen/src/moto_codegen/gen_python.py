@@ -20,8 +20,53 @@ def _py_bytes(values: list[int]) -> str:
     return "bytes([" + ", ".join(f"0x{b:02X}" for b in values) + "])"
 
 
+def _signal_entry(sig: Any) -> str:
+    """One ``Signal(...)`` source line, exactly what cantools exposes (deterministic repr)."""
+    choices = (
+        "None"
+        if not sig.choices
+        else "{" + ", ".join(f"{k}: {str(v)!r}" for k, v in sorted(sig.choices.items())) + "}"
+    )
+    mux_ids = (
+        "None"
+        if sig.multiplexer_ids is None
+        else "(" + "".join(f"{i}, " for i in sig.multiplexer_ids) + ")"
+    )
+    return (
+        f"        Signal({sig.name!r}, {sig.start}, {sig.length}, {sig.byte_order!r}, "
+        f"{bool(sig.is_signed)}, {sig.scale!r}, {sig.offset!r}, {sig.minimum!r}, "
+        f"{sig.maximum!r}, {(sig.unit or '')!r}, {tuple(sig.receivers)!r}, {choices}, "
+        f"{bool(sig.is_multiplexer)}, {sig.multiplexer_signal!r}, {mux_ids}),"
+    )
+
+
 def generate_platform_py(db: Database) -> str:
     lines = [BANNER.format(source="dbc/platform.dbc"), ""]
+    lines += [
+        "from typing import NamedTuple",
+        "",
+        "",
+        "class Signal(NamedTuple):",
+        '    """One DBC signal as cantools exposes it (E-20 item 1; start = DBC start bit)."""',
+        "",
+        "    name: str",
+        "    start: int",
+        "    length: int",
+        "    byte_order: str  # 'little_endian' | 'big_endian'",
+        "    is_signed: bool",
+        "    factor: float  # cantools 'scale'; physical = raw * factor + offset",
+        "    offset: float",
+        "    minimum: float | None",
+        "    maximum: float | None",
+        "    unit: str",
+        "    receivers: tuple[str, ...]",
+        "    choices: dict[int, str] | None  # VAL_ table, raw -> name",
+        "    is_multiplexer: bool",
+        "    multiplexer_signal: str | None",
+        "    multiplexer_ids: tuple[int, ...] | None",
+        "",
+        "",
+    ]
     lines.append("NODE_IDS = {")
     for name, nid in config.NODE_IDS.items():
         lines.append(f'    "{name}": 0x{nid:X},')
@@ -43,6 +88,15 @@ def generate_platform_py(db: Database) -> str:
             f'"e2e_data_id": {"None" if data_id is None else f"0x{data_id:04X}"}}},'
         )
     lines += ["", "MESSAGES = {", *entries, "}", ""]
+    lines += [
+        "# message name -> signals in DBC (start-bit) order; keyed by name like MESSAGES",
+        "SIGNALS: dict[str, tuple[Signal, ...]] = {",
+    ]
+    for m in sorted(db.messages, key=lambda m: m.frame_id):
+        lines.append(f'    "{m.name}": (')
+        lines += [_signal_entry(sig) for sig in m.signals]
+        lines.append("    ),")
+    lines += ["}", ""]
     return "\n".join(lines)
 
 
