@@ -716,6 +716,11 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Not chosen: the 3-poll event age (a second staleness rule for one signal family); ignition on/off as the ride (rt-core has no key-switch input yet; the epoch is the tester's own view of the ignition); a time or distance gap as the ride boundary (a new parameter with no source).
 - Why: one staleness rule for all inputs keeps the outputs honest and the reference and rt-core identical; the stop epoch already defines "ignition" for every other tester feature.
 
+**D-088 — The derived-signal RAM on rt-core may exceed the D-070 estimate; measured costs set the budget** (2026-10-26, user: "accept it"; D-070 item 6 and its memory estimate, rt-core#51/#54, ISSUES E-24 (3))
+1. **Accepted.** `features/derived` with `services/derived_inputs` uses about 13.9 KB of static RAM on the M7 for part 1 + 2a (28 class-A and 12 class-B signals; the 4.4 KB speed window is the largest part), above the D-070 estimate of about 10 KB for all derived signals. The estimate was a sizing guess, not a budget; D-070 item 6 sets the budget from measured costs, and the STM32H755 M7 has about 1 MB of SRAM.
+2. **Conditions.** Every derived part keeps reporting its static RAM and code size in its PR; the block stays out of the EKF's DTCM when the linker script lands (D-072 item 4); the derived task's total budget is fixed from on-target measurements once the board exists (Q-019); trimming (for example a coarser speed window) is a later decision if a measurement asks for it.
+- Not chosen: trimming now without a measured need (the D-070 "optimise while building" rule).
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |

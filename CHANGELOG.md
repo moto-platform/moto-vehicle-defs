@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+- Docs: D-088 (derived-signal RAM above the D-070 estimate accepted; measured costs set the budget); `docs/ideas/ride-summary-did-layout.md` (proposal for the 0xFD40-0xFD4E ride-summary DID layouts, C3 part 2b, awaiting the user).
+
 - Docs: D-087 (an event's DID input uses the DID's own `stale_after_ms`; a ride on rt-core = one D-075 stop epoch; ISSUES E-24 (1)/(2)).
 
 ## [0.19.0] — 2026-10-25
