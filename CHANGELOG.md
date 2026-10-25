@@ -4,6 +4,8 @@ All notable changes to moto-vehicle-defs. Semver (see CLAUDE.md): new message/si
 
 ## [Unreleased]
 
+- Docs: D-087 (an event's DID input uses the DID's own `stale_after_ms`; a ride on rt-core = one D-075 stop epoch; ISSUES E-24 (1)/(2)).
+
 ## [0.19.0] — 2026-10-25
 
 MINOR: the D-020 vehicle-bus gate is narrowed (refuses requests it used to accept) and `moto_defs.platform` gains per-signal tables (additive); no DBC, DID, VSS, BLE or polling change.
