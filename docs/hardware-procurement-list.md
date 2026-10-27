@@ -1,4 +1,4 @@
-# Hardware Procurement List — moto-platform
+# Hardware Procurement List — vehicle-platform
 
 > Where this list conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
@@ -77,7 +77,7 @@ New sensors need their signals defined through `/signal-change` (and Q-025) befo
 | ACS758 50 A hall current sensor | 1 | battery current: charging system, regulator faults, cranking profile (new) | [Motorobit](https://www.motorobit.com/acs758lcb-50a-linear-hall-current-sensor-module) | 353.50 TL | |
 | BME280 | 1 | ambient temperature, pressure, humidity as context (new) | [Robolink](https://www.robolinkmarket.com/bme-280-barometrik-basinc-nem-ve-sicaklik-sensor-karti) | 309 TL | |
 | LJ12A3-4-Z/BX inductive sensor | 2 | wheel speed from the brake-disc bolts, independent of the ECU (new; helps Q-031, wheel_slip, final drive). Output needs level shifting to 3.3 V | [Direnc](https://www.direnc.net/enduktif-npn-proximity-sensor-lj12a3-4-zbx) | 116.24 TL | |
-| BLE TPMS (motorcycle, 2 external sensors) | 1 set | tyre pressure/temperature. Many sets are 433 MHz with their own display: buy only a Bluetooth one | [Trendyol Powermaster](https://www.trendyol.com/powermaster/pm-28656-motosiklet-kablosuz-lastik-basinc-ve-sicaklik-izleme-sistemi-tpms-p-1042126095) · [n11](https://m.n11.com/lasonstiges-2-harici-sensorlu-motosiklet-tpms-moto-lastik-basinci-izleme-sistemi-P675123074) | n/v | |
+| BLE TPMS (motorcycle, 2 external sensors) | 1 set | tyre pressure/temperature. Many sets are 433 MHz with their own display: buy only a Bluetooth one | [Trendyol Powermaster](https://www.trendyol.com/powermaster/pm-28656-motosiklet-kablosuz-lastik-basinc-ve-sicaklik-izleme-sistemi-tpms-p-1042126095) · [n11](https://m.n11.com/lasonstiges-2-harici-sensorlu-motosiklet-tpms-vehicle-lastik-basinci-izleme-sistemi-P675123074) | n/v | |
 | Oil pressure/temperature sensor (optional) | 1 | lubrication faults | not searched | 300-600 TL (estimate) | |
 | Inductive spark-lead pickup (optional) | 1 | ECU-independent RPM and misfire: clip-on, no cut in the HT lead; conditioned pulse into an M7 timer input capture (µs firing period, spark-period jitter) | not searched | — | |
 | Sump oil temperature NTC in a drain-plug adapter | 1 | oil temperature vs coolant (thermal lag, D-079 windows). **Confirm the CL250 drain-plug thread first**; buy a plug-type sender, never drill the case | not searched | — | |

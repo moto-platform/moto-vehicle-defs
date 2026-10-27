@@ -1,5 +1,5 @@
-# moto-platform VSS overlay (D-004) on top of COVESA VSS 6.0 (base pinned in
-# tools/codegen/src/moto_codegen/gen_vss.py). Consumed by kuksa-can-provider
+# vehicle-platform VSS overlay (D-004) on top of COVESA VSS 6.0 (base pinned in
+# tools/codegen/src/vehicle_codegen/gen_vss.py). Consumed by kuksa-can-provider
 # (dbc2vss keys) together with dbc/platform.dbc on the Raspi. Output:
 # gen/vss/vss_dbc.json (`make gen`).
 #
@@ -46,7 +46,7 @@ Vehicle.LowVoltageBattery.CurrentVoltage:
 
 Vehicle.Motorcycle:
   type: branch
-  description: Motorcycle-specific signals (moto-platform extension, D-028).
+  description: Motorcycle-specific signals (vehicle-platform extension, D-028).
 
 Vehicle.Motorcycle.LeanAngle:
   type: sensor

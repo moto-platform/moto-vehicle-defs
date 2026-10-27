@@ -1,5 +1,5 @@
 {
-  "$schemaDescription": "Single source of truth for the BLE notifications sent by moto-connectivity-node to moto-mobile: the telemetry packet (current version 4, top level), its low-MTU fallback (the version 2 layout), the IMU sample block, the GPS block and the vehicle-signal block. This file lives in moto-vehicle-defs ble/ (D-061, Q-017 resolved); codegen generates gen/c/conn/ble_schema.h (offset/size macros; moto-connectivity-node's packed structs static_assert against them), gen/python/moto_defs/ble.py (moto-server decodes raw_hex/imu raw bytes driven by SCHEMA) and gen/dart/moto_defs (moto-mobile decoders), so no consumer keeps a copy of this file. Ported from HondaCl250_Telemetry@legacy-final (version 1) per D-023; version 3 and the IMU block per D-032; version 4 per D-058; the GPS block per D-060; the vehicle-signal block per D-066.",
+  "$schemaDescription": "Single source of truth for the BLE notifications sent by vehicle-connectivity-node to vehicle-mobile: the telemetry packet (current version 4, top level), its low-MTU fallback (the version 2 layout), the IMU sample block, the GPS block and the vehicle-signal block. This file lives in vehicle-defs ble/ (D-061, Q-017 resolved); codegen generates gen/c/conn/ble_schema.h (offset/size macros; vehicle-connectivity-node's packed structs static_assert against them), gen/python/vehicle_defs/ble.py (vehicle-server decodes raw_hex/imu raw bytes driven by SCHEMA) and gen/dart/vehicle_defs (vehicle-mobile decoders), so no consumer keeps a copy of this file. Ported from HondaCl250_Telemetry@legacy-final (version 1) per D-023; version 3 and the IMU block per D-032; version 4 per D-058; the GPS block per D-060; the vehicle-signal block per D-066.",
   "gatt": {
     "serviceUuid": "4fafc201-1fb5-459e-8fcc-c5c9c331914b",
     "characteristics": {
@@ -21,9 +21,9 @@
   "totalBytes": 57,
   "totalBytesByVersion": { "3": 37, "4": 57 },
   "notifyPeriodMs": 100,
-  "signalMapping": "A field with `defsSignal` carries that moto-vehicle-defs signal (gen/python vehicle_cl250.DIDS key); physical value in the defs unit = raw * `scale`. A field with `ageOf` is the age of that signal.",
+  "signalMapping": "A field with `defsSignal` carries that vehicle-defs signal (gen/python vehicle_cl250.DIDS key); physical value in the defs unit = raw * `scale`. A field with `ageOf` is the age of that signal.",
   "versioning": {
-    "rule": "Receivers MUST read `version` first and decode with the matching layout: version 4 (`fields`), version 3 (the `fields` without `sinceVersion`, `totalBytesByVersion`: 37 bytes) or version 2 (`lowMtuFallback.fields`). Any other version is dropped. Any change to field order, size or meaning requires incrementing `version` here and regenerating the C, Python and Dart outputs (moto-vehicle-defs `make gen`, D-061); moto-connectivity-node, moto-mobile and moto-server take the change together, by bumping their moto-vehicle-defs pin.",
+    "rule": "Receivers MUST read `version` first and decode with the matching layout: version 4 (`fields`), version 3 (the `fields` without `sinceVersion`, `totalBytesByVersion`: 37 bytes) or version 2 (`lowMtuFallback.fields`). Any other version is dropped. Any change to field order, size or meaning requires incrementing `version` here and regenerating the C, Python and Dart outputs (vehicle-defs `make gen`, D-061); vehicle-connectivity-node, vehicle-mobile and vehicle-server take the change together, by bumping their vehicle-defs pin.",
     "currentVersion": 4,
     "acceptedVersions": [2, 3, 4],
     "history": {
@@ -51,7 +51,7 @@
     "field": "ageOf",
     "neverReceived": 65535,
     "max": 65534,
-    "rule": "Milliseconds since the signal was last written, at the time the packet was built, saturating at `max`; `neverReceived` = no value since boot. The matching valid bit is set only while the age is within the signal's generated stale_after_ms (moto-vehicle-defs, D-029)."
+    "rule": "Milliseconds since the signal was last written, at the time the packet was built, saturating at `max`; `neverReceived` = no value since boot. The matching valid bit is set only while the age is within the signal's generated stale_after_ms (vehicle-defs, D-029)."
   },
   "flags": {
     "field": "flags",
@@ -95,7 +95,7 @@
   },
   "testerStats": {
     "since": 4,
-    "temporary": "TEMPORARY like the lean fields (D-023): moto-connectivity-node is the temporary sole vehicle-bus tester, and rt-core's health DID 0xFD02 (D-055) replaces these fields when rt-core polls. They are measurements of the tester, not vehicle signals.",
+    "temporary": "TEMPORARY like the lean fields (D-023): vehicle-connectivity-node is the temporary sole vehicle-bus tester, and rt-core's health DID 0xFD02 (D-055) replaces these fields when rt-core polls. They are measurements of the tester, not vehicle signals.",
     "stepGap": "stepGapMaxMs and stepGapOverCount (D-058 item 2): at each entry of the poller's step, the gap since the previous entry is taken from a microsecond timer and reported in ms rounded up, the same definition as D-053. The poller runs every loop() pass, so the gap includes the serial report, the other modules and the Arduino loop overhead. stepGapOverCount counts gaps above client_step_max_ms (uds/vehicle_cl250.yaml timing). Both saturate; 0 when the node has no tester.",
     "roundTrip": "rttDid .. rttNrc78Count (D-058 item 1): one record per packet, for a DID the sender picks by cycling through its DID table (one DID per packet), so the layout stays fixed when the table grows (D-059). Round trip = time from the request's send (the TX call accepted the frame after the gate) to the step that drains its answer (positive response or an NRC other than 0x78); that includes one step and loop latency, the same definition as assumed_round_trip_ms. A request answered with NRC 0x78 is counted in rttNrc78Count and gives no sample. min/max/sum/count are kept since boot, in ms, and saturate; rttDid 0 means no record, rttMinMs 65535 and rttMaxMs 0 mean no sample yet. Consumers compute average = rttSumMs / rttCount and treat it as invalid if rttSumMs or rttCount saturated."
   },
@@ -224,7 +224,7 @@
     "totalBytes": 26,
     "notifyPeriodMs": 100,
     "source": {
-      "part": "u-blox NEO-M8N on moto-connectivity-node's UART (D-060, TEMPORARY until rt-core owns the GPS)",
+      "part": "u-blox NEO-M8N on vehicle-connectivity-node's UART (D-060, TEMPORARY until rt-core owns the GPS)",
       "protocol": "UBX binary only, NMEA off on the port; UBX-NAV-PVT at 10 Hz, UART >= 38400 baud. Parsed byte-wise with the Fletcher checksum on the node; one block is notified per valid NAV-PVT.",
       "fieldOrigin": "groundSpeed = gSpeed, headingOfMotion = headMot, speedAccuracy = sAcc, headingAccuracy = headAcc, fixType = fixType, numSv = numSV, flags.gnssFixOk = flags bit 0 (gnssFixOK) of the same NAV-PVT."
     },
@@ -287,9 +287,9 @@
     "totalBytesMax": 181,
     "notifyPeriodMs": 200,
     "maxBlocksPerPeriod": 3,
-    "purpose": "D-066 item 4: one record per DID of the sender's DID table (uds/vehicle_cl250.yaml `dids`, including the five DIDs that telemetry version 4 also carries at fixed offsets), so a DID promoted from the candidate catalog (D-066 item 3) flows to the phone and the server without a layout change in defs, conn, moto-mobile or moto-server. Telemetry version 4 is unchanged.",
+    "purpose": "D-066 item 4: one record per DID of the sender's DID table (uds/vehicle_cl250.yaml `dids`, including the five DIDs that telemetry version 4 also carries at fixed offsets), so a DID promoted from the candidate catalog (D-066 item 3) flows to the phone and the server without a layout change in defs, conn, vehicle-mobile or vehicle-server. Telemetry version 4 is unchanged.",
     "recordKey": "A record is keyed by its DID, never by a table or catalog index: the catalog order changes when a candidate is promoted, the DID does not (user, 2026-10-11, D-066 note). Receivers keep the latest record per DID.",
-    "decodeRule": "Receivers look the DID up in the generated vehicle catalog (gen/python/moto_defs/vehicle_catalog.py `BY_DID`, gen/dart/moto_defs `vehicleSignalCatalog`) and take its length, factor and offset: physical = raw * factor_num / factor_den + offset, where raw holds the DID's `length` data bytes read as an unsigned big-endian number. A raw above 2^(8*length) - 1 is malformed and that record is dropped. A DID missing from the receiver's catalog (a sender built from a newer defs) is kept with its raw value and shown as an unknown DID, never dropped silently.",
+    "decodeRule": "Receivers look the DID up in the generated vehicle catalog (gen/python/vehicle_defs/vehicle_catalog.py `BY_DID`, gen/dart/vehicle_defs `vehicleSignalCatalog`) and take its length, factor and offset: physical = raw * factor_num / factor_den + offset, where raw holds the DID's `length` data bytes read as an unsigned big-endian number. A raw above 2^(8*length) - 1 is malformed and that record is dropped. A DID missing from the receiver's catalog (a sender built from a newer defs) is kept with its raw value and shown as an unknown DID, never dropped silently.",
     "stateRule": "`state` is the first that applies, in this order: skipped (the sender skips the DID after max_consecutive_timeouts, for did_skip_cooldown_ms, uds/vehicle_cl250.yaml timing); negativeResponse (the DID's last answer was a negative response other than NRC 0x78); valid or stale (a positive response exists: valid while ageMs <= the DID's generated stale_after_ms, else stale); neverReceived.",
     "rawRule": "valid and stale: the data bytes of the DID's last positive response (`decodeRule`). negativeResponse: the NRC of the last negative response in the low byte, the other bytes 0. neverReceived and skipped: 0.",
     "ageRule": "`ageMs` follows the top-level `age` rule in every state: milliseconds since the DID's last positive response when the block was built, saturating at 65534; 65535 = no positive response since boot.",

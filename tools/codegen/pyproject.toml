@@ -1,7 +1,7 @@
 [project]
-name = "moto-codegen"
+name = "vehicle-codegen"
 version = "0.18.0"
-description = "Code generator and consistency checks for moto-vehicle-defs"
+description = "Code generator and consistency checks for vehicle-defs"
 requires-python = ">=3.11"
 dependencies = [
     "cantools>=44.1,<45",
@@ -10,7 +10,7 @@ dependencies = [
 ]
 
 [project.scripts]
-moto-codegen = "moto_codegen.cli:main"
+vehicle-codegen = "vehicle_codegen.cli:main"
 
 [dependency-groups]
 dev = [
@@ -23,7 +23,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/moto_codegen"]
+packages = ["src/vehicle_codegen"]
 
 [tool.ruff]
 line-length = 100
@@ -37,6 +37,6 @@ testpaths = ["tests"]
 
 [tool.ruff.lint.per-file-ignores]
 # Embedded C templates keep C formatting.
-"src/moto_codegen/gen_c.py" = ["E501"]
-"src/moto_codegen/gen_uds.py" = ["E501"]
-"src/moto_codegen/c_e2e_templates.py" = ["E501"]
+"src/vehicle_codegen/gen_c.py" = ["E501"]
+"src/vehicle_codegen/gen_uds.py" = ["E501"]
+"src/vehicle_codegen/c_e2e_templates.py" = ["E501"]

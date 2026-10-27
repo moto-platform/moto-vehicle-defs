@@ -12,7 +12,7 @@ vehicle: Honda CL250
 ecu: CL250_ECU
 
 source:
-  repo: moto-platform/HondaCl250_Telemetry
+  repo: vehicle-platform/HondaCl250_Telemetry
   commit: 16a4b26
   status: archived, read-only (D-022)
 

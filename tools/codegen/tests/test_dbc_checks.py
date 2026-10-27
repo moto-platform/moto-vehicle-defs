@@ -4,8 +4,8 @@ import re
 
 from conftest import parse_dbc
 
-from moto_codegen import config
-from moto_codegen.dbc_checks import check_platform_dbc
+from vehicle_codegen import config
+from vehicle_codegen.dbc_checks import check_platform_dbc
 
 
 def errors_for(text: str) -> list[str]:
@@ -139,7 +139,7 @@ def test_unknown_node_id_attribute(platform_text):
 
 
 def test_cl250_rejects_diagnostic_ids_and_missing_evidence():
-    from moto_codegen.dbc_checks import check_cl250_dbc
+    from vehicle_codegen.dbc_checks import check_cl250_dbc
 
     text = """VERSION ""
 NS_ :

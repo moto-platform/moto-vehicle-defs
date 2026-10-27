@@ -1,6 +1,6 @@
 # Honda CL250 derived signals (D-070 item 3): definitions only. The formulas are logic
 # and live in rt-core's src/features/derived/ (services/ for the gear estimate) and in
-# moto-server's Python reference (D-070 item 2). Catalog: docs/vehicle-data-catalog.md
+# vehicle-server's Python reference (D-070 item 2). Catalog: docs/vehicle-data-catalog.md
 # section 5 (what and how) and 5.1 (class). Derived signals are QM information (D-070
 # item 5): none feeds the safety partition's cornering or blind-spot decision (D-072),
 # or a context-bus value safety-node reads; using one in rt-core's anomaly safety net needs
@@ -8,7 +8,7 @@
 #
 # rt-core gets classes A and B as gen/c/rt_core/vehicle_cl250_derived.{h,c} (metadata
 # table: rate, staleness, range, inputs, ride-summary DID); the Python reference gets
-# every class as moto_defs.vehicle_derived. Changing an entry is a /signal-change
+# every class as vehicle_defs.vehicle_derived. Changing an entry is a /signal-change
 # (CHANGELOG + version bump).
 #
 # sensors: physical inputs that are not ECU DIDs. Each names where it is defined today:
@@ -1980,7 +1980,7 @@ signals:
     record: RIDE_WINDOW_POST_STOP
     output: [log, ride_summary]
 
-  # ---- class C: across rides, moto-server / moto-ml ----
+  # ---- class C: across rides, vehicle-server / vehicle-ml ----
   ride_distance_trend:
     class: C
     description: Distance per ride over days and weeks (usage trend).
@@ -2104,8 +2104,8 @@ signals:
     description: Coast-down drag area corrected for the rider weight, the load and the tyre pressure.
     catalog: Anything conditioned on rider weight, load, weather, tyre pressure
     pending_inputs:
-      - rider weight and load (moto-mobile meta.json, catalog 5.1 class D)
-      - tyre pressure (moto-mobile meta.json, catalog 5.1 class D)
+      - rider weight and load (vehicle-mobile meta.json, catalog 5.1 class D)
+      - tyre pressure (vehicle-mobile meta.json, catalog 5.1 class D)
     unit: m2
     range: [0.1, 1.0]
     resolution: 0.001
@@ -2119,8 +2119,8 @@ signals:
     description: Engine power normalised for the weather and the rider weight, comparable across rides.
     catalog: Anything conditioned on rider weight, load, weather, tyre pressure
     pending_inputs:
-      - weather (temperature, wind, rain) (moto-mobile meta.json, catalog 5.1 class D)
-      - rider weight (moto-mobile meta.json, catalog 5.1 class D)
+      - weather (temperature, wind, rain) (vehicle-mobile meta.json, catalog 5.1 class D)
+      - rider weight (vehicle-mobile meta.json, catalog 5.1 class D)
     unit: kW
     range: [-10.0, 25.0]
     resolution: 0.05

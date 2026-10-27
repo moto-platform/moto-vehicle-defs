@@ -98,7 +98,7 @@ BO_ 288 SafetyRequest: 8 RT_CORE
  SG_ IMMOBILIZER_LOCK_REQUEST : 16|2@1+ (1,0) [0|3] "" SAFETY
 
 
-CM_ "moto-platform platform CAN bus (classic CAN 500 kbps, 11-bit IDs, D-009). ID plan and E2E scheme: docs/ARCHITECTURE.md section 4 and docs/e2e-profile.md. Only our own nodes are on this bus.";
+CM_ "vehicle-platform platform CAN bus (classic CAN 500 kbps, 11-bit IDs, D-009). ID plan and E2E scheme: docs/ARCHITECTURE.md section 4 and docs/e2e-profile.md. Only our own nodes are on this bus.";
 CM_ BU_ RT_CORE "STM32H755 Cortex-M7 domain controller (D-072); sole vehicle-bus tester, republishes vehicle signals (D-021). Owns both FDCANs: it passes 0x020, 0x022, 0x081 and 0x120 to the SAFETY partition through the E2E mailbox and forwards the partition's 0x023 and 0x082 to this bus verbatim, never re-signing them (D-072 item 4c).";
 CM_ BU_ SAFETY "STM32H755 Cortex-M4 safety partition (D-072): cornering decision with its own IMU, blind spot, immobilizer, LED ring and mirror LEDs. It has no CAN controller; its frames cross the inter-core mailbox and rt-core relays them. A frozen counter or a timeout on 0x023/0x082 means the partition (or the relay) stopped.";
 CM_ BU_ CONN "Bike ESP32-S3 connectivity + audio node; bridge to the phone and the helmet unit, which is BLE only and not on this bus (D-073).";

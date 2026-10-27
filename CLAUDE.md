@@ -1,4 +1,4 @@
-# CLAUDE.md — moto-vehicle-defs
+# CLAUDE.md — vehicle-defs
 
 @.claude/PLATFORM-RULES.md
 
@@ -21,12 +21,12 @@ The **single source of truth for signals** in the motorcycle platform. The CAN m
 /uds/obd_catalog.yaml → vehicle-independent OBD/UDS catalog (J1979 PIDs, multi-value fields, ISO 14229 identification DIDs), NOT polled; host-only (D-066, D-078)
 /uds/dids.yaml        → per-node UDS servers: IDs, timing, services, DIDs, DTCs
 /uds/iso14229.yaml    → generic ISO 14229-1 codes (names for numbers only)
-/ble/ble_schema.json  → BLE packet schema of conn: telemetry v2/v3/v4, IMU block, GATT UUIDs; single source for conn, moto-mobile, moto-server (D-061)
+/ble/ble_schema.json  → BLE packet schema of conn: telemetry v2/v3/v4, IMU block, GATT UUIDs; single source for conn, vehicle-mobile, vehicle-server (D-061)
 /limits/platform_limits.yaml → k_yellow/k_red, µ/mass fallbacks, rt-core speed rules, per-node scope (provisional, D-029, D-048)
 /vehicle/cl250_constants.yaml → CL250 constants for the derived signals, status + source per value (D-070)
 /derived/cl250_derived.yaml → derived signal definitions + non-DID sensor inputs + ride-summary DIDs 0xFD40–0xFD5F; no formulas (D-070)
 /tools/codegen/       → Python: cantools + vss-tools; generates node-filtered C, Python, Dart, VSS JSON
-/gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging): `c/<node>`, `python/moto_defs`, `dart/moto_defs` (BLE schema), `vss`
+/gen/                 → GENERATED output (no manual edits; `make gen` + commit before tagging): `c/<node>`, `python/vehicle_defs`, `dart/vehicle_defs` (BLE schema), `vss`
 /misra/               → MISRA C:2012 deviation register for gen/c + cppcheck suppressions (D-046)
 /docs/                → all platform documentation (index: docs/README.md)
 /CHANGELOG.md         → what changed in each release
@@ -40,7 +40,7 @@ This repo is **semantically versioned**: `v0.x` now (v0.1.0 … v0.9.0), `v1.0.0
 
 1. Is done here first, a line is added to `CHANGELOG.md`
 2. A new version is tagged
-3. **Only after that** are dependent repos (`moto-rt-core`, `moto-linux-node`, etc.) updated to the new version — not automatic, a deliberate step
+3. **Only after that** are dependent repos (`vehicle-rt-core`, `vehicle-linux-node`, etc.) updated to the new version — not automatic, a deliberate step
 
 When Claude Code works in this repo: after changing a signal schema, **check which repos depend on this version and remind the user** — do not break them silently.
 
@@ -49,7 +49,7 @@ When Claude Code works in this repo: after changing a signal schema, **check whi
 Tooling is a uv project in `tools/codegen` (Python 3.11+, cantools, vss-tools 6.0). From the repo root:
 
 ```bash
-make check   # strict DBC parse + moto-codegen check + ruff + pytest (needs gcc for C tests)
+make check   # strict DBC parse + vehicle-codegen check + ruff + pytest (needs gcc for C tests)
 make gen     # regenerate gen/ (first run downloads the pinned COVESA VSS 6.0 release)
 make drift   # make gen, then fail if gen/ changed — CI runs this
 make misra   # cppcheck style + MISRA C:2012 on every gen/c node, blocking in CI (D-046)
@@ -57,7 +57,7 @@ make misra   # cppcheck style + MISRA C:2012 on every gen/c node, blocking in CI
 
 MISRA findings in `gen/c` are fixed in the codegen, never in `gen/`; a deviation needs a `DEV-xxx` row in `misra/README.md` and a line in `misra/suppressions.txt`.
 
-C targets and the ID plan: `tools/codegen/src/moto_codegen/config.py`. E2E spec: `docs/e2e-profile.md`. Approved `Vehicle.Motorcycle.*` paths go into `APPROVED_EXTENSIONS` in `gen_vss.py` (only after the user says yes).
+C targets and the ID plan: `tools/codegen/src/vehicle_codegen/config.py`. E2E spec: `docs/e2e-profile.md`. Approved `Vehicle.Motorcycle.*` paths go into `APPROVED_EXTENSIONS` in `gen_vss.py` (only after the user says yes).
 
 ## Signal naming
 

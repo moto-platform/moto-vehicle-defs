@@ -7,9 +7,9 @@ import subprocess
 
 import pytest
 
-from moto_codegen import config, gen_ble
+from vehicle_codegen import config, gen_ble
 
-# Telemetry version 3 as it was in moto-connectivity-node's schema (D-032): name, offset, size.
+# Telemetry version 3 as it was in vehicle-connectivity-node's schema (D-032): name, offset, size.
 V3_LAYOUT = [
     ("version", 0, 1), ("seq", 1, 1), ("deviceTimeMs", 2, 4), ("rpm", 6, 2), ("speed", 8, 1),
     ("coolantTemp", 9, 1), ("throttlePos", 10, 1), ("batteryVolt", 11, 2), ("leanAngle", 13, 2),
@@ -558,7 +558,7 @@ def test_python_decodes_a_vehicle_signal_block(outputs):
 
 
 def test_vehicle_signal_table_fits_the_block(real):
-    from moto_codegen.yaml_checks import load_yaml
+    from vehicle_codegen.yaml_checks import load_yaml
 
     vehicle = load_yaml(config.VEHICLE_YAML)
     assert gen_ble.check_vehicle_signal_table(real, vehicle) == []
@@ -574,10 +574,10 @@ def test_vehicle_signal_table_fits_the_block(real):
 
 def test_dart_package_files(real):
     files = gen_ble.generate_dart(real)
-    assert set(files) == {"pubspec.yaml", "lib/ble_schema.dart", "lib/moto_defs.dart"}
-    assert "name: moto_defs" in files["pubspec.yaml"]
+    assert set(files) == {"pubspec.yaml", "lib/ble_schema.dart", "lib/vehicle_defs.dart"}
+    assert "name: vehicle_defs" in files["pubspec.yaml"]
     assert "publish_to: none" in files["pubspec.yaml"]
-    assert "export 'ble_schema.dart';" in files["lib/moto_defs.dart"]
+    assert "export 'ble_schema.dart';" in files["lib/vehicle_defs.dart"]
     for text in files.values():
         assert "GENERATED" in text and "DO NOT EDIT" in text
 

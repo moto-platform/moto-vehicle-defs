@@ -1,6 +1,6 @@
 # Model Context Protocol (MCP) Server: Architecture, Scenarios & AI Agent Capabilities
 
-> **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07; reviewed against `DECISIONS.md`, `ARCHITECTURE.md` and the platform invariants on 2026-10-09). Nothing here overrides `DECISIONS.md` or moto-mcp's read-only scope (ARCHITECTURE: "moto-linux-node → moto-mcp (localhost, read-only) → cloud LLM"). The recorded tool set is the six tools of hardware-architecture §5b.7 (`get_live_snapshot`, `get_recent_stats`, `get_event_log`, `get_anomaly_status`, `get_maintenance_status`, `query_ride_history`); the other tools here are candidates.
+> **Idea notes, not decisions** (drafted with Gemini, 2026-10-05; moved here from the workspace root on 2026-10-07; reviewed against `DECISIONS.md`, `ARCHITECTURE.md` and the platform invariants on 2026-10-09). Nothing here overrides `DECISIONS.md` or vehicle-mcp's read-only scope (ARCHITECTURE: "vehicle-linux-node → vehicle-mcp (localhost, read-only) → cloud LLM"). The recorded tool set is the six tools of hardware-architecture §5b.7 (`get_live_snapshot`, `get_recent_stats`, `get_event_log`, `get_anomaly_status`, `get_maintenance_status`, `query_ride_history`); the other tools here are candidates.
 >
 > **Review (2026-10-09).** Verdicts as in `can-data-expansion.md`: CONTRADICTS (forbidden as written), EDIT (compatible once corrected), DECIDE (needs a decision or the named open question).
 >
@@ -26,14 +26,14 @@
 > | §5 commercial summary (SaaS pricing) | removed | Commercial planning stays outside the public repo (D-033; user, 2026-10-09) |
 
 **Document:** `docs/ideas/mcp-scenarios.md` (originally `MCP_SCENARIOS_AND_AGENT_ARCHITECTURE.md` at the workspace root)  
-**Target Repository:** `moto-mcp` (Exposed to Claude, GPT, and Local LLMs)  
+**Target Repository:** `vehicle-mcp` (Exposed to Claude, GPT, and Local LLMs)  
 **Standard Compliance:** Anthropic Model Context Protocol (MCP) v1.0, COVESA Vehicle Signal Specification (VSS v4.0), ISO 14229 (UDS), ISO 26262 ASIL-D Safe Read-Only Boundary.
 
 ---
 
 ## 1. Executive Summary & Architectural Philosophy
 
-The `moto-mcp` service transforms the motorcycle from an opaque mechanical asset into an **Intelligent Conversational Agent**. By exposing high-cadence vehicle telemetry, UDS diagnostics, and edge anomaly states through the open **Model Context Protocol (MCP)**, large language models (LLMs) can reason across live physics, historical baselines, and maintenance manuals.
+The `vehicle-mcp` service transforms the motorcycle from an opaque mechanical asset into an **Intelligent Conversational Agent**. By exposing high-cadence vehicle telemetry, UDS diagnostics, and edge anomaly states through the open **Model Context Protocol (MCP)**, large language models (LLMs) can reason across live physics, historical baselines, and maintenance manuals.
 
 ### The Dual-Brain Paradigm: System 1 vs. System 2
 
@@ -57,7 +57,7 @@ The `moto-mcp` service transforms the motorcycle from an opaque mechanical asset
 ```
 
 ### Safety & Isolation Boundary (The 4 Inviolable Rules)
-1. **Strict Read-Only Enforcement (D-020):** `moto-mcp` exposes zero actuation or write tools. An LLM can never manipulate throttle, braking, fuel, or ignition.
+1. **Strict Read-Only Enforcement (D-020):** `vehicle-mcp` exposes zero actuation or write tools. An LLM can never manipulate throttle, braking, fuel, or ignition.
 2. **Pre-Computed Statistics (No LLM Math Hallucinations):** Tools never return raw 100,000-point time-series. Python/PyArrow pre-computes mean, standard deviation, percentiles, and anomaly scores, delivering pre-digested domain summaries.
 3. **Location Privacy (Semantic Geofencing):** Raw GPS coordinates are masked into high-level semantic tags (`"Mountain Pass"`, `"Urban Congestion"`, `"15 km from Garage"`).
 4. **VSS Abstraction (Vehicle-Agnostic):** Internal tool mappings utilize standard COVESA VSS signal paths (`Vehicle.Powertrain.CombustionEngine.Speed`) rather than OEM-specific CAN IDs, ensuring 100% portability to any car, van, or motorcycle.
@@ -66,7 +66,7 @@ The `moto-mcp` service transforms the motorcycle from an opaque mechanical asset
 
 ## 2. Comprehensive MCP Tool Catalog
 
-The `moto-mcp` server implements 12 dedicated tools categorized into four functional groups:
+The `vehicle-mcp` server implements 12 dedicated tools categorized into four functional groups:
 
 | Tool Identifier | Category | Input Arguments | Output Description |
 |---|---|---|---|
@@ -151,7 +151,7 @@ The `moto-mcp` server implements 12 dedicated tools categorized into four functi
 
 #### Scenario 2.1: Pre-Departure Health, Tire Pressure & Cold-Road Grip Audit
 * **Context:** The rider turns on the ignition key at 07:30 AM before a 180 km weekend ride.
-* **Autonomous Trigger:** `moto-connectivity-node` detects Key-ON and invokes `get_pre_ride_briefing`.
+* **Autonomous Trigger:** `vehicle-connectivity-node` detects Key-ON and invokes `get_pre_ride_briefing`.
 * **Agent Tool Execution:**
   ```json
   get_pre_ride_briefing({ "planned_distance_km": 180.0 })
@@ -217,7 +217,7 @@ The `moto-mcp` server implements 12 dedicated tools categorized into four functi
     "duration_s": 15.0,
     "peak_metrics": { "lean_angle_deg": 43.6, "speed_kmh": 92.4, "lateral_g": 0.94 },
     "overlay_elements": ["Dynamic Tachometer", "Lean Dial with Peak Hold", "Throttle Position Bar", "Friction Circle"],
-    "download_url": "https://cdn.moto-server.local/reels/clip_20261005_apex_master.mp4",
+    "download_url": "https://cdn.vehicle-server.local/reels/clip_20261005_apex_master.mp4",
     "ready_for_sharing": true
   }
   ```
@@ -287,8 +287,8 @@ The `moto-mcp` server implements 12 dedicated tools categorized into four functi
     "trigger_source": "Chassis IMU Z-axis shock (delta_a = 0.42g) - Side-stand lift attempt",
     "coordinates_approx": "Corner of Bagdat Avenue, Kadikoy",
     "camera_clips": {
-      "front_1080p_mp4": "https://cdn.moto-server.local/sentry/clip_front_142218.mp4",
-      "rear_1080p_mp4": "https://cdn.moto-server.local/sentry/clip_rear_142218.mp4"
+      "front_1080p_mp4": "https://cdn.vehicle-server.local/sentry/clip_front_142218.mp4",
+      "rear_1080p_mp4": "https://cdn.vehicle-server.local/sentry/clip_rear_142218.mp4"
     },
     "starter_immobilizer_state": "LOCKED_ARMED",
     "tampering_persists": false
@@ -325,7 +325,7 @@ The `moto-mcp` server implements 12 dedicated tools categorized into four functi
 ### Domain 7: Cryptographic Resale Dossier & Anti-Fraud Audit
 
 #### Scenario 7.1: Pre-Purchase Inspection & Anti-Odometer Fraud Verification
-* **Context:** A potential buyer inspects a used motorcycle equipped with `moto-platform`.
+* **Context:** A potential buyer inspects a used motorcycle equipped with `vehicle-platform`.
 * **Buyer Voice Query:** *"Verify the authenticity and mechanical history of this vehicle."*
 * **Agent Tool Execution:**
   ```json
@@ -352,13 +352,13 @@ The `moto-mcp` server implements 12 dedicated tools categorized into four functi
 
 ## 4. Implementation Blueprint: FastMCP Python Architecture
 
-The `moto-mcp` service is built on the official **Anthropic FastMCP Python SDK**, exposing asynchronous decorators backed by VSS telemetry adapters:
+The `vehicle-mcp` service is built on the official **Anthropic FastMCP Python SDK**, exposing asynchronous decorators backed by VSS telemetry adapters:
 
 ```python
 from mcp.server.fastmcp import FastMCP
 from pydantic import BaseModel, Field
 
-mcp = FastMCP("Moto-Platform Vehicle Intelligence Core")
+mcp = FastMCP("Vehicle-Platform Vehicle Intelligence Core")
 
 class TelemetrySnapshot(BaseModel):
     engine_speed_rpm: float = Field(description="Engine rotational velocity")
