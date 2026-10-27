@@ -15,7 +15,7 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | `hardware-procurement-list.md` | Current | Hardware groups 1-12, items on hand |
 | `hardware-integration.md` | Working guide (2026-10-03) | Phase 0 on-vehicle build: parts, wiring, mounting, bring-up gates, first measurements, open items |
 | `vehicle-data-catalog.md` | Working list (2026-10-15), **not a decision** | Every signal read today, pollable, discoverable or derivable; standard data outside the polled table; on-bike proprietary-DID discovery procedure; vehicle bus load; switch/ABS acquisition paths; per-repo code coverage |
-| `ideas/*` | Idea notes (drafted with Gemini, 2026-10-05), **not decisions** | `can-data-expansion.md` (CAN/UDS expansion, tasks V-01..V-16), `mcp-scenarios.md` (moto-mcp scenarios). Each lists its known conflicts with recorded decisions at the top; nothing applies without a D-xxx |
+| `ideas/*` | Idea notes (drafted with Gemini, 2026-10-05), **not decisions** | `can-data-expansion.md` (CAN/UDS expansion, tasks V-01..V-16), `mcp-scenarios.md` (vehicle-mcp scenarios). Each lists its known conflicts with recorded decisions at the top; nothing applies without a D-xxx |
 | `e2e-profile.md` | **Authoritative (spec, short)** | E2E frame layout, CRC, counter, receiver statuses, timeouts (D-005, D-026) |
 | `legacy-telemetry-notes.md` | Reference (short) | Legacy HondaCl250_Telemetry facts per D-023: UDS state machine, NRC table, bus-off backoff, ISO-TP first-frame pitfall, ESP32-S3 pin map, discrepancies, accepted security risks, legacy test coverage |
 | `archive/tr/*` | Turkish originals + the two advisor documents (D-038) | **Not read by Claude.** Ç1-Ç8 are in `ARCHITECTURE.md` §9 |
@@ -32,7 +32,7 @@ Authority order: `DECISIONS.md` > `ARCHITECTURE.md` > other English docs. For ve
 | 335-380 | §5b.4 display / LED ring / profile pages |
 | 381-453 | §5b.5 lane departure warning (LDW) |
 | 454-472 | §5b.6 voice commands (ESP-SR) |
-| 473-531 | §5b.7 moto-mcp, privacy |
+| 473-531 | §5b.7 vehicle-mcp, privacy |
 | 532-583 | §5b.8 linux-node SDV layer, Raspi power/thermal |
 | 584-631 | §5b.9 anomaly model + validation protocol |
 | 632-651 | §5b.10-11 virtual dyno, comfort/energy/driver assistance |

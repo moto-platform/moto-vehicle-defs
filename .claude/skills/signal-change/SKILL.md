@@ -1,11 +1,11 @@
 ---
 name: signal-change
-description: Add, modify or remove a CAN message/signal, VSS mapping or UDS DID in moto-vehicle-defs, then regenerate code and bump the version. Use for any change to dbc/cl250.dbc, dbc/platform.dbc, vss/overlay.vspec or uds/dids.yaml, or when a consumer repo needs a signal that does not exist yet. Supersedes the older user-level can-dbc-conventions skill.
+description: Add, modify or remove a CAN message/signal, VSS mapping or UDS DID in vehicle-defs, then regenerate code and bump the version. Use for any change to dbc/cl250.dbc, dbc/platform.dbc, vss/overlay.vspec or uds/dids.yaml, or when a consumer repo needs a signal that does not exist yet. Supersedes the older user-level can-dbc-conventions skill.
 ---
 
-<!-- Synced from moto-workspace/.claude/skills/signal-change/SKILL.md by scripts/sync_claude.py. Do not edit here; edit the source and re-run the sync. -->
+<!-- Synced from vehicle-workspace/.claude/skills/signal-change/SKILL.md by scripts/sync_claude.py. Do not edit here; edit the source and re-run the sync. -->
 
-# Signal change workflow (moto-vehicle-defs)
+# Signal change workflow (vehicle-defs)
 
 Background: `ARCHITECTURE.md` §3-5, decisions D-003/D-004/D-005/D-009. Signals are **only** defined here; consumers never hand-write them.
 
@@ -65,4 +65,4 @@ Add to `uds/dids.yaml` under the owning node: DID (0xF1xx identification, 0xFDxx
 
 ## 6. Tell the user about consumers
 
-List the repos that include the affected node's `gen/c/<node>/` or the VSS path (grep in `../moto-*/`), and remind the user that each needs a deliberate submodule bump. Nothing updates automatically. Afterwards, run `vss-schema-guardian` on the changed consumer repos.
+List the repos that include the affected node's `gen/c/<node>/` or the VSS path (grep in `../vehicle-*/`), and remind the user that each needs a deliberate submodule bump. Nothing updates automatically. Afterwards, run `vss-schema-guardian` on the changed consumer repos.

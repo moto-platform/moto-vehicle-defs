@@ -1,4 +1,4 @@
-# moto-vehicle-defs: generate code from the definitions and check them.
+# vehicle-defs: generate code from the definitions and check them.
 # Needs uv (https://docs.astral.sh/uv/). `gen/` output is committed (D-003).
 # `make misra` also needs cppcheck with its MISRA addon.
 
@@ -15,14 +15,14 @@ all: check
 
 ## gen: regenerate gen/ (C per node, Python constants, VSS JSON)
 gen:
-	$(CODEGEN) moto-codegen gen
+	$(CODEGEN) vehicle-codegen gen
 
 ## check: strict DBC parse + consistency checks + lint + tests
 check: parse lint test
 
 parse:
 	$(CODEGEN) python -c "import cantools; [cantools.database.load_file(f, strict=True) for f in ('dbc/platform.dbc', 'dbc/cl250.dbc')]; print('strict parse: OK')"
-	$(CODEGEN) moto-codegen check
+	$(CODEGEN) vehicle-codegen check
 
 lint:
 	$(CODEGEN) ruff check tools/codegen

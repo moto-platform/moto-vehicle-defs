@@ -247,19 +247,19 @@ A motorcycle-specific, safety-critical function. **The layers sit on different c
 **Three layers — which chip does which:**
 
 ```
-Layer 1 — Deterministic decision (moto-safety-node, STM32 G4/F3, ISOLATED)
+Layer 1 — Deterministic decision (vehicle-safety-node, STM32 G4/F3, ISOLATED)
    Closed-form physics: in a steady turn tan(θ) = v²/(g·R) = F_y/N, so "no sliding" is tan θ ≤ µ (D-041).
    Speed and mass cancel; v_max = √(µ·g·R) is only a predictive (Layer 2/3) feature, not Layer 1.
    → Warning and LED triggering happen HERE. Works without the Raspi, phone, Wi-Fi, VSS and ML; without rt-core only in degraded mode (own-IMU fallback, D-042).
    → Its inputs are lean angle θ and µ_eff only, received from Layer 2 over CAN (D-041). Mass and vehicle speed are NOT safety-node inputs; the speed-age rules moved to rt-core.
    → Lateral only (Q-022): combined braking/acceleration in a curve is not checked yet.
 
-Layer 2 — EKF estimation (moto-rt-core, STM32H7 — part of the context bus)
+Layer 2 — EKF estimation (vehicle-rt-core, STM32H7 — part of the context bus)
    µ (friction), mass, center-of-gravity height, lean angle — CLAMPED to physical ranges
    If out of range → falls back to a default safe value
    → Broadcast over CAN both to the safety-node and other consumers (dyno, display LED ring, lane tracking) — ONE computation, multiple uses
 
-Layer 3 — ML adaptation (moto-rt-core, together with the context model, optional)
+Layer 3 — ML adaptation (vehicle-rt-core, together with the context model, optional)
    Driver profile, road-surface context (from 5b.0) → tunes the threshold
    → Can NEVER loosen the safety CEILING, only fine-tunes on the conservative side
 ```
@@ -270,25 +270,25 @@ Layer 3 — ML adaptation (moto-rt-core, together with the context model, option
 
 **Why closed-form + EKF, not PINN/heavy ML:** The cornering limit is solved in closed form (it has an analytical solution); training a neural network is unnecessary and **unexplainable** — "the network said so" is not defensible for a safety function. The grey box (parameter estimation with EKF) is both explainable and testable: when µ=0.62 comes out, it has physical meaning; a neural-network weight does not.
 
-**Input data (Layer 2, in moto-rt-core):** IMU (lean angle, angular velocity), GPS (turn radius, speed), CAN (speed, acceleration). Lean angle is the EKF output, shared via the context bus (5b.0c) with the display LED ring (5b.4), lane-tracking correction (5b.5), and the safety-node alike.
+**Input data (Layer 2, in vehicle-rt-core):** IMU (lean angle, angular velocity), GPS (turn radius, speed), CAN (speed, acceleration). Lean angle is the EKF output, shared via the context bus (5b.0c) with the display LED ring (5b.4), lane-tracking correction (5b.5), and the safety-node alike.
 
 **Lean estimator (D-065).** A 2-state EKF [roll, gyro bias] measuring roll from tan(roll) = v · yaw rate / g, in its own task above the comms task; wait-free triple buffers carry the speed (with its stamp) in and the lean out, and the comms pass sends 0x020. No usable speed (limits `vehicle_speed`) or no converged filter → INVALID (there is no default lean, D-029); the CLAMPED range is a defs limit. The EKF's alive supervision makes rt-core's heartbeat DEGRADED (D-064 item 4).
 
 **Output — two channels:**
-- **Round LED ring** (either side of the gauge, defined in 5b.4, driven by `moto-safety-node` or the I/O node — the owner is open, Q-026; never by rt-core, D-042): green→yellow→red, instantaneous lean state; DEGRADED / UNAVAILABLE patterns per D-042
+- **Round LED ring** (either side of the gauge, defined in 5b.4, driven by `vehicle-safety-node` or the I/O node — the owner is open, Q-026; never by rt-core, D-042): green→yellow→red, instantaneous lean state; DEGRADED / UNAVAILABLE patterns per D-042
 - **Audio/HMI warning** (if the threshold is exceeded): on the main-screen profile (visible in the "sport" profile) + if needed, a fixed warning phrase from the voice command system (5b.6)
 
 **Calibration and field testing:** T4-class tests from the vehicle work plan (section 7) — closed area, gradual speed increase, **aimed not at approaching the limit but at validating the model's consistency.** The actual tip-over/slide limit is never reached.
 
-**HIL validation:** Tested on `moto-hil-bench` with fixed-radius+variable-speed scenarios — the expected warning point is computed and compared against the actual trigger point (see the vehicle work plan, section 8 test scenarios).
+**HIL validation:** Tested on `vehicle-hil-bench` with fixed-radius+variable-speed scenarios — the expected warning point is computed and compared against the actual trigger point (see the vehicle work plan, section 8 test scenarios).
 
-**Hardware:** `moto-safety-node` gets its own small IMU (SPI) as the fallback source (D-042; the part is chosen with the Group 7 hardware, Q-023). The rt-core IMU/GPS/CAN infrastructure feeds Layer 2 as before. _The earlier "no additional hardware" statement is outdated (D-042)._ Software effort: 60-100 hours, already in the scope list.
+**Hardware:** `vehicle-safety-node` gets its own small IMU (SPI) as the fallback source (D-042; the part is chosen with the Group 7 hardware, Q-023). The rt-core IMU/GPS/CAN infrastructure feeds Layer 2 as before. _The earlier "no additional hardware" statement is outdated (D-042)._ Software effort: 60-100 hours, already in the scope list.
 
 ---
 
 ### 5b.3 I/O Node — Immobilizer + Park Mode/Tracking + Power Board (combined)
 
-Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the blind-spot system — SDV zone-controller logic: few nodes, many modules.
+Runs on the same physical node (`vehicle-io-node`, STM32 G0/F0) together with the blind-spot system — SDV zone-controller logic: few nodes, many modules.
 
 **Immobilizer:**
 - Intervention point: **starter relay coil circuit** (low current, non-functional while the engine runs — can never cut off a moving engine). The ignition/fuel-pump/ECU line is NEVER touched.
@@ -298,7 +298,7 @@ Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the b
 
 **Park mode / theft tracking:**
 - IMU wake-on-motion deep sleep → wakes on detected movement (target sleep current < 1 mA)
-- Notification: Wi-Fi preferred (in home range, free) — if this node has no Wi-Fi of its own, it notifies `moto-connectivity-node` (ESP32-S3) over CAN, which sends the notification
+- Notification: Wi-Fi preferred (in home range, free) — if this node has no Wi-Fi of its own, it notifies `vehicle-connectivity-node` (ESP32-S3) over CAN, which sends the notification
 - Optional extension: a separate, hidden-mounted, self-powered GSM tracking module (works even if the line is cut) — separate sub-hardware, not integrated into this node
 - False-alarm filter: threshold + duration + motion character (3-layer, same discipline as blind spot)
 
@@ -348,9 +348,9 @@ Runs on the same physical node (`moto-io-node`, STM32 G0/F0) together with the b
 | Right of the gauge | Round **LED ring** (WS2812, circular) | Right lean-angle indicator | I/O node or main MCU | Same |
 | Mirror ends (left/right) | LED (defined in 5b.1) | Blind-spot warning | I/O node (STM32) | Not a screen; compensated by lean angle (see below) |
 | Above/beside the main screen (optional) | RGB LED strip (WS2812) | Shift-light (green→red as RPM rises) | Main MCU | Same driver technology, low added cost |
-| Phone | — | Remote interface (settings, history, reports) | BLE/WiFi → `moto-connectivity-node` | Not involved in critical work, loosely coupled |
+| Phone | — | Remote interface (settings, history, reports) | BLE/WiFi → `vehicle-connectivity-node` | Not involved in critical work, loosely coupled |
 
-**Profile-based page system:** Instead of separate "engineer view" and "media view" screens, the existing assistant-profile mechanism (section 9, moto-telemetri) is extended:
+**Profile-based page system:** Instead of separate "engineer view" and "media view" screens, the existing assistant-profile mechanism (section 9, vehicle-telemetri) is extended:
 
 | Profile | Shown on the main screen |
 |---|---|
@@ -460,8 +460,8 @@ Note: Lean angle is read from the context bus (5b.0c) — sharing the same sourc
 | Trigger | Push-to-talk (handlebar button), primary; ESP-SR wake word optional and configurable (D-047) | Push-to-talk eliminates false triggering in wind noise; the wake word's default and enabling conditions are open (Q-024) |
 | Command recognition | **ESP-SR MultiNet** | Up to 300 words, **requires no retraining**, ready-made |
 | Audio preprocessing | ESP-SR Audio Front-end (AEC, VAD, noise suppression) | First line of defense against wind/engine noise |
-| Hardware | Helmet/intercom I2S microphone on `moto-connectivity-node` (D-044) | The engine sound uses a separate engine-facing microphone on linux-node (D-044, see 5b.9). After the trigger (button or wake word, D-047), speech for the LLM path goes to the Raspi; transport open, Q-024 (also whether the ESP32-S3 module has the PSRAM ESP-SR expects) |
-| Location | **ESP32-S3** (`moto-connectivity-node`) | Vector accelerator lives here; moving it to the Raspi adds unnecessary bridge latency |
+| Hardware | Helmet/intercom I2S microphone on `vehicle-connectivity-node` (D-044) | The engine sound uses a separate engine-facing microphone on linux-node (D-044, see 5b.9). After the trigger (button or wake word, D-047), speech for the LLM path goes to the Raspi; transport open, Q-024 (also whether the ESP32-S3 module has the PSRAM ESP-SR expects) |
+| Location | **ESP32-S3** (`vehicle-connectivity-node`) | Vector accelerator lives here; moving it to the Raspi adds unnecessary bridge latency |
 | Reference | ESP-SR (espressif/esp-sr, GitHub) — WakeNet (~80ms, <2% false positive), MultiNet | Official Espressif framework |
 
 **Latency:** ~100-200ms, fully offline, no connectivity required — works in rural areas.
@@ -470,7 +470,7 @@ Note: Lean angle is read from the context bus (5b.0c) — sharing the same sourc
 
 ---
 
-### 5b.7 Moto-MCP — Context-Grounded In-Ride LLM Assistant
+### 5b.7 Vehicle-MCP — Context-Grounded In-Ride LLM Assistant
 
 **Architecture — two layers, two latency profiles:**
 
@@ -478,13 +478,13 @@ Note: Lean angle is read from the context bus (5b.0c) — sharing the same sourc
 WHILE RIDING (connectivity AVAILABLE)
   Helmet microphone (connectivity-node, ESP-SR) → speech after the trigger (D-047) → Raspi 5 (VAD; transport open, Q-024, D-044) → ~internet (phone hotspot)
       → Cloud Realtime API (streaming STT+LLM+TTS) → ~2 s → helmet speaker
-  While generating the answer, the LLM calls moto-mcp tools (tool call)
+  While generating the answer, the LLM calls vehicle-mcp tools (tool call)
 
 WHILE RIDING (connectivity UNAVAILABLE — rural fallback)
   → the 5b.6 closed-vocabulary system takes over (offline, ~100-200ms)
 
 AT HOME/AFTERWARDS (demo, bonus)
-  Claude Desktop / any MCP client → moto-mcp (remote)
+  Claude Desktop / any MCP client → vehicle-mcp (remote)
       → queries like "how was my ride yesterday"
 ```
 
@@ -499,15 +499,15 @@ AT HOME/AFTERWARDS (demo, bonus)
 | `get_event_log(count)` | Recent events (anomaly, hard lean/braking, blind spot, mode change) | Event log |
 | `get_anomaly_status()` | Anomaly score/classification | Anomaly-model output (not a separate model — a consumer of the existing output) |
 | `get_maintenance_status()` | Engine-hour-based maintenance status | Maintenance-tracking module |
-| `query_ride_history(date_range)` | Historical ride summaries | `moto-server` (tool call, extra latency) |
+| `query_ride_history(date_range)` | Historical ride summaries | `vehicle-server` (tool call, extra latency) |
 
-**Wiring:** In the MVP, a local bridge — `moto-linux-node` on the Raspi calls `moto-mcp` locally (localhost), adds the result as context to the cloud LLM; the cloud never connects directly to the vehicle. In home-demo mode, `moto-mcp` can be exposed externally as a real (authenticated) MCP server — clients like Claude Desktop can then query things like "tell me about my ride yesterday."
+**Wiring:** In the MVP, a local bridge — `vehicle-linux-node` on the Raspi calls `vehicle-mcp` locally (localhost), adds the result as context to the cloud LLM; the cloud never connects directly to the vehicle. In home-demo mode, `vehicle-mcp` can be exposed externally as a real (authenticated) MCP server — clients like Claude Desktop can then query things like "tell me about my ride yesterday."
 
 **Privacy and encryption (updated — result of discussion):**
 
 - **General context packet:** Raw GPS coordinates are never sent to the cloud LLM/context packet; instead, a locally computed, irreversible summary goes out (e.g. "rural area," "12 km from home," "known route") — a natural extension of the offline map cache (5b.8). Such summaries need a position, which in Phase 0 only conn has (D-060 item 3); where they could be computed is open (Q-028).
 - **Special calls requiring coordinates (navigation, etc.):** superseded by invariant 7 and D-060 item 3: latitude and longitude never leave conn, so no tool call carries coordinates. For location-independent questions like "how did I ride today," GPS never goes to the LLM at all.
-- **Encryption — used in the right place, not in general context transmission:** HTTPS/TLS already exists on every cloud API call (nothing extra needed). Encryption's real added value is in two places: (1) `moto-mcp`'s "home demo" externally-exposed mode — TLS + authentication (API key/token) mandatory, protects all telemetry (not just GPS); (2) historical GPS data stored on `moto-server` — storage-level encryption (disk/DB level), preventing easy reading of location history on physical access.
+- **Encryption — used in the right place, not in general context transmission:** HTTPS/TLS already exists on every cloud API call (nothing extra needed). Encryption's real added value is in two places: (1) `vehicle-mcp`'s "home demo" externally-exposed mode — TLS + authentication (API key/token) mandatory, protects all telemetry (not just GPS); (2) historical GPS data stored on `vehicle-server` — storage-level encryption (disk/DB level), preventing easy reading of location history on physical access.
 - **Note:** This decision may change later (once the real usage/threat model is clearer) — this is the default for now. The assistant type (templates, a local LLM or this cloud path) and what may reach a cloud LLM are open as Q-028.
 
 **Additional sensors (added to the core for this subsystem + the anomaly model):**
@@ -517,7 +517,7 @@ AT HOME/AFTERWARDS (demo, bonus)
 | IR tire/brake temperature sensor | Real measurement (no need to estimate) | 150-350 TL |
 | EGT (exhaust gas temperature) | Engine health, combustion quality | 300-600 TL |
 
-**Repo:** `moto-mcp` — **an independent open-source repo** (see section 8, exception rationale). Even though it runs on the same Raspi 5, it is kept separate for sharing/showcase purposes.
+**Repo:** `vehicle-mcp` — **an independent open-source repo** (see section 8, exception rationale). Even though it runs on the same Raspi 5, it is kept separate for sharing/showcase purposes.
 
 **References (verified through research):**
 - **Mater** (Vasu1712/mater) — a separation of Redis "hot path" (live) and TimescaleDB "cold path" (history), a single MCP tool layer, two LLM agents (driver voice / owner chat). A direct reference for this project's live/historical data separation.
@@ -525,27 +525,27 @@ AT HOME/AFTERWARDS (demo, bonus)
 - **OVMS** (openvehicles/Open-Vehicle-Monitoring-System-3) — the warning that LLMs learn patterns rather than reasoning, and that current AI tools produce confidently-wrong results without disclosing their limitations → the rationale for the "the LLM must not do its own math" rule.
 - **Connected-Car-AI-Support-Agent** — the operator-approval-gate pattern (ISO 26262 compliance) before actuator/OTA operations — not applied for now since this project is read-only, a reference for if actuators are added later.
 
-**Phase 2 — Actuator-LLM Connection (write capability, approval-gated):** Currently, all Moto-MCP tools are read-only. In Phase 2, the LLM could be given the authority to trigger **only the peripheral actuators we ourselves added** (lights, heated-grip control, camera trigger — F17 class, not touching engine control). It will never be extended to engine/ECU control. Every write call passes through an **operator approval gate**, as in the Connected-Car-AI-Support-Agent pattern (no actuator triggers without voice/HMI confirmation) — the LLM directly changing something is a categorically different risk class from it performing a read, and that distinction is preserved. Pending Q-027: until it is decided, moto-mcp stays read-only (ARCHITECTURE).
+**Phase 2 — Actuator-LLM Connection (write capability, approval-gated):** Currently, all Vehicle-MCP tools are read-only. In Phase 2, the LLM could be given the authority to trigger **only the peripheral actuators we ourselves added** (lights, heated-grip control, camera trigger — F17 class, not touching engine control). It will never be extended to engine/ECU control. Every write call passes through an **operator approval gate**, as in the Connected-Car-AI-Support-Agent pattern (no actuator triggers without voice/HMI confirmation) — the LLM directly changing something is a categorically different risk class from it performing a read, and that distinction is preserved. Pending Q-027: until it is decided, vehicle-mcp stays read-only (ARCHITECTURE).
 
 ---
 
 ### 5b.8 Linux Node — SDV Layer and Extended Roles
 
-**Purpose:** Move `moto-linux-node` from a self-invented architecture to the standard structure of the Eclipse SDV ecosystem (a joint Bosch/BMW/Microsoft development).
+**Purpose:** Move `vehicle-linux-node` from a self-invented architecture to the standard structure of the Eclipse SDV ecosystem (a joint Bosch/BMW/Microsoft development).
 
 **Layered architecture:**
 
 | Layer | Technology | Role |
 |---|---|---|
 | Signal broker | **Kuksa Databroker** (Docker container) | Single source of truth, VSS semantic model — no application touches CAN directly |
-| CAN bridge | Self-written service | CAN → VSS translation (uses the `moto-vehicle-defs` schema) |
-| Application framework | Velocitas SDK (Phase 2) | Each function (lane tracking, moto-mcp, HMI) is a "Vehicle App" |
-| Communication | gRPC (local) + MQTT (cloud/`moto-server`) | Standard protocols |
+| CAN bridge | Self-written service | CAN → VSS translation (uses the `vehicle-defs` schema) |
+| Application framework | Velocitas SDK (Phase 2) | Each function (lane tracking, vehicle-mcp, HMI) is a "Vehicle App" |
+| Communication | gRPC (local) + MQTT (cloud/`vehicle-server`) | Standard protocols |
 | Container/OTA management | Eclipse Kanto (Phase 2) | Simple process in the MVP, moves to containers with maturity |
 
 **Reference hardware:** Eclipse Kuksa CANOpi — a Raspi CM4-based, dual CAN-FD interface, OBD-powered official SDV prototyping board. The professional/automotive-grade counterpart of your MCP2515/CAN HAT setup.
 
-**Fleet Management reference:** Eclipse's official end-to-end demo — Databroker → Zenoh → InfluxDB+Grafana in the cloud. `moto-server` follows this pattern.
+**Fleet Management reference:** Eclipse's official end-to-end demo — Databroker → Zenoh → InfluxDB+Grafana in the cloud. `vehicle-server` follows this pattern.
 
 **Capacity note (Raspi 5 8GB, rough budget):** Lane tracking (medium), Kuksa+CAN bridge (low), rich acoustic anomaly analysis (**the biggest new load** — should be run with periodic window analysis, not continuously at full rate), video encode (hardware-accelerated, low), HMI (low-medium), Kanto (medium extra load — **deferred in the MVP**). With these settings the total load stays within the Raspi 5's capacity.
 
@@ -556,7 +556,7 @@ AT HOME/AFTERWARDS (demo, bonus)
 | Offline map cache | OSM extract local, navigation works without internet in rural areas | High — consistent with rural priority |
 | Ride video + telemetry overlay | Combining camera + telemetry into clips of anomaly/blind-spot moments | High — high thesis/portfolio value, low added cost |
 | Multi-ride summary report | Weekly/monthly km, consumption, score — from existing data, zero new data | High |
-| MCU firmware distribution center | Download from `moto-server` and distribute to MCUs via CAN/UDS bootloader | Medium — natural Linux-side counterpart of the bootloader work |
+| MCU firmware distribution center | Download from `vehicle-server` and distribute to MCUs via CAN/UDS bootloader | Medium — natural Linux-side counterpart of the bootloader work |
 | Node health panel | Heartbeat/status of all MCUs on one screen | Medium — the on-vehicle live counterpart of the HIL test report |
 | Data preprocessing pipeline | Windowing raw data in the vehicle and extracting features, reducing server load | Medium |
 | Event-based "black box" recorder | Storing a few seconds before/after an anomaly/crash at full resolution across all modalities, in separate storage | Medium — strong for the thesis, small footprint |
@@ -691,59 +691,59 @@ Repo boundary = runtime boundary (things running in a different place/language/h
 
 | # | Repo | Runtime | Language |
 |---|---|---|---|
-| 1 | `moto-rt-core` | **STM32H7** (main domain) | C/C++ |
-| 2 | `moto-connectivity-node` | **ESP32-S3** (connectivity+voice) | C/C++ |
-| 3 | `moto-safety-node` | STM32 G4/F3 (cornering safety) | C/C++ |
-| 4 | `moto-io-node` | STM32 G0/F0 (blind spot+immobilizer+power) | C/C++ |
-| 5 | `moto-linux-node` | Raspi 5 (lane tracking, camera, HMI) | Python/C++ |
-| 6 | `moto-hil-bench` | Simulator MCU (STM32F4) + host PC | C/C++ + Python |
-| 7 | `moto-server` | Server | Python (FastAPI, D-010) |
-| 8 | `moto-ml` | Offline training | Python |
-| 9 | `moto-mobile` | Phone | Flutter (D-022) |
-| 10 | `moto-vehicle-defs` | Shared definitions | DBC/YAML/VSS |
-| 11 | **`moto-mcp`** | Raspi 5 (same runtime, **separate repo — independent open-source project**) | Python |
+| 1 | `vehicle-rt-core` | **STM32H7** (main domain) | C/C++ |
+| 2 | `vehicle-connectivity-node` | **ESP32-S3** (connectivity+voice) | C/C++ |
+| 3 | `vehicle-safety-node` | STM32 G4/F3 (cornering safety) | C/C++ |
+| 4 | `vehicle-io-node` | STM32 G0/F0 (blind spot+immobilizer+power) | C/C++ |
+| 5 | `vehicle-linux-node` | Raspi 5 (lane tracking, camera, HMI) | Python/C++ |
+| 6 | `vehicle-hil-bench` | Simulator MCU (STM32F4) + host PC | C/C++ + Python |
+| 7 | `vehicle-server` | Server | Python (FastAPI, D-010) |
+| 8 | `vehicle-ml` | Offline training | Python |
+| 9 | `vehicle-mobile` | Phone | Flutter (D-022) |
+| 10 | `vehicle-defs` | Shared definitions | DBC/YAML/VSS |
+| 11 | **`vehicle-mcp`** | Raspi 5 (same runtime, **separate repo — independent open-source project**) | Python |
 
-**Why moto-mcp is a separate repo (exception rationale):** Its runtime is the same as `moto-linux-node`'s (Raspi 5), which would normally make it a single repo/module. But here **the sharing boundary** is a valid reason: it is intended to be published as an independent open-source project (so other DIY vehicle/motorcycle projects can use it too), to have its own star/contribution history on GitHub, to be a piece of the career showcase. `moto-linux-node` calls `moto-mcp` as an MCP client, treating it as a dependency/subprocess.
+**Why vehicle-mcp is a separate repo (exception rationale):** Its runtime is the same as `vehicle-linux-node`'s (Raspi 5), which would normally make it a single repo/module. But here **the sharing boundary** is a valid reason: it is intended to be published as an independent open-source project (so other DIY vehicle/motorcycle projects can use it too), to have its own star/contribution history on GitHub, to be a piece of the career showcase. `vehicle-linux-node` calls `vehicle-mcp` as an MCP client, treating it as a dependency/subprocess.
 
 **Rationale for the split (1 and 2):** H7 and ESP32-S3 are different physical chips, differently compiled binaries, different flashes — a real runtime boundary. For the same reason, safety-node and io-node are also separate (different STM32 chip/flash). Functions on the main MCU (UDS, XCP, EKF, context, dynamometer, anomaly inference), however, are modules of a SINGLE repo — all compiled into the same H7 binary; a separate repo would be false isolation.
 
-**moto-vehicle-defs cornerstone:** Signal definitions, CAN message map, VSS model. The other ten repos take it as their source (submodule/package). Single source of truth → the "two units know the same signal differently" problem never occurs.
+**vehicle-defs cornerstone:** Signal definitions, CAN message map, VSS model. The other ten repos take it as their source (submodule/package). Single source of truth → the "two units know the same signal differently" problem never occurs.
 
-**Modules within a repo (NOT separate repos):** UDS/ISO-TP/bootloader, XCP, cornering EKF estimation, context classification, virtual dynamometer, anomaly safety net (D-008; the unified anomaly model runs on linux-node, §5b.9) → folders under `features/` inside `moto-rt-core` (H7). Voice command (ESP-SR, D-044) → a module inside `moto-connectivity-node` (ESP32-S3).
+**Modules within a repo (NOT separate repos):** UDS/ISO-TP/bootloader, XCP, cornering EKF estimation, context classification, virtual dynamometer, anomaly safety net (D-008; the unified anomaly model runs on linux-node, §5b.9) → folders under `features/` inside `vehicle-rt-core` (H7). Voice command (ESP-SR, D-044) → a module inside `vehicle-connectivity-node` (ESP32-S3).
 
-**ML split:** Training (Python, offline) → `moto-ml`. Inference (the model running in the vehicle) → the `features/` folder of the relevant node (context and the rule-based anomaly safety net → rt-core, the unified anomaly model → linux-node (§5b.9), voice command → connectivity-node, lane tracking → linux-node).
+**ML split:** Training (Python, offline) → `vehicle-ml`. Inference (the model running in the vehicle) → the `features/` folder of the relevant node (context and the rule-based anomaly safety net → rt-core, the unified anomaly model → linux-node (§5b.9), voice command → connectivity-node, lane tracking → linux-node).
 
 **Dependency direction (one-way):**
 ```
-moto-vehicle-defs → read by everyone
-moto-rt-core → moto-vehicle-defs
-moto-connectivity-node → moto-vehicle-defs, (via bridge) rt-core
-moto-safety-node → moto-vehicle-defs
-moto-io-node → moto-vehicle-defs
-moto-linux-node → moto-vehicle-defs, (via bridge) rt-core, moto-mcp (called as subprocess/dependency)
-moto-mcp → moto-vehicle-defs (for vehicle schemas), local access to the context bus via the Raspi
-moto-hil-bench → moto-vehicle-defs
-moto-server → moto-vehicle-defs
-moto-ml → moto-vehicle-defs, moto-server
-moto-mobile → moto-vehicle-defs, moto-server
+vehicle-defs → read by everyone
+vehicle-rt-core → vehicle-defs
+vehicle-connectivity-node → vehicle-defs, (via bridge) rt-core
+vehicle-safety-node → vehicle-defs
+vehicle-io-node → vehicle-defs
+vehicle-linux-node → vehicle-defs, (via bridge) rt-core, vehicle-mcp (called as subprocess/dependency)
+vehicle-mcp → vehicle-defs (for vehicle schemas), local access to the context bus via the Raspi
+vehicle-hil-bench → vehicle-defs
+vehicle-server → vehicle-defs
+vehicle-ml → vehicle-defs, vehicle-server
+vehicle-mobile → vehicle-defs, vehicle-server
 ```
 
-**Discipline:** `moto-vehicle-defs` is versioned (v1.0, v1.1); the other repos are pinned to a specific version. When a signal changes, which repo needs updating becomes clear — none breaks silently.
+**Discipline:** `vehicle-defs` is versioned (v1.0, v1.1); the other repos are pinned to a specific version. When a signal changes, which repo needs updating becomes clear — none breaks silently.
 
 ---
 
 ## 9. Repository Setup Order
 
-1. `moto-vehicle-defs` — everyone depends on it, do it first (small but foundational)
-2. `moto-hil-bench` — can be developed remotely (no hardware needed, host+simulator, even with Renode)
-3. `moto-connectivity-node` (ESP32-S3) — existing code already runs here, easy transition
-4. `moto-rt-core` (STM32H7) — main MCU migration, with hardware in the workshop
-5. `moto-server` — data collection server
-6. `moto-ml` — once data accumulates
-7. `moto-safety-node` — once the cornering safety module is built
-8. `moto-io-node` — once the combined blind-spot/immobilizer/power node is built
-9. `moto-linux-node` — once Raspi/lane-tracking integration arrives
-10. `moto-mobile` — last
+1. `vehicle-defs` — everyone depends on it, do it first (small but foundational)
+2. `vehicle-hil-bench` — can be developed remotely (no hardware needed, host+simulator, even with Renode)
+3. `vehicle-connectivity-node` (ESP32-S3) — existing code already runs here, easy transition
+4. `vehicle-rt-core` (STM32H7) — main MCU migration, with hardware in the workshop
+5. `vehicle-server` — data collection server
+6. `vehicle-ml` — once data accumulates
+7. `vehicle-safety-node` — once the cornering safety module is built
+8. `vehicle-io-node` — once the combined blind-spot/immobilizer/power node is built
+9. `vehicle-linux-node` — once Raspi/lane-tracking integration arrives
+10. `vehicle-mobile` — last
 
 ---
 
@@ -838,7 +838,7 @@ All items below are gathered into **a single "next stage" pool** — not split i
 | SOME/IP | Moves the H7↔ESP32 bridge to the automotive middleware standard | Replaces the current simple messaging |
 | DoIP | Carrying UDS over Ethernet (next-gen diagnostic protocol) | Via the Raspi's native Ethernet interface |
 | Deep-learning LDW upgrade (UFLD/Fast-CenLaneNet) | Robustness in hard scenes (night, faint lines) | Low priority — the user won't prioritize lane tracking heavily, classic CV seems sufficient |
-| Moto-MCP actuator-write capability (approval-gated) | The LLM being able to trigger its own added peripheral actuators (lights, heating, camera) | Never extended to engine/ECU control; operator approval gate mandatory. Pending Q-027 (read-only until then) |
+| Vehicle-MCP actuator-write capability (approval-gated) | The LLM being able to trigger its own added peripheral actuators (lights, heating, camera) | Never extended to engine/ECU control; operator approval gate mandatory. Pending Q-027 (read-only until then) |
 | NFC cryptographic upgrade (MIFARE DESFire) | Clone resistance | PN532 hardware supports it, needs an additional library (software) |
 | Nextion → LVGL+ESP32/round display | Enrichment of the main screen | References: moto2000, opencluster, DIY-dash-5, evj55-dashboard |
 | Raspi 5 dedicated carrier/power PCB | **Not a function, a standardization step** — production maturation | Last on the list, done once the design settles |

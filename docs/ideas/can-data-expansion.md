@@ -98,11 +98,11 @@ This checklist must be executed on Day 1 of physical vehicle connection prior to
   - [ ] `0xF433` (Baro Pressure) — Expect positive response `0x62 0xF4 0x33 [A]`
 - [ ] Verify each confirmed DID against Negative Response Code (NRC `0x31` indicates unsupported by ECU firmware).
 
-### Step 2: Protocol Definition Update (`moto-vehicle-defs`)
-- [ ] For each confirmed DID, append entry to `moto-vehicle-defs/uds/vehicle_cl250.yaml` under `dids:` with formulas, units, min/max limits, and assigned cadences.
+### Step 2: Protocol Definition Update (`vehicle-defs`)
+- [ ] For each confirmed DID, append entry to `vehicle-defs/uds/vehicle_cl250.yaml` under `dids:` with formulas, units, min/max limits, and assigned cadences.
 - [ ] Run automated codegen:
   ```bash
-  cd moto-vehicle-defs && make gen
+  cd vehicle-defs && make gen
   ```
 - [ ] Verify that `gen/c/rt_core/`, `gen/c/conn/`, and `gen/python/` compile cleanly with zero warnings.
 
@@ -120,13 +120,13 @@ Beyond the telemetry logger, the following perception, cockpit HMI, and active s
 ### 4.1. Task V-01: Rear-End Collision Warning (RCW) & Tail Strobe Actuation
 * **Target Hardware:**
   - Sensing: Tail-mounted 24 GHz millimeter-wave Doppler radar (e.g., HLK-LD2410 or BGT24LTR11) or Sony IMX462 ultra-wide CSI/USB camera mounted on the rigid rear subframe.
-  - Actuation: `moto-io-node` (STM32G0) driving a high-side MOSFET on the rear brake lamp.
-  - Cockpit Alert: Handlebar mirror warning LEDs (GPIO on `moto-io-node`) + Helmet Intercom audio beeps.
+  - Actuation: `vehicle-io-node` (STM32G0) driving a high-side MOSFET on the rear brake lamp.
+  - Cockpit Alert: Handlebar mirror warning LEDs (GPIO on `vehicle-io-node`) + Helmet Intercom audio beeps.
 * **Engineering Checklist:**
-  - [ ] **V-01.1 Radar/Vision Driver:** Implement UART/SPI driver on `moto-linux-node` (or `rt-core`) to stream target distance ($d$) and relative closing velocity ($v_{\text{rel}}$).
+  - [ ] **V-01.1 Radar/Vision Driver:** Implement UART/SPI driver on `vehicle-linux-node` (or `rt-core`) to stream target distance ($d$) and relative closing velocity ($v_{\text{rel}}$).
   - [ ] **V-01.2 Time-to-Collision (TTC) Engine:** Compute $\text{TTC} = \frac{d}{v_{\text{rel}}}$. Define warning threshold at $\text{TTC} \le 1.8\text{ s}$ and critical threshold at $\text{TTC} \le 1.0\text{ s}$.
   - [ ] **V-01.3 CAN Trigger Frame:** Define platform CAN message `0x240 RCW_ALERT` (Byte 0: Threat Level 0–3, Byte 1: TTC in 100ms, Byte 2–3: Approach Speed).
-  - [ ] **V-01.4 Strobe Actuator (STM32G0):** Implement hardware timer PWM on `moto-io-node` to pulse brake lamp at 4 Hz (duty cycle 50%) for exactly 2.5 seconds upon receiving `RCW_ALERT` Threat Level 2/3.
+  - [ ] **V-01.4 Strobe Actuator (STM32G0):** Implement hardware timer PWM on `vehicle-io-node` to pulse brake lamp at 4 Hz (duty cycle 50%) for exactly 2.5 seconds upon receiving `RCW_ALERT` Threat Level 2/3.
   - [ ] **V-01.5 Blind-Spot Mirror LEDs:** Illuminate Left/Right handlebar mirror amber LEDs when targets are detected in blind-spot zones ($d < 8\text{ m}$, lateral angle $30^\circ\text{–}60^\circ$).
 
 ### 4.2. Task V-02: Cockpit HMI & Display Telemetry (Nextion vs. Visor HUD vs. Mobile)
@@ -135,25 +135,25 @@ Beyond the telemetry logger, the following perception, cockpit HMI, and active s
   - **Visor HUD (OLED Microdisplay / Prism):** Connected via SPI/MIPI to ESP32-S3 / RPi 5. Displays high-contrast collimated flight-deck symbology (speed, apex guide, collision banners).
   - **Rearview Camera Stream:** Rendered directly on a dedicated 4.3" or 5" IPS LCD (via HDMI/DSI from Raspberry Pi 5) or streamed over Wi-Fi 6 RTSP/WebRTC to the rider's smartphone on the handlebar mount with latency $\le 45\text{ ms}$.
 * **Engineering Checklist:**
-  - [ ] **V-02.1 Nextion HMI Protocol Driver:** Implement non-blocking UART publisher on `moto-connectivity-node` (ESP32) sending structured Nextion instruction strings (`page0.n0.val=speed`, `page0.p0.pic=alert_icon`).
-  - [ ] **V-02.2 Zero-Latency Video Pipeline:** Configure GStreamer pipeline on `moto-linux-node` using hardware V4L2 and H.264 encode (`v4l2h264enc`) for sub-50ms RTSP rearview streaming.
+  - [ ] **V-02.1 Nextion HMI Protocol Driver:** Implement non-blocking UART publisher on `vehicle-connectivity-node` (ESP32) sending structured Nextion instruction strings (`page0.n0.val=speed`, `page0.p0.pic=alert_icon`).
+  - [ ] **V-02.2 Zero-Latency Video Pipeline:** Configure GStreamer pipeline on `vehicle-linux-node` using hardware V4L2 and H.264 encode (`v4l2h264enc`) for sub-50ms RTSP rearview streaming.
   - [ ] **V-02.3 Dynamic Visor Picture-in-Picture (PIP):** Trigger a 3-second rearview camera overlay or distance radar graphic on the Visor HUD whenever turn signals are engaged or an RCW event is tripped.
 
 ### 4.3. Task V-03: Crowdsourced Pothole & Road Hazard Intelligence
 * **System Concept:** Turns every motorcycle in the fleet into an autonomous road condition scanning probe.
 * **Engineering Checklist:**
-  - [ ] **V-03.1 Daylight Optical Pre-Scan:** Run OpenCV contour analysis and thresholding on forward camera feed on `moto-linux-node` to detect road depressions and unmarked speed bumps 15–20 m ahead.
+  - [ ] **V-03.1 Daylight Optical Pre-Scan:** Run OpenCV contour analysis and thresholding on forward camera feed on `vehicle-linux-node` to detect road depressions and unmarked speed bumps 15–20 m ahead.
   - [ ] **V-03.2 Inertial Validation Engine:** Subscribe to Chassis IMU-1 vertical acceleration ($a_z$). Trigger a candidate hazard event when $|a_z| > 2.2\text{ g}$ coincident with pitch rate anomaly ($\omega_y > 45^\circ/\text{s}$).
   - [ ] **V-03.3 Optical-Inertial Fusion Slice:** Correlate optical detection timestamp ($t_0$) with impact timestamp ($t_0 + \Delta t$, where $\Delta t = \frac{\text{distance}}{\text{speed}}$). Package a 3-second JSON telemetry slice containing GPS coordinates, vehicle speed, impact severity ($g$), and a 640x360 JPEG snapshot.
-  - [ ] **V-03.4 Cloud Map Ingestion (`moto-server`):** Ingest hazard slices into PostGIS / TimescaleDB. Cluster multiple reports using DBSCAN to filter out temporary debris and confirm static road damage.
+  - [ ] **V-03.4 Cloud Map Ingestion (`vehicle-server`):** Ingest hazard slices into PostGIS / TimescaleDB. Cluster multiple reports using DBSCAN to filter out temporary debris and confirm static road damage.
   - [ ] **V-03.5 Fleet Pre-Warning Dispatch (Night Safety):** Broadcast geo-fenced hazard alerts to all approaching fleet riders. When a rider approaches a verified pothole at night, flash "POTHOLE IN RIGHT TRACK (50m)" on the Visor HUD, overcoming headlight visibility limitations.
 
 ### 4.4. Task V-04: Multi-Source Traffic Sign Recognition (TSR) & Voice Speed Assistant
 * **Engineering Checklist:**
-  - [ ] **V-04.1 Optical Sign Detection:** Train and deploy a quantized YOLOv8-Nano model (ONNX Runtime / NCNN) on `moto-linux-node` to detect regulatory speed signs (30, 50, 70, 82, 90, 110, School Zone) at $\ge 20\text{ fps}$.
-  - [ ] **V-04.2 Geofenced Map Speed Cache:** Ingest OpenStreetMap (OSM) / HERE speed-limit tags cached locally in SQLite on `moto-linux-node` for offline operation.
+  - [ ] **V-04.1 Optical Sign Detection:** Train and deploy a quantized YOLOv8-Nano model (ONNX Runtime / NCNN) on `vehicle-linux-node` to detect regulatory speed signs (30, 50, 70, 82, 90, 110, School Zone) at $\ge 20\text{ fps}$.
+  - [ ] **V-04.2 Geofenced Map Speed Cache:** Ingest OpenStreetMap (OSM) / HERE speed-limit tags cached locally in SQLite on `vehicle-linux-node` for offline operation.
   - [ ] **V-04.3 CAN Speed Cross-Verification:** Compare verified limit against raw wheel speed from UDS DID `0xF40D` (or CAN `0x021`). If vehicle speed exceeds limit by $>10\text{ km/h}$, pulse HUD speedometer digits in flashing red and emit subtle acoustic warning.
-  - [ ] **V-04.4 Voice Assistant Query:** Integrate ESP-SR on `moto-connectivity-node` (or local Whisper-Tiny on RPi 5) to handle rider intercom queries (e.g., *"What is the speed limit here?"* $\to$ TTS response: *"Current limit is 50 kilometers per hour, speed camera in 300 meters"*).
+  - [ ] **V-04.4 Voice Assistant Query:** Integrate ESP-SR on `vehicle-connectivity-node` (or local Whisper-Tiny on RPi 5) to handle rider intercom queries (e.g., *"What is the speed limit here?"* $\to$ TTS response: *"Current limit is 50 kilometers per hour, speed camera in 300 meters"*).
 
 ### 4.5. Task V-05: AR Cornering Apex Guide & Anti-Target-Fixation Visual Anchor
 * **Safety Rationale:** Riders naturally steer toward whatever they fixate upon. In emergencies or high-speed turns, riders frequently fixate on guardrails or oncoming cars ("target fixation"). This system provides an active visual target at the safe corner exit.
@@ -188,9 +188,9 @@ Beyond the telemetry logger, the following perception, cockpit HMI, and active s
 ### 4.8. Task V-08: SMIDSY Conspicuity Light Modulator (Intersection Collision Warning - ICW)
 * **Accident Scenario:** Multi-vehicle collision #1 killer (~40-46% of fatalities). An oncoming car turns left across the motorcycle's path at an intersection due to "looked-but-failed-to-see" optical camouflage of a single headlight.
 * **Engineering Checklist:**
-  - [ ] **V-08.1 Intersection Threat Detection:** Train quantized YOLOv8-Nano on `moto-linux-node` to classify oncoming vehicles exhibiting wheel yaw angle or lateral creeping within $d < 45\text{ m}$ at intersections.
+  - [ ] **V-08.1 Intersection Threat Detection:** Train quantized YOLOv8-Nano on `vehicle-linux-node` to classify oncoming vehicles exhibiting wheel yaw angle or lateral creeping within $d < 45\text{ m}$ at intersections.
   - [ ] **V-08.2 CAN Trigger:** Broadcast `0x241 ICW_ALERT` (Threat Level 1–3, Approach Distance, Velocity).
-  - [ ] **V-08.3 Conspicuity Light Modulator (STM32G0):** `moto-io-node` pulses high-beam headlight at exactly 4 Hz (50% duty cycle, compliant with DOT/NHTSA 49 CFR 571.108 S7.9.4 Headlamp Modulation) for 2.0 seconds to break optical camouflage and force oncoming driver visual recognition.
+  - [ ] **V-08.3 Conspicuity Light Modulator (STM32G0):** `vehicle-io-node` pulses high-beam headlight at exactly 4 Hz (50% duty cycle, compliant with DOT/NHTSA 49 CFR 571.108 S7.9.4 Headlamp Modulation) for 2.0 seconds to break optical camouflage and force oncoming driver visual recognition.
   - [ ] **V-08.4 Rider Pre-Braking Alert:** Pulse amber warning ring on Visor HUD and emit audible chime in helmet intercom.
 
 ### 4.9. Task V-09: Kamm Friction Circle Curve-Braking Safety Envelope & Haptic Warning
@@ -201,27 +201,27 @@ Beyond the telemetry logger, the following perception, cockpit HMI, and active s
   - [ ] **V-09.1 Live Dynamic Traction Margin:** `rt-core` EKF combines roll angle $\theta_{\text{lean}}$ (`0x020`) and estimated friction coefficient $\mu$ to compute available braking force reserve:
     $$F_{\text{brake, max}} = \sqrt{(\mu F_z)^2 - (m \cdot g \cdot \sin\theta_{\text{lean}})^2}$$
   - [ ] **V-09.2 Braking Envelope Violation Trigger:** Compare rider brake pressure / deceleration against $F_{\text{brake, max}}$. If braking force exceeds $85\%$ of available tire adhesion while leaned, trigger `0x242 TRACTION_LIMIT`.
-  - [ ] **V-09.3 Cockpit & Haptic Actuation:** Flash red progressive limit arc on Visor HUD; activate ERM/LRA haptic vibration motor inside throttle/front-brake grip (`moto-io-node`) to cue rider to ease brake pressure before front-wheel wash-out.
+  - [ ] **V-09.3 Cockpit & Haptic Actuation:** Flash red progressive limit arc on Visor HUD; activate ERM/LRA haptic vibration motor inside throttle/front-brake grip (`vehicle-io-node`) to cue rider to ease brake pressure before front-wheel wash-out.
 
 ### 4.10. Task V-10: Tank-Slapper (Speed Wobble) 6-9 Hz Harmonic Resonance Detector & Mitigator
 * **Accident Scenario:** Violent handlebar oscillation (speed wobble) caused by landing front wheel off-center or hitting a crest under hard acceleration. Riders panic and tighten grip, amplifying resonance until thrown off.
 * **Engineering Checklist:**
   - [ ] **V-10.1 High-Cadence Gyro Sampling:** Ingest steering head and chassis IMU-1 yaw rate ($\omega_z$) at 100 Hz in `rt-core`.
   - [ ] **V-10.2 Resonance Bandpass Filter:** Implement digital 2nd-order IIR bandpass filter centered on 6.5–8.5 Hz. Detect sustained sinusoidal yaw oscillation exceeding amplitude threshold within 2 cycles ($\le 250\text{ ms}$).
-  - [ ] **V-10.3 Audio Emergency Instruction:** `moto-connectivity-node` blasts voice prompt into helmet: *"LOOSEN GRIP, ROLL OFF THROTTLE"* (countering the fatal instinct to grip tighter).
-  - [ ] **V-10.4 Active Steering Damper Actuation:** If equipped with electronic steering damper, `moto-io-node` energizes damping proportional solenoid to maximum resistance within 20 ms to quench kinetic resonance.
+  - [ ] **V-10.3 Audio Emergency Instruction:** `vehicle-connectivity-node` blasts voice prompt into helmet: *"LOOSEN GRIP, ROLL OFF THROTTLE"* (countering the fatal instinct to grip tighter).
+  - [ ] **V-10.4 Active Steering Damper Actuation:** If equipped with electronic steering damper, `vehicle-io-node` energizes damping proportional solenoid to maximum resistance within 20 ms to quench kinetic resonance.
 
 ### 4.11. Task V-11: Rapid Tire Depressurization Early Warning (UN ECE R141 BLE TPMS)
 * **Accident Scenario:** Puncture or valve failure at highway speed. In a car, flat tires cause drag; on a motorcycle, sudden deflation causes instantaneous bead de-seating and high-speed crash.
 * **Engineering Checklist:**
-  - [ ] **V-11.1 BLE TPMS Ingestion:** `moto-connectivity-node` (ESP32-S3) polls BLE 5.0 valve cap pressure/temperature sensors at 1.0 Hz cadence.
+  - [ ] **V-11.1 BLE TPMS Ingestion:** `vehicle-connectivity-node` (ESP32-S3) polls BLE 5.0 valve cap pressure/temperature sensors at 1.0 Hz cadence.
   - [ ] **V-11.2 Blowout Gradient Engine:** Monitor pressure rate of change. If $\frac{dP}{dt} < -0.15\text{ bar/s}$, classify as Rapid Puncture (distinguishing from slow seasonal leak).
-  - [ ] **V-11.3 Emergency Evacuation Protocol:** Flash prominent RED warning banner on Visor HUD & Nextion screen: *"EMERGENCY: REAR TIRE BLOWOUT - KEEP UPRIGHT & COAST"*. `moto-io-node` automatically activates hazard flashers to protect rider from trailing traffic.
+  - [ ] **V-11.3 Emergency Evacuation Protocol:** Flash prominent RED warning banner on Visor HUD & Nextion screen: *"EMERGENCY: REAR TIRE BLOWOUT - KEEP UPRIGHT & COAST"*. `vehicle-io-node` automatically activates hazard flashers to protect rider from trailing traffic.
 
 ### 4.12. Task V-12: Urban Lane-Filtering "Dooring" & Blind-Spot Obstacle Optical Flow Predictor
 * **Accident Scenario:** While filtering between traffic rows, a parked or stopped car suddenly opens a door or changes lanes without signaling.
 * **Engineering Checklist:**
-  - [ ] **V-12.1 Forward Optical Flow:** Run Farneback / Lucas-Kanade optical flow on forward wide-angle camera on `moto-linux-node`.
+  - [ ] **V-12.1 Forward Optical Flow:** Run Farneback / Lucas-Kanade optical flow on forward wide-angle camera on `vehicle-linux-node`.
   - [ ] **V-12.2 Lateral Boundary Disruption:** Detect rapid lateral contour expansion ($\Delta x > 10\text{ cm}$ within 150 ms) in stationary vehicle rows within $15\text{ m}$.
   - [ ] **V-12.3 Visor Target Projection:** Project a high-contrast red 'X' box over the opening door on Visor HUD and emit an acute directional audio chime to the corresponding ear.
 
@@ -230,30 +230,30 @@ Beyond the telemetry logger, the following perception, cockpit HMI, and active s
 * **Engineering Checklist:**
   - [ ] **V-13.1 Micro-Steering & Throttle Jitter Tracking:** Monitor CAN throttle stability (DID `0xF411`) and IMU micro-yaw steering corrections. Fatigued riders display reduced micro-corrections followed by sudden coarse corrections.
   - [ ] **V-13.2 Environmental Thermal Stress:** Ingest Intake Air Temperature (`0xF40F`) and ambient telemetry. Apply wind-chill index formula based on CAN speed (`0xF40D`).
-  - [ ] **V-13.3 Dynamic Fatigue Index (0–100):** Integrate with the existing `moto-ml` Driver Profiling Model. When Fatigue Index $>75$, recommend rest stop on Visor HUD and automatically widen forward collision warning thresholds by 30%.
+  - [ ] **V-13.3 Dynamic Fatigue Index (0–100):** Integrate with the existing `vehicle-ml` Driver Profiling Model. When Fatigue Index $>75$, recommend rest stop on Visor HUD and automatically widen forward collision warning thresholds by 30%.
 
 ### 4.14. Task V-14: Automated Post-Crash Fuel/Ignition Isolation & Cellular eCall SOS Dispatch
 * **Accident Scenario:** Rider is thrown into ditch unconscious; fuel spills over glowing exhaust manifold causing fatal post-crash fire. Emergency services are unaware of location.
 * **Engineering Checklist:**
   - [ ] **V-14.1 Crash Latch Classifier:** Trigger `CRASH_LATCH` state in `rt-core` when roll angle $>70^\circ$, 3-axis deceleration $|a| > 3.0\text{ g}$, and wheel speed drops to 0 within 500 ms.
-  - [ ] **V-14.2 Hardware Fire Isolation:** `moto-io-node` (STM32G0) de-energizes fuel pump relay and main ignition circuit within 10 ms to isolate fuel spray and sparks.
+  - [ ] **V-14.2 Hardware Fire Isolation:** `vehicle-io-node` (STM32G0) de-energizes fuel pump relay and main ignition circuit within 10 ms to isolate fuel spray and sparks.
   - [ ] **V-14.3 15-Second eCall Abort Window:** Display emergency SOS countdown on Visor HUD and pulse handlebar haptics. The rider can cancel a false alarm by pressing the helmet button.
-  - [ ] **V-14.4 Cellular SOS Dispatch:** If countdown expires, `moto-connectivity-node` (4G LTE Cat-1) transmits emergency packet via SMS and HTTPS to `moto-server` containing: GPS coordinates, crash speed, impact G-force vector, and medical info.
+  - [ ] **V-14.4 Cellular SOS Dispatch:** If countdown expires, `vehicle-connectivity-node` (4G LTE Cat-1) transmits emergency packet via SMS and HTTPS to `vehicle-server` containing: GPS coordinates, crash speed, impact G-force vector, and medical info.
 
 ### 4.15. Task V-15: Tesla-Style Sentry Guard Mode (Ultra-Low-Power Wakeup & 4G Video Push)
 * **Scenario:** Parked motorcycle tampering, theft attempt, kicking, or lifting off sidestand while unattended.
 * **Engineering Checklist:**
   - [ ] **V-15.1 Ultra-Low-Power Standby:** Entire vehicle platform enters micro-ampere sleep ($<2\text{ mA}$ parasitic drain). Chassis IMU operates in autonomous hardware wake-on-motion threshold mode ($\Delta a > 0.15\text{ g}$).
-  - [ ] **V-15.2 Hardware Interrupt & Fast Boot:** Motion interrupt instantly wakes `moto-connectivity-node` (ESP32-S3) and switches on camera power via `moto-io-node` (STM32G0) within 450 ms.
+  - [ ] **V-15.2 Hardware Interrupt & Fast Boot:** Motion interrupt instantly wakes `vehicle-connectivity-node` (ESP32-S3) and switches on camera power via `vehicle-io-node` (STM32G0) within 450 ms.
   - [ ] **V-15.3 Sentry Clip Generation:** Captures 5-second 1080p forward and rear video clips of the perimeter.
-  - [ ] **V-15.4 High-Priority Cloud Push Alert:** `moto-connectivity-node` uploads video slice via 4G LTE Cat-1 to `moto-server` and dispatches immediate push notification to the rider's smartphone with live video preview.
+  - [ ] **V-15.4 High-Priority Cloud Push Alert:** `vehicle-connectivity-node` uploads video slice via 4G LTE Cat-1 to `vehicle-server` and dispatches immediate push notification to the rider's smartphone with live video preview.
 
 ### 4.16. Task V-16: Remote Cloud Immobilizer & Starter Inhibit (Anti-Theft Protection)
-* **Summary:** When the bike is stolen, one tap in the phone app locks the starter relay on `moto-io-node` (STM32G0). Even if the thief breaks the ignition lock or hotwires it, the starter motor never cranks.
+* **Summary:** When the bike is stolen, one tap in the phone app locks the starter relay on `vehicle-io-node` (STM32G0). Even if the thief breaks the ignition lock or hotwires it, the starter motor never cranks.
 * **Scenario:** Vehicle theft prevention, recovery, and remote anti-theft immobilization.
 * **Safety Rule Compliance:** Strict adherence to invariant 6 (hardware-architecture §5b.3): **NEVER cut fuel or ignition while engine is running**; only the starter relay circuit is locked out to prevent engine cranking.
 * **Engineering Checklist:**
-  - [ ] **V-16.1 Authenticated Cloud Command:** `moto-server` issues a cryptographically signed immobilizer command via TLS 1.3 MQTT to `moto-connectivity-node` (ESP32-S3).
+  - [ ] **V-16.1 Authenticated Cloud Command:** `vehicle-server` issues a cryptographically signed immobilizer command via TLS 1.3 MQTT to `vehicle-connectivity-node` (ESP32-S3).
   - [ ] **V-16.2 Zero-Speed Interlock Verification:** `rt-core` (STM32H7) validates that engine is stopped (`0xF40C == 0`) and wheel speed is 0 (`0xF40D == 0`) before permitting the lock command to transition to the hardware actuator.
-  - [ ] **V-16.3 Hardware Starter Circuit Lockout:** `moto-io-node` (STM32G0) de-energizes the starter relay circuit. Even if the ignition cylinder is physically picked or hotwired, the starter motor will not crank.
+  - [ ] **V-16.3 Hardware Starter Circuit Lockout:** `vehicle-io-node` (STM32G0) de-energizes the starter relay circuit. Even if the ignition cylinder is physically picked or hotwired, the starter motor will not crank.
   - [ ] **V-16.4 Mobile Biometric Control:** Rider can arm/disarm the starter lock directly from the Flutter companion app using FaceID or biometric fingerprint.

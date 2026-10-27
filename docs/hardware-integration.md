@@ -4,11 +4,11 @@
 
 ## 1. What this build is
 
-- **Node:** `moto-connectivity-node` on an ESP32-S3 DevKitC-1. Until rt-core runs on the bike, it is the **temporary sole vehicle-bus tester** (D-021, D-023, D-037).
-- **Path:** CL250 ECU → DLC Y-cable → CAN transceiver → ESP32-S3 TWAI → BLE → phone (`moto-mobile`) → session zip → `moto-server` (D-032).
+- **Node:** `vehicle-connectivity-node` on an ESP32-S3 DevKitC-1. Until rt-core runs on the bike, it is the **temporary sole vehicle-bus tester** (D-021, D-023, D-037).
+- **Path:** CL250 ECU → DLC Y-cable → CAN transceiver → ESP32-S3 TWAI → BLE → phone (`vehicle-mobile`) → session zip → `vehicle-server` (D-032).
 - **No on-vehicle storage:** conn keeps no local copy. Data lost while the phone is disconnected is accepted, and the server report shows the gaps (D-045). Persistent logging (microSD, safe shutdown) is rt-core's job later, so the Phase 0 plan's microSD and supercapacitor items are not part of this build.
 - **IMU:** an MPU-6050-class IMU on the same ESP32 at 100 Hz, streamed over BLE. It is for offline analysis only: it is not a vehicle signal, not a safety input, and no lean is estimated from it (D-032, D-044).
-- **Display:** the phone (`moto-mobile`) is the only live telemetry view in this build. The Nextion stays unconnected for now (user, 2026-10-11) and comes back in a later prototype; `NextionModule` with nothing on UART2 is harmless.
+- **Display:** the phone (`vehicle-mobile`) is the only live telemetry view in this build. The Nextion stays unconnected for now (user, 2026-10-11) and comes back in a later prototype; `NextionModule` with nothing on UART2 is harmless.
 - **Not in this build:** rt-core (H7, Q-019), the platform bus, safety-node, io-node, Raspi, the Nextion (for now). GPS joins it per D-060 (see §9).
 
 ```
@@ -24,7 +24,7 @@
                                               │ Nextion (later, unconnected now) ── UART2 GPIO17 TX / GPIO18 RX
                                               └──────────────┬─────────────────────┘
                                                              │ BLE "Honda-CL250-Telemetry"
-                                                    phone: moto-mobile ── session zip ──► moto-server (laptop)
+                                                    phone: vehicle-mobile ── session zip ──► vehicle-server (laptop)
 ```
 
 ## 2. Parts list for this build
@@ -47,8 +47,8 @@ Sources: `phase0-data-collection-plan.md` §9, `hardware-procurement-list.md` (g
 | Enclosure | ABS or aluminium, ≥ IP54, < 100 × 70 × 30 mm target | protection | **CONFIRM** |
 | Connectors, glands, wrap | Locking connector (one detachable plug), PG7 glands, spiral wrap | assembly | **CONFIRM** |
 | Nextion display | UART2 | local display | on hand, **not used in this build** (later prototype) |
-| Phone | Android with the `moto-mobile` APK | BLE receiver, session files | **CONFIRM** |
-| Laptop | `moto-server` (uv or Docker) | ingest + report | on hand (i7 desktop or laptop) |
+| Phone | Android with the `vehicle-mobile` APK | BLE receiver, session files | **CONFIRM** |
+| Laptop | `vehicle-server` (uv or Docker) | ingest + report | on hand (i7 desktop or laptop) |
 
 ## 3. Electrical integration
 
@@ -100,13 +100,13 @@ Rules from `vehicle-work-plan.md` §3.2, §3.3 and §4; vehicle bus facts from D
 
 | Step | Command / action | Repo |
 |---|---|---|
-| Build + flash (real CAN) | `pio run -e esp32-s3-devkitc-1 -t upload` (needs `platformio_local.ini` with `AP_PASSWORD`) | moto-connectivity-node |
-| GPS bring-up (until the pins are confirmed) | `pio run -e esp32-s3-devkitc-1-gps -t upload`, procedure in §7.3 | moto-connectivity-node |
-| Desk test without the bike | `pio run -e esp32-s3-devkitc-1-mock -t upload` (synthetic telemetry) | moto-connectivity-node |
-| Host tests before every flash | `scripts/native_tests.sh` (or `pio test -e native`) | moto-connectivity-node |
-| Phone | Install the `moto-mobile` APK, pair with `Honda-CL250-Telemetry` | moto-mobile |
-| Server | `export MOTO_API_TOKEN=…; uv run moto-server serve`, or `uv run moto-server import <zip>` offline | moto-server |
-| Check a session | `uv run moto-server report <session_id>` (gaps, MTU, CAN health) | moto-server |
+| Build + flash (real CAN) | `pio run -e esp32-s3-devkitc-1 -t upload` (needs `platformio_local.ini` with `AP_PASSWORD`) | vehicle-connectivity-node |
+| GPS bring-up (until the pins are confirmed) | `pio run -e esp32-s3-devkitc-1-gps -t upload`, procedure in §7.3 | vehicle-connectivity-node |
+| Desk test without the bike | `pio run -e esp32-s3-devkitc-1-mock -t upload` (synthetic telemetry) | vehicle-connectivity-node |
+| Host tests before every flash | `scripts/native_tests.sh` (or `pio test -e native`) | vehicle-connectivity-node |
+| Phone | Install the `vehicle-mobile` APK, pair with `Honda-CL250-Telemetry` | vehicle-mobile |
+| Server | `export VEHICLE_API_TOKEN=…; uv run vehicle-server serve`, or `uv run vehicle-server import <zip>` offline | vehicle-server |
+| Check a session | `uv run vehicle-server report <session_id>` (gaps, MTU, CAN health) | vehicle-server |
 
 What the tester does on its own, with no setting to change (conn README, Q-018, D-030):
 - After boot it **listens only** until it has 2 s of clean traffic (no lost frames, no other tester, no unsolicited ECU answer). Only then does it send its first request.
@@ -117,7 +117,7 @@ What the tester does on its own, with no setting to change (conn README, Q-018, 
 
 | Gate | Where | Do | Pass when |
 |---|---|---|---|
-| B0 | Desk | Native tests; mock firmware; phone receives v3 telemetry + IMU blocks; record a session; `moto-server import` it | Report `ok`, IMU gap count 0 at rest |
+| B0 | Desk | Native tests; mock firmware; phone receives v3 telemetry + IMU blocks; record a session; `vehicle-server import` it | Report `ok`, IMU gap count 0 at rest |
 | B1 | Desk, bench supply 12-14 V | Power chain only: fuse, TVS, buck; check 5 V under load; reverse the input once (must not conduct) | 5 V stable, no heat on the buck |
 | B2 | Desk | Real firmware, transceiver connected, no bus | Stays in its listen window, sends nothing |
 | V0 | Bike, ignition on, engine **off** | Plug the Y-cable, power the unit, phone connected | ECU present, all 5 DIDs valid, no latch flags, no bus-off |
@@ -145,13 +145,13 @@ Road tests (T2, T3) come only after V3 passes, and the rules in §8 apply. T4 is
 
 ### 7.1 Listen-only capture (Q-001, D-058 item 4)
 
-Nothing else on the DLC (no scan tool, no tester build). From `moto-connectivity-node`, with `platformio_local.ini` in place:
+Nothing else on the DLC (no scan tool, no tester build). From `vehicle-connectivity-node`, with `platformio_local.ini` in place:
 
 ```bash
 pio run -e esp32-s3-devkitc-1-listen-only -t upload
 # 921600 baud. Write the log outside every repo (D-033); stop it after the FINAL lines (300 s).
-mkdir -p "$MOTO_DATA_DIR/captures"
-pio device monitor -e esp32-s3-devkitc-1-listen-only | tee "$MOTO_DATA_DIR/captures/q001-$(date +%Y%m%d-%H%M).csv"
+mkdir -p "$VEHICLE_DATA_DIR/captures"
+pio device monitor -e esp32-s3-devkitc-1-listen-only | tee "$VEHICLE_DATA_DIR/captures/q001-$(date +%Y%m%d-%H%M).csv"
 # afterwards, back to the tester:
 pio run -e esp32-s3-devkitc-1 -t upload
 ```
@@ -173,7 +173,7 @@ The capture never transmits: no `twai_transmit` in its image, and the listen-onl
 Record a normal session with the tester env (V0/V1), upload or import it, then:
 
 ```bash
-uv run moto-server report <session_id>
+uv run vehicle-server report <session_id>
 ```
 
 `tester_stats` in the report:
@@ -186,7 +186,7 @@ Steps 1-4 run at the desk (no bike). Step 5 turns the result into the pin confir
 
 **1. Wiring.** As in §3.3: module TX → `GPIO15`, module RX → `GPIO16`, common GND, the module powered as its breakout board specifies (3.3 V logic on its UART). The antenna needs a clear sky view (outdoors or at a window); a cold start can take minutes to the first fix.
 
-**2. Serial report.** With `CONN_GPS_PINS_CONFIRMED=0` the firmware never installs the UART, so set it to `1` in the `esp32-s3-devkitc-1-gps` env **in your local copy only**, then from `moto-connectivity-node`:
+**2. Serial report.** With `CONN_GPS_PINS_CONFIRMED=0` the firmware never installs the UART, so set it to `1` in the `esp32-s3-devkitc-1-gps` env **in your local copy only**, then from `vehicle-connectivity-node`:
 
 ```bash
 pio run -e esp32-s3-devkitc-1-gps -t upload
@@ -208,17 +208,17 @@ conn first tries 38400 baud, then the factory 9600 with a CFG-PRT that moves the
 | `ovf` | `0` | The UART driver's buffer overflowed: the GPS task was starved |
 | `lost` | `0` | The receiver went silent for 3 s; check power and the connector |
 
-**3. Phone, bonding and the `gps` subscription (Android).** Install the moto-mobile APK (v0.2.0 or later) and connect to `Honda-CL250-Telemetry`. The app starts pairing on connect (Just Works, no passkey); telemetry and IMU work without it, the `gps` characteristic does not (D-062). Record a session of ≥ 5 min and check:
+**3. Phone, bonding and the `gps` subscription (Android).** Install the vehicle-mobile APK (v0.2.0 or later) and connect to `Honda-CL250-Telemetry`. The app starts pairing on connect (Just Works, no passkey); telemetry and IMU work without it, the `gps` characteristic does not (D-062). Record a session of ≥ 5 min and check:
 - the session has a non-empty `gps.csv` next to `telemetry.csv` and `imu.csv`;
 - after a disconnect and reconnect, GPS rows arrive again: conn clears the subscription on every connect, so the app must subscribe again (D-062 item 1).
 
-iOS: moto-mobile has no iOS project yet (§10 item 8).
+iOS: vehicle-mobile has no iOS project yet (§10 item 8).
 
 **4. Upload to the laptop and the report.** On the laptop:
 
 ```bash
-export MOTO_API_TOKEN=…        # same token in the app's Settings
-uv run moto-server serve       # listens on 0.0.0.0:8000
+export VEHICLE_API_TOKEN=…        # same token in the app's Settings
+uv run vehicle-server serve       # listens on 0.0.0.0:8000
 ipconfig getifaddr en0         # the laptop's LAN IP (macOS, Wi-Fi)
 scutil --get LocalHostName     # its mDNS name, add ".local"
 ```
@@ -226,7 +226,7 @@ scutil --get LocalHostName     # its mDNS name, add ".local"
 In the app's Settings set the server URL to `http://<LAN IP>:8000` (or `http://<name>.local:8000` if the phone resolves it), phone and laptop on the same Wi-Fi; allow incoming connections if the macOS firewall asks. Then:
 - upload the session; it must succeed (D-063 allows a private address or a `.local` name);
 - set a non-local URL (for example `https://example.com`) and upload again: the app must refuse before any network call, naming D-063; set the local URL back;
-- `uv run moto-server report <session_id>`. The GPS lines read `GPS: N block(s), L lost or MTU-skipped (p%), effective rate R Hz, usable for the speed check U%` and the fix types.
+- `uv run vehicle-server report <session_id>`. The GPS lines read `GPS: N block(s), L lost or MTU-skipped (p%), effective rate R Hz, usable for the speed check U%` and the fix types.
 
 Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 with the phone next to the unit; no decode error, parse error, UART overflow or app/server mismatch. Many lost or skipped blocks with a good serial rate mean radio loss or an MTU too small for the GPS block (the node advances `seq` for a block it skips, D-062 item 2).
 
@@ -246,10 +246,10 @@ Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 
 
 ## 9. Data handling
 
-- **Session = one ride.** Files per `moto-mobile/docs/session-format.md`: `meta.json`, `telemetry.csv`, `events.csv`, `summary.json`, `imu.csv`, and `gps.csv` when the GPS block is subscribed.
+- **Session = one ride.** Files per `vehicle-mobile/docs/session-format.md`: `meta.json`, `telemetry.csv`, `events.csv`, `summary.json`, `imu.csv`, and `gps.csv` when the GPS block is subscribed.
 - Fill the metadata of the Phase 0 plan §3.2 / VWP §6.2: ambient temperature and weather, tyre pressures, fuel level, rider weight and load, vehicle configuration, condition label (healthy / fault type), route type, notes. Add the unit and IMU mounting (§4).
-- **Never commit ride data to any repo** (all repos are public, D-033). Sessions live under `$MOTO_DATA_DIR` on the server machine, with a second copy off the laptop.
-- **GPS (D-060):** a u-blox NEO-M8N on a conn UART (UBX-NAV-PVT, 10 Hz; pins **CONFIRM**, §7.3). Only ground speed, heading, their accuracies, fix type and satellite count leave conn, on the BLE GPS block; latitude, longitude and height never do. The phone writes them to `gps.csv`, which goes to the server with the session. A speed + heading series can rebuild the route's shape, so sessions stay on your own machine and never in a repo; moto-mobile uploads a session with `gps.csv` only to a local server (D-063).
+- **Never commit ride data to any repo** (all repos are public, D-033). Sessions live under `$VEHICLE_DATA_DIR` on the server machine, with a second copy off the laptop.
+- **GPS (D-060):** a u-blox NEO-M8N on a conn UART (UBX-NAV-PVT, 10 Hz; pins **CONFIRM**, §7.3). Only ground speed, heading, their accuracies, fix type and satellite count leave conn, on the BLE GPS block; latitude, longitude and height never do. The phone writes them to `gps.csv`, which goes to the server with the session. A speed + heading series can rebuild the route's shape, so sessions stay on your own machine and never in a repo; vehicle-mobile uploads a session with `gps.csv` only to a local server (D-063).
 
 ## 10. Open items (fill in, then move facts into the sections above)
 
@@ -262,7 +262,7 @@ Pass: the effective rate matches the serial `pvt/s`; lost or MTU-skipped near 0 
 | 5 | ~~GPS source and privacy handling~~ decided in D-060; UART pins still **CONFIRM** (procedure §7.3) | T1 speed check, §9 |
 | 6 | ~~Listen-only capture tool for Q-001~~ decided in D-058 item 4 (conn `-listen-only` env) | §7 |
 | 7 | ~~ECU round-trip instrumentation~~ decided in D-058 items 1-3 (BLE telemetry v4) | D-029, A-4 |
-| 8 | moto-mobile has no iOS project yet (Android only), so the D-062 bonding check on iOS waits for one | §7.3 step 3 on iOS |
+| 8 | vehicle-mobile has no iOS project yet (Android only), so the D-062 bonding check on iOS waits for one | §7.3 step 3 on iOS |
 
 ## 11. Later: moving to rt-core
 

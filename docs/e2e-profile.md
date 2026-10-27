@@ -1,6 +1,6 @@
 # Platform E2E profile (D-005, D-026)
 
-Protects every platform-bus message in `0x010-0x08F` (mandatory) and any other message marked `E2E_Protected = Yes` in `dbc/platform.dbc`. AUTOSAR E2E Profile 1/2-like; the code is generated (`gen/c/<node>/moto_e2e.*`, `platform_e2e.*`; Python reference `gen/python/moto_defs/e2e.py`). Never hand-write it in a consumer.
+Protects every platform-bus message in `0x010-0x08F` (mandatory) and any other message marked `E2E_Protected = Yes` in `dbc/platform.dbc`. AUTOSAR E2E Profile 1/2-like; the code is generated (`gen/c/<node>/vehicle_e2e.*`, `platform_e2e.*`; Python reference `gen/python/vehicle_defs/e2e.py`). Never hand-write it in a consumer.
 
 ## Frame layout
 
@@ -30,7 +30,7 @@ Call `platform_<msg>_e2e_check(data, size, &rx_state, now_ms)` for each received
 | `WRONG_CRC` | corrupted frame or wrong DataID | no |
 | `NO_NEW_DATA` | timeout expired (or never received); forces a resync | no |
 
-Only `OK`/`OK_SOME_LOST` (`moto_e2e_is_valid()`) allow use. `OK`, `OK_SOME_LOST` and `INITIAL` refresh the timeout; the others do not, so a frozen or corrupted stream ends in `NO_NEW_DATA`. Parameters: timeout = **3 × GenMsgCycleTime** (`PLATFORM_<MSG>_E2E_TIMEOUT_MS`), max delta counter = **1** (`..._E2E_MAX_DELTA_COUNTER`), so a single lost frame makes that cycle invalid. After an invalid status the consumer uses its own safe state; what safety-node does then is open (Q-002).
+Only `OK`/`OK_SOME_LOST` (`vehicle_e2e_is_valid()`) allow use. `OK`, `OK_SOME_LOST` and `INITIAL` refresh the timeout; the others do not, so a frozen or corrupted stream ends in `NO_NEW_DATA`. Parameters: timeout = **3 × GenMsgCycleTime** (`PLATFORM_<MSG>_E2E_TIMEOUT_MS`), max delta counter = **1** (`..._E2E_MAX_DELTA_COUNTER`), so a single lost frame makes that cycle invalid. After an invalid status the consumer uses its own safe state; what safety-node does then is open (Q-002).
 
 ## Sender restart
 

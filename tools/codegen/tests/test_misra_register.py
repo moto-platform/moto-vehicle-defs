@@ -2,7 +2,7 @@
 
 import re
 
-from moto_codegen import config
+from vehicle_codegen import config
 
 MISRA_DIR = config.REPO_ROOT / "misra"
 # MISRA C:2012 (with Amendment 1) mandatory rules: never deviated (MISRA Compliance:2020).

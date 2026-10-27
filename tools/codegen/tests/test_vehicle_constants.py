@@ -4,8 +4,8 @@ import copy
 
 import pytest
 
-from moto_codegen import config, gen_c, gen_python
-from moto_codegen.yaml_checks import check_vehicle_constants, load_yaml
+from vehicle_codegen import config, gen_c, gen_python
+from vehicle_codegen.yaml_checks import check_vehicle_constants, load_yaml
 
 
 @pytest.fixture

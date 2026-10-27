@@ -19,7 +19,7 @@ from cantools.database.can import Message, Signal
 from cantools.database.can.c_source import camel_to_snake_case, generate
 from conftest import parse_dbc
 
-from moto_codegen import config, gen_c
+from vehicle_codegen import config, gen_c
 
 CC = shutil.which("gcc") or shutil.which("cc")
 pytestmark = pytest.mark.skipif(CC is None, reason="no C compiler")

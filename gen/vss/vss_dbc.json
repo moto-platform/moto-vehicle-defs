@@ -8450,7 +8450,7 @@
             "unit": "percent"
           }
         },
-        "description": "Motorcycle-specific signals (moto-platform extension, D-028).",
+        "description": "Motorcycle-specific signals (vehicle-platform extension, D-028).",
         "type": "branch"
       },
       "Occupant": {

@@ -156,7 +156,7 @@ No public source lists Honda's proprietary DIDs for its CAN-diagnosed motorcycle
 2. **Coarse sweep.** ISO 14229-1 reserves 0x0100–0xEFFF (and 0xF010–0xF0FF, 0xF100–0xF17F, 0xF1A0–0xF1EF, 0xFD00–0xFEFF) for vehicle-manufacturer and supplier data. A full sweep of 0x0100–0xEFFF is ~61,000 reads: ~20 min with fast NRCs, ~1.9 h with silence. Start with the first 16 IDs of every 0xXX00 block (~3,800 reads: 1.3–7 min), since manufacturers cluster their DIDs, then sweep every block with a hit in full. Record per ID: NRC code (0x31 = absent; 0x22/0x33 = present but locked, never pursued with 0x27), or the positive answer bytes and length.
 3. **Stop rules** (for the D-xxx): one request in flight; never more than one retry per ID; abort the scan if the ECU is absent for `ecu_absent_timeout_ms`, if the session falls back (NRC 0x7E/0x7F, re-request it once), or on a bus-off; answers longer than `max_ff_dl` are not received. The five verified DIDs keep being polled between scan blocks so the log shows the bike's state.
 4. **Stimulus run.** Poll only the DIDs found in step 2, in rotation (~N × 20 ms per round), while the operator performs a scripted sequence, each action held ≥ 3 s and repeated 3 times, with a time marker per action (a button on the ESP32 or a marker in the phone app): clutch pull, neutral ↔ first (clutch in), side stand up/down, front brake lever, rear brake pedal, kill switch, starter button with the kill switch at stop (no crank), indicators left/right, high beam, horn, throttle sweep engine off, key-on fuel pump prime, engine start, idle until the fan runs, throttle blips, rear wheel turned on a paddock stand (see the table).
-5. **Correlation (offline, moto-ml).** For every byte and bit of every found DID: does it flip in step with a marker? Bits that follow exactly one action name the switch; bytes that track a known DID (e.g. F411 throttle) with an offset/scale are the raw voltage or a twin channel; bytes that only move with the engine running are engine-state candidates. Output: a table *DID, byte, bit/scale, meaning, confidence, evidence (log file + time)*. A row enters `uds/vehicle_cl250.yaml` only through `/signal-change` with `verified: false`, like the D-068 DIDs (invariant 2).
+5. **Correlation (offline, vehicle-ml).** For every byte and bit of every found DID: does it flip in step with a marker? Bits that follow exactly one action name the switch; bytes that track a known DID (e.g. F411 throttle) with an offset/scale are the raw voltage or a twin channel; bytes that only move with the engine running are engine-state candidates. Output: a table *DID, byte, bit/scale, meaning, confidence, evidence (log file + time)*. A row enters `uds/vehicle_cl250.yaml` only through `/signal-change` with `verified: false`, like the D-068 DIDs (invariant 2).
 6. **Stage 3 (optional).** Sniffing HDS while it shows its data list gives exact DIDs and scaling at once, but needs access to an HDS unit and a second tester on the bus for that session (D-037: our tester then stays off; a listen-only capture only).
 
 Expected yield: the interlock switches (clutch, neutral, side stand, kill) are the most likely finds, because the ECU uses them for its own start/ignition-cut logic. Gear position appears only if the CL250 has a gear position sensor. Wheel speeds and ABS state live in the ABS unit, a second ECU outside our tester policy: only a broadcast (Q-001) or a tap gives them.
@@ -170,7 +170,7 @@ Expected yield: the interlock switches (clutch, neutral, side stand, kill) are t
 | CAN health: bus state, TX/RX error counters, bus-offs, unanswered DIDs, latch flags | conn telemetry v4 | 10 Hz | LIVE |
 | Tester stats: step gap max/over count, per-DID round trip min/max/sum/count, NRC 0x78 count | conn telemetry v4 (D-058) | rotating | LIVE |
 | Per-DID state (valid/stale/skipped/NRC) and age | conn vehicle-signal block (D-066) | 5 Hz per page | LIVE |
-| Session metadata: rider weight, load, ambient, weather, tyre pressures, fuel level, condition, route type | moto-mobile `meta.json`, hand-entered | per ride | LIVE |
+| Session metadata: rider weight, load, ambient, weather, tyre pressures, fuel level, condition, route type | vehicle-mobile `meta.json`, hand-entered | per ride | LIVE |
 | Chassis IMU (LSM6DSO/BMI270 class) for the EKF | rt-core (D-044, D-065) | 100–200 Hz to EKF | PLAN |
 | Engine-block accelerometer (vibration) | rt-core (D-044, Q-025) | ≥ 1 kHz | PLAN |
 | Safety-node fallback IMU | safety-node (D-042) | ~1 kHz | PLAN |
@@ -179,11 +179,11 @@ Expected yield: the interlock switches (clutch, neutral, side stand, kill) are t
 | Node heartbeats (mode, error count, uptime) | every node, 0x081–0x085 | 10 Hz | PLAN |
 | rt-core health 0xFD02, lean health 0xFD03 | rt-core UDS (D-055, D-067) | on request | PLAN |
 | Microphone / acoustic, thermal | anomaly model inputs (hardware-architecture §5b.9) | — | PLAN / HW |
-| Phone sensors (phone IMU, phone GPS) | not recorded by moto-mobile today | — | possible, not planned |
+| Phone sensors (phone IMU, phone GPS) | not recorded by vehicle-mobile today | — | possible, not planned |
 
 ## 5. Derived signals (DERIV)
 
-Computed offline (moto-ml / moto-server) first; anything safety-related only on rt-core per its decisions. Inputs refer to §2–4.
+Computed offline (vehicle-ml / vehicle-server) first; anything safety-related only on rt-core per its decisions. Inputs refer to §2–4.
 
 | Derived signal | From | How | Use |
 |---|---|---|---|
@@ -244,7 +244,7 @@ Added 2026-10-15 (same rules: offline first, nothing safety-related outside rt-c
 
 ### 5.1 Where each derived signal is computed (D-070)
 
-Classes of D-070 item 1: **A** live on rt-core, **B** per-ride summary on rt-core, **C** across rides on moto-server/moto-ml (from class-B values), **D** server only (off-vehicle inputs). Before the rt-core board exists every class is computed offline by the Python reference on recorded data (D-070 item 2). "Needs" lists what must exist first besides the 40 DIDs on rt-core (E-19).
+Classes of D-070 item 1: **A** live on rt-core, **B** per-ride summary on rt-core, **C** across rides on vehicle-server/vehicle-ml (from class-B values), **D** server only (off-vehicle inputs). Before the rt-core board exists every class is computed offline by the Python reference on recorded data (D-070 item 2). "Needs" lists what must exist first besides the 40 DIDs on rt-core (E-19).
 
 | Derived signal | Class | Needs |
 |---|---|---|
@@ -293,7 +293,7 @@ Classes of D-070 item 1: **A** live on rt-core, **B** per-ride summary on rt-cor
 | ECU/bus health per ride | B | — |
 | ECU/bus health trends | C | per-ride health |
 | Data quality per sample | A | — |
-| Anything conditioned on rider weight, load, weather, tyre pressure | D | moto-mobile `meta.json` |
+| Anything conditioned on rider weight, load, weather, tyre pressure | D | vehicle-mobile `meta.json` |
 
 ## 6. What to do next to grow the data set
 
@@ -317,18 +317,18 @@ Checked on every repo's `origin/main`. "40" = the 5 verified + 35 D-068 DIDs of 
 | defs `vss/overlay.vspec` | — | **5** | only the verified DIDs carry `platform_signal` / a VSS path | — |
 | defs `dbc/platform.dbc` | — | **5** | 0x021 VehicleSpeed, 0x110 VehicleEngine (RPM, battery, coolant, TPS); `dbc/cl250.dbc` empty (Q-001) | — |
 | defs `ble/ble_schema.json` | — | 5 fixed + 40 generic | telemetry v4 fixed fields; `vehicleSignalBlock` records keyed by DID | — |
-| moto-connectivity-node | v0.12.0 | **40 polled**, 5 decoded | `HondaCANModule` polls the generated table with the D-068 stop rule; `storeValue` keeps only the 5 in `SystemState`, the 35 travel as raw bytes in the BLE vehicle-signal block | — |
-| moto-rt-core | **v0.9.0** | **5** | generic client loop, but the pinned table has 5; republishes 5 on 0x021/0x110; serves 5 on 0xFD10–0xFD14 | lean EKF (0x020) |
-| moto-mobile | v0.11.0 | 40 (generic) | catalog-driven Signals screen decodes any vsig record; records `signals.csv` | none (unit conversions only) |
-| moto-server | v0.11.0 | 40 (generic) | `signals.parquet` long format (one row per record), MDF4 one channel per catalog signal; `telemetry.parquet` 5 columns | none |
-| moto-linux-node, moto-ml, moto-mcp, moto-hil-bench | none | 0 | skeletons (README/CLAUDE.md only) | — |
+| vehicle-connectivity-node | v0.12.0 | **40 polled**, 5 decoded | `HondaCANModule` polls the generated table with the D-068 stop rule; `storeValue` keeps only the 5 in `SystemState`, the 35 travel as raw bytes in the BLE vehicle-signal block | — |
+| vehicle-rt-core | **v0.9.0** | **5** | generic client loop, but the pinned table has 5; republishes 5 on 0x021/0x110; serves 5 on 0xFD10–0xFD14 | lean EKF (0x020) |
+| vehicle-mobile | v0.11.0 | 40 (generic) | catalog-driven Signals screen decodes any vsig record; records `signals.csv` | none (unit conversions only) |
+| vehicle-server | v0.11.0 | 40 (generic) | `signals.parquet` long format (one row per record), MDF4 one channel per catalog signal; `telemetry.parquet` 5 columns | none |
+| vehicle-linux-node, vehicle-ml, vehicle-mcp, vehicle-hil-bench | none | 0 | skeletons (README/CLAUDE.md only) | — |
 
 Gaps, in the order they should be closed (each is its own change; none is started by this list):
 
 1. **Which of the 40 the CL250 serves is unknown** until the first key-on/idle (V0/V1) and the probe run. Every later step depends on it, so the dead DIDs are dropped before anything is built on them.
 2. **rt-core sees 5.** It must implement the D-068 tester rule before its pin passes v0.11.0 (ISSUES E-19). After that its generic client polls all 40, but nothing carries the 35 off rt-core: they need platform-side DIDs (an extension of 0xFD10–0xFD14 in `uds/dids.yaml`) and/or platform-bus frames in `platform.dbc` (bus load to check, ID plan in ARCHITECTURE §4). Until then conn is the only path for them.
-3. **No VSS path for the 35.** Kuksa (linux-node) and moto-mcp read VSS only. Some have core COVESA paths under `Vehicle.Powertrain.*` (check against the pinned VSS 6.0; COVESA moved the OBD branch out of the core catalog into an optional overlay), the rest need a `Vehicle.Motorcycle.*` extension, which needs the user's approval (D-004).
+3. **No VSS path for the 35.** Kuksa (linux-node) and vehicle-mcp read VSS only. Some have core COVESA paths under `Vehicle.Powertrain.*` (check against the pinned VSS 6.0; COVESA moved the OBD branch out of the core catalog into an optional overlay), the rest need a `Vehicle.Motorcycle.*` extension, which needs the user's approval (D-004).
 4. **mobile/server pin v0.11.0**: they already decode the 40, but show the D-068 DIDs with v0.11.0 metadata until bumped to v0.12.0 (E-19 (4)).
 5. **Time resolution of the 35 on the phone**: the vehicle-signal block sends the latest value per DID every 200 ms, so the recording holds one sample per poll at best (2/5/10 s). That matches the D-068 tiers; a faster tier needs no BLE change.
-6. **No derived signal is computed anywhere** except the lean EKF. §5 is offline work for moto-ml/moto-server on the recorded `signals.parquet` first; a derived signal shown live in the app is a later, separate decision.
+6. **No derived signal is computed anywhere** except the lean EKF. §5 is offline work for vehicle-ml/vehicle-server on the recorded `signals.parquet` first; a derived signal shown live in the app is a later, separate decision.
 

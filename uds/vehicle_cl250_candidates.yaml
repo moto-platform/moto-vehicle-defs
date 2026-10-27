@@ -7,7 +7,7 @@
 # scan reports its 0x22 0xF4xx support bitmaps on the bike.
 #
 # Nothing here is sent. codegen emits this file for host consumers only (Python for
-# moto-server, Dart for moto-mobile), merged with the polled DIDs of
+# vehicle-server, Dart for vehicle-mobile), merged with the polled DIDs of
 # uds/vehicle_cl250.yaml into one catalog, so the app and the server can show every
 # signal and mark which ones flow. No C target gets it: no node polls a candidate.
 #

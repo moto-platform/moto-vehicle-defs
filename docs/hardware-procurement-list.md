@@ -1,4 +1,4 @@
-# Hardware Procurement List — Moto Platform
+# Hardware Procurement List — Vehicle Platform
 
 > Translated from the Turkish original (`archive/tr/donanim-tedarik-listesi.md`). Where this document conflicts with `ARCHITECTURE.md` or `DECISIONS.md`, those take precedence.
 
@@ -30,7 +30,7 @@
 
 ---
 
-## Group 1 — Now (for moto-vehicle-defs + moto-hil-bench + connectivity-node)
+## Group 1 — Now (for vehicle-defs + vehicle-hil-bench + connectivity-node)
 
 | Part | Qty | Purpose | Estimate (TL) | Status |
 |---|---|---|---|---|
@@ -43,7 +43,7 @@
 | i7 5th gen desktop | — | HIL host, Linux+SocketCAN | **On hand** | ✓ |
 | **Subtotal** | | | **~810-1600** | |
 
-## Group 2 — Once moto-rt-core (STM32H7) hardware arrives
+## Group 2 — Once vehicle-rt-core (STM32H7) hardware arrives
 
 | Part | Qty | Purpose | Estimate (TL) | Status |
 |---|---|---|---|---|
@@ -74,7 +74,7 @@
 | Microphone (I2S, shared for acoustic anomaly + voice command) | 1 | Engine sound + voice command | 250-450 | |
 | **Subtotal** | | | **~1000-1900** | |
 
-## Group 5 — Blind Spot (part of moto-io-node)
+## Group 5 — Blind Spot (part of vehicle-io-node)
 
 | Part | Qty | Purpose | Estimate (TL) | Status |
 |---|---|---|---|---|
@@ -84,7 +84,7 @@
 | CAN transceiver | 1 | I/O node CAN | 80-150 | |
 | **Subtotal** | | | **~860-2200** | |
 
-## Group 6 — Immobilizer + Park Mode + Power (part of moto-io-node, same chip as Group 5)
+## Group 6 — Immobilizer + Park Mode + Power (part of vehicle-io-node, same chip as Group 5)
 
 | Part | Qty | Purpose | Estimate (TL) | Status |
 |---|---|---|---|---|

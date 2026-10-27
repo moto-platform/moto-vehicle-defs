@@ -2,8 +2,8 @@
 
 import pytest
 
-from moto_codegen import config
-from moto_codegen.yaml_checks import (
+from vehicle_codegen import config
+from vehicle_codegen.yaml_checks import (
     check_vehicle,
     did_fault_gap_bounds,
     did_sample_gap_bounds,
@@ -89,7 +89,7 @@ def test_vehicle_speed_is_the_only_high_priority_did(vehicle):
 
 def test_python_vehicle_module_decodes(vehicle):
     ns: dict = {}
-    exec((config.GEN_DIR / "python" / "moto_defs" / "vehicle_cl250.py").read_text(), ns)  # noqa: S102
+    exec((config.GEN_DIR / "python" / "vehicle_defs" / "vehicle_cl250.py").read_text(), ns)  # noqa: S102
     assert ns["decode"]("VEHICLE_SPEED", b"\x3c") == 60.0
     assert ns["decode"]("ENGINE_SPEED", b"\x1a\xf8") == 1726.0
     assert ns["PRIORITIES"] == ("high", "normal")
@@ -451,7 +451,7 @@ def test_missing_flow_control_fails(vehicle, platform_db):
 
 
 def test_generator_refuses_a_widened_flow_control(vehicle):
-    from moto_codegen import gen_c
+    from vehicle_codegen import gen_c
 
     vehicle["transport"]["flow_control"]["block_size"] = 1
     with pytest.raises(ValueError):
@@ -459,7 +459,7 @@ def test_generator_refuses_a_widened_flow_control(vehicle):
 
 
 def test_generator_refuses_a_bad_scan_entry(vehicle):
-    from moto_codegen import gen_c
+    from vehicle_codegen import gen_c
 
     vehicle["discovery_scan"]["requests"].append({"name": "CLEAR", "request": [0x04]})
     with pytest.raises(ValueError):

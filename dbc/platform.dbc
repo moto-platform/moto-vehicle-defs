@@ -89,7 +89,7 @@ BO_ 272 VehicleEngine: 8 RT_CORE
  SG_ ECU_PRESENT : 52|1@1+ (1,0) [0|1] "" CONN,LINUX
 
 
-CM_ "moto-platform platform CAN bus (classic CAN 500 kbps, 11-bit IDs, D-009). ID plan and E2E scheme: docs/ARCHITECTURE.md section 4 and docs/e2e-profile.md. Only our own nodes are on this bus.";
+CM_ "vehicle-platform platform CAN bus (classic CAN 500 kbps, 11-bit IDs, D-009). ID plan and E2E scheme: docs/ARCHITECTURE.md section 4 and docs/e2e-profile.md. Only our own nodes are on this bus.";
 CM_ BU_ RT_CORE "STM32H7 domain controller; sole vehicle-bus tester, republishes vehicle signals (D-021).";
 CM_ BU_ SAFETY "STM32G4 cornering safety monitor.";
 CM_ BU_ IO "STM32G0 zone/I-O node (blind spot, immobilizer, power).";
