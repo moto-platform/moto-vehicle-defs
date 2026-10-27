@@ -280,7 +280,7 @@ wheels = [
 ]
 
 [[package]]
-name = "moto-codegen"
+name = "vehicle-codegen"
 version = "0.19.0"
 source = { editable = "." }
 dependencies = [

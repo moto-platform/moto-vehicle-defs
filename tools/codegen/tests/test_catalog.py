@@ -6,9 +6,9 @@ import re
 
 import pytest
 
-from moto_codegen import config, gen_catalog
-from moto_codegen.cli import render_all
-from moto_codegen.yaml_checks import load_yaml
+from vehicle_codegen import config, gen_catalog
+from vehicle_codegen.cli import render_all
+from vehicle_codegen.yaml_checks import load_yaml
 
 # Two scalar entries for the schema checks, in place of the committed list (test data,
 # never generated).
@@ -127,7 +127,7 @@ def test_no_c_target_gets_the_catalog():
 
 
 def test_generated_python_decodes(tmp_path):
-    path = config.GEN_DIR / "python" / "moto_defs" / "vehicle_catalog.py"
+    path = config.GEN_DIR / "python" / "vehicle_defs" / "vehicle_catalog.py"
     spec = importlib.util.spec_from_file_location("vehicle_catalog", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -142,11 +142,11 @@ def test_generated_python_decodes(tmp_path):
 
 
 def test_generated_dart_lists_every_signal(committed, vehicle):
-    text = (config.GEN_DIR / "dart" / "moto_defs" / "lib" / "vehicle_signals.dart").read_text()
+    text = (config.GEN_DIR / "dart" / "vehicle_defs" / "lib" / "vehicle_signals.dart").read_text()
     for e in gen_catalog.catalog(committed, vehicle):
         assert f"name: '{e['name']}'" in text
         assert f"did: 0x{e['did']:04X}" in text
-    barrel = (config.GEN_DIR / "dart" / "moto_defs" / "lib" / "moto_defs.dart").read_text()
+    barrel = (config.GEN_DIR / "dart" / "vehicle_defs" / "lib" / "vehicle_defs.dart").read_text()
     assert "export 'vehicle_signals.dart';" in barrel
 
 
@@ -168,7 +168,7 @@ def _field(cand, name, field):
 
 @pytest.fixture(scope="module")
 def mod():
-    path = config.GEN_DIR / "python" / "moto_defs" / "vehicle_catalog.py"
+    path = config.GEN_DIR / "python" / "vehicle_defs" / "vehicle_catalog.py"
     spec = importlib.util.spec_from_file_location("vehicle_catalog_multi", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -331,7 +331,7 @@ def test_generated_scalar_catalog_entries_decode(mod):
 
 
 def test_generated_dart_has_the_fields(committed, vehicle):
-    text = (config.GEN_DIR / "dart" / "moto_defs" / "lib" / "vehicle_signals.dart").read_text()
+    text = (config.GEN_DIR / "dart" / "vehicle_defs" / "lib" / "vehicle_signals.dart").read_text()
     assert "final class VehicleSignalField" in text
     assert "enumNames: <int, String>{0: 'SPARK', 1: 'COMPRESSION'}," in text
     assert "notUsedRaw: 255," in text
@@ -409,7 +409,7 @@ def test_decode_ascii_strips_padding(mod):
 
 
 def test_generated_dart_has_the_identification_table(committed):
-    text = (config.GEN_DIR / "dart" / "moto_defs" / "lib" / "vehicle_signals.dart").read_text()
+    text = (config.GEN_DIR / "dart" / "vehicle_defs" / "lib" / "vehicle_signals.dart").read_text()
     for did, name in IDENT.items():
         assert f"did: 0x{did:04X}," in text
         assert f"name: '{name}'," in text

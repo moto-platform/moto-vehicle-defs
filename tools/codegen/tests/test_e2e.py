@@ -1,7 +1,7 @@
 """Reference E2E behaviour (docs/e2e-profile.md)."""
 
-from moto_codegen import e2e
-from moto_codegen.e2e import E2EStatus as S
+from vehicle_codegen import e2e
+from vehicle_codegen.e2e import E2EStatus as S
 
 DATA_ID = 0x1020
 T = 60  # timeout ms (3 x 20 ms cycle)

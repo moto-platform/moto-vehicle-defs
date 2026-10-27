@@ -1,4 +1,4 @@
-"""Each vehicle DID's stale_after_ms is the same value in the C table and in moto_defs."""
+"""Each vehicle DID's stale_after_ms is the same value in the C table and in vehicle_defs."""
 
 import ctypes
 import importlib
@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from moto_codegen import config
+from vehicle_codegen import config
 
 CC = shutil.which("gcc") or shutil.which("cc")
 C_DIR = config.GEN_DIR / "c"
@@ -25,9 +25,9 @@ uint16_t probe_stale(size_t i) { return vehicle_cl250_dids[i].stale_after_ms; }
 
 def _vehicle_module(monkeypatch):
     monkeypatch.syspath_prepend(str(PY_DIR))
-    for name in [n for n in sys.modules if n == "moto_defs" or n.startswith("moto_defs.")]:
+    for name in [n for n in sys.modules if n == "vehicle_defs" or n.startswith("vehicle_defs.")]:
         monkeypatch.delitem(sys.modules, name)
-    return importlib.import_module("moto_defs.vehicle_cl250")
+    return importlib.import_module("vehicle_defs.vehicle_cl250")
 
 
 def test_python_has_a_stale_after_ms_for_every_did(monkeypatch):

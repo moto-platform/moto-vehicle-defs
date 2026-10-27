@@ -8,8 +8,8 @@ import subprocess
 import pytest
 from cantools.database.can.c_source import camel_to_snake_case
 
-from moto_codegen import config, e2e
-from moto_codegen.yaml_checks import frame_allowed, request_allowed, single_frame
+from vehicle_codegen import config, e2e
+from vehicle_codegen.yaml_checks import frame_allowed, request_allowed, single_frame
 
 CC = shutil.which("gcc") or shutil.which("cc")
 pytestmark = pytest.mark.skipif(CC is None, reason="no C compiler")
@@ -43,18 +43,20 @@ class TxState(ctypes.Structure):
 def lib(tmp_path_factory):
     out = tmp_path_factory.mktemp("lib") / "libgen.so"
     d = C_DIR / "hil_sim"  # restbus target: contains every message and the DID table
-    srcs = [str(d / n) for n in ("moto_e2e.c", "platform_e2e.c", "vehicle_cl250.c", "platform.c")]
+    srcs = [
+        str(d / n) for n in ("vehicle_e2e.c", "platform_e2e.c", "vehicle_cl250.c", "platform.c")
+    ]
     subprocess.run([CC, *FLAGS, "-shared", "-fPIC", "-o", str(out), *srcs], check=True)
     so = ctypes.CDLL(str(out))
-    so.moto_e2e_crc.restype = ctypes.c_uint8
-    so.moto_e2e_crc.argtypes = [ctypes.c_uint16, ctypes.c_char_p, ctypes.c_size_t]
-    so.moto_e2e_protect.argtypes = [
+    so.vehicle_e2e_crc.restype = ctypes.c_uint8
+    so.vehicle_e2e_crc.argtypes = [ctypes.c_uint16, ctypes.c_char_p, ctypes.c_size_t]
+    so.vehicle_e2e_protect.argtypes = [
         ctypes.c_uint16,
         ctypes.c_char_p,
         ctypes.c_size_t,
         ctypes.POINTER(TxState),
     ]
-    so.moto_e2e_check.argtypes = [
+    so.vehicle_e2e_check.argtypes = [
         ctypes.c_uint16,
         ctypes.c_uint8,
         ctypes.c_uint32,
@@ -63,13 +65,17 @@ def lib(tmp_path_factory):
         ctypes.POINTER(RxState),
         ctypes.c_uint32,
     ]
-    so.moto_e2e_check_timeout.argtypes = [ctypes.POINTER(RxState), ctypes.c_uint32, ctypes.c_uint32]
-    so.moto_e2e_tx_init.restype = None
-    so.moto_e2e_tx_init.argtypes = [ctypes.POINTER(TxState)]
-    so.moto_e2e_rx_init.restype = None
-    so.moto_e2e_rx_init.argtypes = [ctypes.POINTER(RxState)]
-    so.moto_e2e_is_valid.restype = ctypes.c_bool
-    so.moto_e2e_is_valid.argtypes = [ctypes.c_int]
+    so.vehicle_e2e_check_timeout.argtypes = [
+        ctypes.POINTER(RxState),
+        ctypes.c_uint32,
+        ctypes.c_uint32,
+    ]
+    so.vehicle_e2e_tx_init.restype = None
+    so.vehicle_e2e_tx_init.argtypes = [ctypes.POINTER(TxState)]
+    so.vehicle_e2e_rx_init.restype = None
+    so.vehicle_e2e_rx_init.argtypes = [ctypes.POINTER(RxState)]
+    so.vehicle_e2e_is_valid.restype = ctypes.c_bool
+    so.vehicle_e2e_is_valid.argtypes = [ctypes.c_int]
     so.vehicle_cl250_request_allowed.restype = ctypes.c_bool
     so.vehicle_cl250_request_allowed.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
     so.vehicle_cl250_frame_allowed.restype = ctypes.c_bool
@@ -97,7 +103,9 @@ def test_crc_matches_reference(lib):
     for _ in range(2000):
         data_id = rng.randrange(0x10000)
         payload = bytes(rng.randrange(256) for _ in range(rng.randrange(2, 9)))
-        assert lib.moto_e2e_crc(data_id, payload, len(payload)) == e2e.compute_crc(data_id, payload)
+        assert lib.vehicle_e2e_crc(data_id, payload, len(payload)) == e2e.compute_crc(
+            data_id, payload
+        )
 
 
 @pytest.mark.parametrize("max_delta", [1, 2])
@@ -112,7 +120,7 @@ def test_protect_and_check_match_reference(lib, max_delta):
     for _ in range(3000):
         buf = bytearray(rng.randrange(256) for _ in range(8))
         cbuf = ctypes.create_string_buffer(bytes(buf), 8)
-        lib.moto_e2e_protect(data_id, cbuf, 8, ctypes.byref(c_tx))
+        lib.vehicle_e2e_protect(data_id, cbuf, 8, ctypes.byref(c_tx))
         e2e.protect(data_id, buf, py_tx)
         assert cbuf.raw == bytes(buf)
         action = rng.random()
@@ -126,10 +134,10 @@ def test_protect_and_check_match_reference(lib, max_delta):
         now = (now + rng.choice([10, 20, 20, 20, 90])) & 0xFFFFFFFF
         for fn in ("timeout", "check"):
             if fn == "timeout":
-                c = lib.moto_e2e_check_timeout(ctypes.byref(c_rx), 60, now)
+                c = lib.vehicle_e2e_check_timeout(ctypes.byref(c_rx), 60, now)
                 p = e2e.check_timeout(py_rx, 60, now)
             else:
-                c = lib.moto_e2e_check(
+                c = lib.vehicle_e2e_check(
                     data_id, max_delta, 60, bytes(buf), 8, ctypes.byref(c_rx), now
                 )
                 p = e2e.check(data_id, max_delta, 60, bytes(buf), py_rx, now)
@@ -167,7 +175,7 @@ def test_e2e_protect_bad_arguments(lib):
         (ctypes.create_string_buffer(b"\x11" * 8, 8), 0, TxState(5)),
     ):
         st = ctypes.byref(state) if state is not None else None
-        assert lib.moto_e2e_protect(0x1021, data, size, st) == BAD
+        assert lib.vehicle_e2e_protect(0x1021, data, size, st) == BAD
         if data is not None:
             assert data.raw == b"\x11" * 8
         if state is not None:
@@ -186,25 +194,25 @@ def test_e2e_check_bad_arguments(lib):
     for data, size, max_delta, with_state in cases:
         rx = _rx()
         st = ctypes.byref(rx) if with_state else None
-        assert lib.moto_e2e_check(data_id, max_delta, 60, data, size, st, 1010) == BAD
+        assert lib.vehicle_e2e_check(data_id, max_delta, 60, data, size, st, 1010) == BAD
         assert _rx_tuple(rx) == (1000, 3, True)  # state untouched
         if data is not None and with_state:
             ref = e2e.RxState(1000, 3, True)
             assert e2e.check(data_id, max_delta, 60, data[:size], ref, 1010) == BAD
     for max_delta in range(1, 15):  # the valid range never answers BAD_ARGUMENT
-        status = lib.moto_e2e_check(data_id, max_delta, 60, frame, 8, ctypes.byref(_rx()), 1010)
+        status = lib.vehicle_e2e_check(data_id, max_delta, 60, frame, 8, ctypes.byref(_rx()), 1010)
         assert status != BAD
-    assert not lib.moto_e2e_is_valid(BAD)
+    assert not lib.vehicle_e2e_is_valid(BAD)
 
 
 def test_e2e_null_state_helpers(lib):
-    assert lib.moto_e2e_check_timeout(None, 60, 0) == BAD
-    lib.moto_e2e_tx_init(None)  # must not crash
-    lib.moto_e2e_rx_init(None)
+    assert lib.vehicle_e2e_check_timeout(None, 60, 0) == BAD
+    lib.vehicle_e2e_tx_init(None)  # must not crash
+    lib.vehicle_e2e_rx_init(None)
     # Documents, not endorses: protect()/check() refuse NULL data before calling crc(),
     # so this path is never reached through them. It must not crash, and it covers the
     # DataID only, like an empty payload.
-    assert lib.moto_e2e_crc(0x1021, None, 8) == e2e.compute_crc(0x1021, b"")
+    assert lib.vehicle_e2e_crc(0x1021, None, 8) == e2e.compute_crc(0x1021, b"")
 
 
 def test_request_allow_list_matches_policy_exhaustively(lib, vehicle):
@@ -249,7 +257,7 @@ def test_did_decode_rejects_short_and_unknown(lib):
 
 def test_did_priorities_match_yaml(vehicle, tmp_path):
     """D-043: the C table carries each DID's class; lower value = more urgent."""
-    from moto_codegen.yaml_checks import DID_PRIORITIES
+    from vehicle_codegen.yaml_checks import DID_PRIORITIES
 
     src = tmp_path / "t.c"
     src.write_text(
@@ -390,7 +398,7 @@ def test_parse_response(lib, did, frame, ok, value):
 
 
 def test_e2e_wrapper_constants(platform_db):
-    from moto_codegen.dbc_checks import cycle_time_ms, e2e_data_id, is_e2e_protected
+    from vehicle_codegen.dbc_checks import cycle_time_ms, e2e_data_id, is_e2e_protected
 
     header = (C_DIR / "hil_sim" / "platform_e2e.h").read_text()
     source = (C_DIR / "hil_sim" / "platform_e2e.c").read_text()

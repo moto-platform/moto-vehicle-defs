@@ -20,7 +20,7 @@ from cantools.database.can.c_source import camel_to_snake_case, generate
 from conftest import parse_dbc
 from test_c_code import RxState, TxState
 
-from moto_codegen import config, gen_c
+from vehicle_codegen import config, gen_c
 
 CC = shutil.which("gcc") or shutil.which("cc")
 pytestmark = pytest.mark.skipif(CC is None, reason="no C compiler")
@@ -600,15 +600,17 @@ def test_checked_pack_accepts_names_that_only_start_like_reserved():
 def test_checked_pack_round_trips_through_e2e(platform_db, tmp_path):
     """pack_checked -> *_e2e_protect -> receiver *_e2e_check = OK, for every E2E message."""
     d = C_DIR / "hil_sim"
-    so = _build([d / "platform.c", d / "platform_e2e.c", d / "moto_e2e.c"], tmp_path / "libe2e.so")
+    so = _build(
+        [d / "platform.c", d / "platform_e2e.c", d / "vehicle_e2e.c"], tmp_path / "libe2e.so"
+    )
     header = (d / "platform.h").read_text()
     api = {cm.msg.name: cm for cm in load_api(so, header, "platform", platform_db).values()}
     e2e_header = (d / "platform_e2e.h").read_text()
-    names = re.findall(r"^moto_e2e_status_t platform_(\w+)_e2e_protect\(", e2e_header, re.M)
+    names = re.findall(r"^vehicle_e2e_status_t platform_(\w+)_e2e_protect\(", e2e_header, re.M)
     assert names
     ok_status = 0
-    so.moto_e2e_tx_init.argtypes = [ctypes.POINTER(TxState)]
-    so.moto_e2e_rx_init.argtypes = [ctypes.POINTER(RxState)]
+    so.vehicle_e2e_tx_init.argtypes = [ctypes.POINTER(TxState)]
+    so.vehicle_e2e_rx_init.argtypes = [ctypes.POINTER(RxState)]
     by_snake = {camel_to_snake_case(n): cm for n, cm in api.items()}
     for snake in names:
         cm = by_snake[snake]
@@ -622,8 +624,8 @@ def test_checked_pack_round_trips_through_e2e(platform_db, tmp_path):
             ctypes.c_uint32,
         ]
         tx, rx = TxState(), RxState()
-        so.moto_e2e_tx_init(ctypes.byref(tx))
-        so.moto_e2e_rx_init(ctypes.byref(rx))
+        so.vehicle_e2e_tx_init(ctypes.byref(tx))
+        so.vehicle_e2e_rx_init(ctypes.byref(rx))
         raw = {
             m: min(_defined(s))
             if s.choices

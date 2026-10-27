@@ -1,6 +1,6 @@
 # Physics-informed anomaly model and fault catalog (idea note)
 
-Idea note (Claude, 2026-10-23), **not a decision**. The decisions are D-083 (staged physics-informed model, compared with a model without physics) and D-084 (fault catalog in defs, matched by moto-mcp, explained by the LLM). This note holds D-083 stage 0 and the D-084 schema draft. Known conflicts with recorded decisions: none; every signal below must come from defs (invariant 2), and inputs marked `pending` do not exist yet.
+Idea note (Claude, 2026-10-23), **not a decision**. The decisions are D-083 (staged physics-informed model, compared with a model without physics) and D-084 (fault catalog in defs, matched by vehicle-mcp, explained by the LLM). This note holds D-083 stage 0 and the D-084 schema draft. Known conflicts with recorded decisions: none; every signal below must come from defs (invariant 2), and inputs marked `pending` do not exist yet.
 
 ## 1. Stage 0: subsystem physics models (D-083 level 1)
 

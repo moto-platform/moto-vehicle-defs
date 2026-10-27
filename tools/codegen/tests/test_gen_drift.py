@@ -2,8 +2,8 @@
 
 import pytest
 
-from moto_codegen import config, gen_vss
-from moto_codegen.cli import render_all
+from vehicle_codegen import config, gen_vss
+from vehicle_codegen.cli import render_all
 
 
 def _compare(files):
