@@ -4,10 +4,10 @@ import copy
 
 import pytest
 
-from moto_codegen import config, derived, gen_ble, gen_c, gen_python
-from moto_codegen.dbc_checks import load_dbc
-from moto_codegen.derived import check_derived
-from moto_codegen.yaml_checks import load_yaml
+from vehicle_codegen import config, derived, gen_ble, gen_c, gen_python
+from vehicle_codegen.dbc_checks import load_dbc
+from vehicle_codegen.derived import check_derived
+from vehicle_codegen.yaml_checks import load_yaml
 
 
 @pytest.fixture(scope="module")

@@ -1,7 +1,7 @@
 # Legacy Telemetry Notes — HondaCl250_Telemetry
 
-**Source**: `moto-platform/HondaCl250_Telemetry@16a4b26` (archived, read-only reference; never modify it).
-**Purpose**: human-readable extraction of the legacy ESP32 prototype's UDS/CAN protocol knowledge, per D-023, so it is not rediscovered while building moto-rt-core. Relates to D-019 (verified CL250 bus parameters).
+**Source**: `vehicle-platform/HondaCl250_Telemetry@16a4b26` (archived, read-only reference; never modify it).
+**Purpose**: human-readable extraction of the legacy ESP32 prototype's UDS/CAN protocol knowledge, per D-023, so it is not rediscovered while building vehicle-rt-core. Relates to D-019 (verified CL250 bus parameters).
 **Authority**: all machine-readable values (DIDs, formulas, addressing, timing constants) live in `uds/vehicle_cl250.yaml`. If this document and the YAML ever disagree, **the YAML wins** — fix this file to match, not the other way around.
 
 Every fact below is cited as `path:line` inside the archived repo (not this repo).
@@ -51,7 +51,7 @@ Exponential backoff: 1000 ms initial, doubling each attempt, capped at 30000 ms 
 
 ## 4. ISO-TP first-frame pitfall
 
-Only Single Frames (PCI high nibble `0x0`) are handled. A First Frame (PCI `0x1X`) has `data[1]` as part of the multi-frame length field, **not** a SID — parsing it as one would corrupt `SystemState` (`src/HondaCANModule.cpp:222-238`). The legacy code drops any non-SF frame with a warning and continues (`:232-239`); this is exercised by a unit test (`test/test_can_protocol/test_main.cpp:149-164`). All DIDs used today fit in a Single Frame (≤7 bytes payload), so this only guards against a future response that grows past that. **Consequence for moto-rt-core**: full multi-frame ISO-TP (First Frame + Flow Control + Consecutive Frames) must be implemented from scratch — out of scope in the legacy code, in scope for the D-023 rewrite.
+Only Single Frames (PCI high nibble `0x0`) are handled. A First Frame (PCI `0x1X`) has `data[1]` as part of the multi-frame length field, **not** a SID — parsing it as one would corrupt `SystemState` (`src/HondaCANModule.cpp:222-238`). The legacy code drops any non-SF frame with a warning and continues (`:232-239`); this is exercised by a unit test (`test/test_can_protocol/test_main.cpp:149-164`). All DIDs used today fit in a Single Frame (≤7 bytes payload), so this only guards against a future response that grows past that. **Consequence for vehicle-rt-core**: full multi-frame ISO-TP (First Frame + Flow Control + Consecutive Frames) must be implemented from scratch — out of scope in the legacy code, in scope for the D-023 rewrite.
 
 ## 5. Pin map (ESP32-S3 DevKitC-1)
 

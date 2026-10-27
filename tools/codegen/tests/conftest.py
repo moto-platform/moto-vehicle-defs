@@ -3,9 +3,9 @@ import copy
 import cantools
 import pytest
 
-from moto_codegen import config
-from moto_codegen.dbc_checks import load_dbc
-from moto_codegen.yaml_checks import load_yaml
+from vehicle_codegen import config
+from vehicle_codegen.dbc_checks import load_dbc
+from vehicle_codegen.yaml_checks import load_yaml
 
 
 @pytest.fixture(scope="session")

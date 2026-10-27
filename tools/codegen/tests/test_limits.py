@@ -5,8 +5,8 @@ import math
 
 import pytest
 
-from moto_codegen import config
-from moto_codegen.yaml_checks import check_limits, check_vehicle, limit_values, load_yaml
+from vehicle_codegen import config
+from vehicle_codegen.yaml_checks import check_limits, check_vehicle, limit_values, load_yaml
 
 
 @pytest.fixture

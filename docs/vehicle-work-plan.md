@@ -168,7 +168,7 @@ This calculation will be used to independently check the accuracy of the speed s
 | Item | Detail |
 |---|---|
 | Microphone | Noise-canceling electret or an off-the-shelf intercom microphone |
-| Placement | Inside the helmet, at mouth level (helmet microphone on moto-connectivity-node for ESP-SR; the engine sound uses a separate engine-facing microphone on linux-node, D-044) |
+| Placement | Inside the helmet, at mouth level (helmet microphone on vehicle-connectivity-node for ESP-SR; the engine sound uses a separate engine-facing microphone on linux-node, D-044) |
 | Connection | Wired (preferred) or via existing intercom over BT |
 | Trigger | Handlebar-mounted push-to-talk button (primary); ESP-SR wake word optional (D-047) |
 | Button placement | Left handlebar, in a position operable with gloves |
