@@ -1,0 +1,126 @@
+# D-090: SYNTHETIC 0x19 0x04 / 0x06 positive responses and their expected decoding by
+# vehicle_defs.vehicle_catalog.decode_dtc_snapshot / decode_dtc_ext_data. Built from the
+# ISO 14229-1:2013 Table 274/276 framing and DIDs that this catalog defines; they are NOT
+# CL250 captures (none exists yet, Q-001/G1). Other decoders (vehicle-analyzer A5) run
+# the same vectors through the submodule so every host decodes a freeze frame alike.
+# Bytes are hex strings without spaces; "value" is decode() / decode_fields() output.
+schema_version: 1
+
+snapshot:
+  - name: two_records_defined_counts
+    response: "59041234560801 02F40C1F40F4055A 0201F40D3C"
+    expect:
+      dtc: 0x123456
+      status: 0x08
+      records:
+        - record_number: 1
+          number_of_identifiers: 2
+          values:
+            - {did: 0xF40C, name: ENGINE_SPEED, data: "1F40", value: 2000.0}
+            - {did: 0xF405, name: COOLANT_TEMP, data: "5A", value: 50.0}
+        - record_number: 2
+          number_of_identifiers: 1
+          values:
+            - {did: 0xF40D, name: VEHICLE_SPEED, data: "3C", value: 60.0}
+      rest: ""
+      stop: null
+
+  - name: no_record_stored
+    response: "59041234560C"
+    expect: {dtc: 0x123456, status: 0x0C, records: [], rest: "", stop: null}
+
+  - name: undefined_number_runs_to_the_end
+    response: "5904123456080000F40D3CF4030200"
+    expect:
+      dtc: 0x123456
+      status: 0x08
+      records:
+        - record_number: 0
+          number_of_identifiers: 0
+          values:
+            - {did: 0xF40D, name: VEHICLE_SPEED, data: "3C", value: 60.0}
+            - did: 0xF403
+              name: FUEL_SYSTEM_STATUS
+              data: "0200"
+              value: {FUEL_SYSTEM_1: CLOSED_LOOP, FUEL_SYSTEM_2: NOT_REPORTED}
+      rest: ""
+      stop: null
+
+  - name: unknown_did_stops_the_walk
+    response: "5904123456080102F40C1F40ABCD0102"
+    expect:
+      dtc: 0x123456
+      status: 0x08
+      records:
+        - record_number: 1
+          number_of_identifiers: 2
+          values:
+            - {did: 0xF40C, name: ENGINE_SPEED, data: "1F40", value: 2000.0}
+      rest: "ABCD0102"
+      stop: unknown_did
+
+  - name: identification_did_has_no_fixed_length
+    response: "5904123456080101F1894142"
+    expect:
+      dtc: 0x123456
+      status: 0x08
+      records:
+        - {record_number: 1, number_of_identifiers: 1, values: []}
+      rest: "F1894142"
+      stop: variable_length
+
+  - name: data_shorter_than_the_did
+    response: "5904123456080101F40C1F"
+    expect:
+      dtc: 0x123456
+      status: 0x08
+      records:
+        - {record_number: 1, number_of_identifiers: 1, values: []}
+      rest: "F40C1F"
+      stop: truncated
+
+  - name: fewer_identifiers_than_announced
+    response: "5904123456080102F40D3C"
+    expect:
+      dtc: 0x123456
+      status: 0x08
+      records:
+        - record_number: 1
+          number_of_identifiers: 2
+          values:
+            - {did: 0xF40D, name: VEHICLE_SPEED, data: "3C", value: 60.0}
+      rest: ""
+      stop: truncated
+
+  - name: record_header_cut
+    response: "59041234560801"
+    expect: {dtc: 0x123456, status: 0x08, records: [], rest: "01", stop: truncated}
+
+ext_data:
+  - name: manufacturer_record_first
+    response: "59061234560801AABB92CC"
+    expect: {dtc: 0x123456, status: 0x08, first_record_number: 0x01,
+             first_record_kind: manufacturer, rest: "01AABB92CC"}
+
+  - name: obd_record_first
+    response: "590612345608920102"
+    expect: {dtc: 0x123456, status: 0x08, first_record_number: 0x92,
+             first_record_kind: obd, rest: "920102"}
+
+  - name: reserved_record_number
+    response: "5906123456080001"
+    expect: {dtc: 0x123456, status: 0x08, first_record_number: 0x00,
+             first_record_kind: reserved, rest: "0001"}
+
+  - name: no_record_stored
+    response: "590612345608"
+    expect: {dtc: 0x123456, status: 0x08, first_record_number: null,
+             first_record_kind: null, rest: ""}
+
+# Not a positive response of the expected report, or no room for the DTC and status:
+# both decoders raise ValueError (the caller shows the raw bytes).
+invalid:
+  - {decoder: snapshot, response: "7F1931"}
+  - {decoder: snapshot, response: "590612345608"}
+  - {decoder: snapshot, response: "5904123456"}
+  - {decoder: ext_data, response: "59041234560C"}

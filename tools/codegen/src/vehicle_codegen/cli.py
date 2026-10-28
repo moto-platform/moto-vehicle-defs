@@ -116,7 +116,7 @@ def render_all(with_vss: bool = True) -> dict[Path, str]:
     files[py / "vehicle_derived.py"] = gen_python.generate_derived_py(derived)
     files[py / "uds.py"] = gen_uds.generate_uds_py(iso, dids, vehicle)
     files[py / "ble.py"] = gen_ble.generate_python(ble)
-    files[py / "vehicle_catalog.py"] = gen_catalog.generate_python(cand, vehicle)
+    files[py / "vehicle_catalog.py"] = gen_catalog.generate_python(cand, vehicle, iso)
     if with_vss:
         files[Path("vss") / "vss_dbc.json"] = gen_vss.export_json(gen_vss.fetch_base())
     return files
