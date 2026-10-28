@@ -372,7 +372,7 @@ def _py(value: Any) -> str:
     return "None" if value is None else repr(value)
 
 
-def generate_python(cand: dict[str, Any], vehicle: dict[str, Any]) -> str:
+def generate_python(cand: dict[str, Any], vehicle: dict[str, Any], iso: dict[str, Any]) -> str:
     lines = [
         PY_BANNER,
         "",
@@ -473,8 +473,119 @@ def generate_python(cand: dict[str, Any], vehicle: dict[str, Any]) -> str:
         '    (0x00, 0xFF, spaces) stripped; a byte outside ASCII becomes U+FFFD."""',
         '    return bytes(data).strip(b"\\x00\\xff ").decode("ascii", errors="replace")',
         "",
+        "",
+        *_dtc_record_python(iso),
     ]
     return "\n".join(lines)
+
+
+def _dtc_record_python(iso: dict[str, Any]) -> list[str]:
+    """D-090: host-side decoders of the 0x19 0x04 / 0x06 positive responses."""
+    rep = iso["dtc_record_reports"]
+    sid = next(s["sid"] for s in iso["services"] if s["name"] == "READ_DTC_INFORMATION")
+    sid += iso["positive_response_offset"]
+    sub = {s["name"]: s["id"] for s in iso["read_dtc_subfunctions"]}
+    snap, ext = rep["snapshot"], rep["ext_data"]
+    header = 2 + rep["dtc_and_status_length"]
+    return [
+        "# D-090: ReadDTCInformation 0x04 / 0x06 positive responses (ISO 14229-1:2013",
+        "# Tables 274/276), decoded on the host only; the testers log them raw (D-080).",
+        "# A snapshot identifier is decoded with this catalog. One it does not define with",
+        "# a fixed length stops the walk: the bytes from that identifier on are returned",
+        '# raw in "rest" and "stop" says why. Extended-data records have server-specific',
+        "# lengths, so only the first record number is named.",
+        f"DTC_SNAPSHOT_RESPONSE = (0x{sid:02X}, 0x{sub[snap['subfunction']]:02X})",
+        f"DTC_EXT_DATA_RESPONSE = (0x{sid:02X}, 0x{sub[ext['subfunction']]:02X})",
+        f"DTC_HEADER_LENGTH = {header}",
+        f"DTC_SNAPSHOT_RECORD_HEADER_LENGTH = {snap['record_header_length']}",
+        f"DTC_SNAPSHOT_IDENTIFIER_LENGTH = {snap['identifier_length']}",
+        "DTC_SNAPSHOT_UNDEFINED_NUMBER_OF_IDENTIFIERS = "
+        f"0x{snap['undefined_number_of_identifiers']:02X}",
+        f"DTC_SNAPSHOT_LEGISLATED_RECORD = 0x{snap['legislated_record_number']:02X}",
+        "DTC_EXT_DATA_MANUFACTURER_RECORDS = "
+        f"(0x{ext['manufacturer_records'][0]:02X}, 0x{ext['manufacturer_records'][1]:02X})",
+        "DTC_EXT_DATA_OBD_RECORDS = "
+        f"(0x{ext['obd_records'][0]:02X}, 0x{ext['obd_records'][1]:02X})",
+        'STOP_UNKNOWN_DID = "unknown_did"',
+        'STOP_VARIABLE_LENGTH = "variable_length"',
+        'STOP_TRUNCATED = "truncated"',
+        "",
+        "",
+        "def _dtc_header(response: bytes, expected: tuple[int, int]) -> dict[str, object]:",
+        "    if len(response) < DTC_HEADER_LENGTH or tuple(response[:2]) != expected:",
+        '        raise ValueError("not a %02X %02X response with a DTC and its status" % expected)',
+        '    return {"dtc": int.from_bytes(response[2:5], "big"), "status": response[5]}',
+        "",
+        "",
+        "def decode_dtc_snapshot(response: bytes) -> dict[str, object]:",
+        '    """A whole 0x59 0x04 response (from the SID on) as',
+        '    {"dtc", "status", "records", "rest", "stop"}.',
+        "",
+        '    Each record is {"record_number", "number_of_identifiers", "values"}, each value',
+        '    {"did", "name", "data", "value"} (value as decode() or decode_fields() give it).',
+        '    "stop" is None when every byte was decoded, otherwise STOP_UNKNOWN_DID,',
+        "    STOP_VARIABLE_LENGTH (an identification DID) or STOP_TRUNCATED, with the bytes",
+        '    from that point in "rest"."""',
+        "    out = _dtc_header(response, DTC_SNAPSHOT_RESPONSE)",
+        "    records: list[dict[str, object]] = []",
+        '    out.update(records=records, rest=b"", stop=None)',
+        "    pos = DTC_HEADER_LENGTH",
+        "    while pos < len(response):",
+        "        if pos + DTC_SNAPSHOT_RECORD_HEADER_LENGTH > len(response):",
+        "            out.update(rest=bytes(response[pos:]), stop=STOP_TRUNCATED)",
+        "            return out",
+        "        number, count = response[pos], response[pos + 1]",
+        "        values: list[dict[str, object]] = []",
+        '        records.append({"record_number": number, "number_of_identifiers": count,',
+        '                        "values": values})',
+        "        pos += DTC_SNAPSHOT_RECORD_HEADER_LENGTH",
+        "        undefined = count == DTC_SNAPSHOT_UNDEFINED_NUMBER_OF_IDENTIFIERS",
+        "        while (pos < len(response)) if undefined else (len(values) < count):",
+        "            data_pos = pos + DTC_SNAPSHOT_IDENTIFIER_LENGTH",
+        "            if data_pos > len(response):",
+        "                out.update(rest=bytes(response[pos:]), stop=STOP_TRUNCATED)",
+        "                return out",
+        '            did = int.from_bytes(response[pos:data_pos], "big")',
+        "            name = BY_DID.get(did)",
+        "            if name is None:",
+        "                ident = did in IDENTIFICATION_BY_DID",
+        "                stop = STOP_VARIABLE_LENGTH if ident else STOP_UNKNOWN_DID",
+        "                out.update(rest=bytes(response[pos:]), stop=stop)",
+        "                return out",
+        "            s = SIGNALS[name]",
+        '            data = bytes(response[data_pos : data_pos + s["length"]])',
+        '            if len(data) < s["length"]:',
+        "                out.update(rest=bytes(response[pos:]), stop=STOP_TRUNCATED)",
+        "                return out",
+        '            scalar = s["fields"] is None',
+        "            value = decode(name, data) if scalar else decode_fields(name, data)",
+        '            values.append({"did": did, "name": name, "data": data, "value": value})',
+        "            pos = data_pos + len(data)",
+        "    return out",
+        "",
+        "",
+        "def decode_dtc_ext_data(response: bytes) -> dict[str, object]:",
+        '    """A whole 0x59 0x06 response as {"dtc", "status", "first_record_number",',
+        '    "first_record_kind", "rest"}. The kind is "manufacturer", "obd", "reserved"',
+        '    or None (no record); "rest" holds every byte after the DTC status, record',
+        '    numbers included."""',
+        "    out = _dtc_header(response, DTC_EXT_DATA_RESPONSE)",
+        "    rest = bytes(response[DTC_HEADER_LENGTH:])",
+        "    first = rest[0] if rest else None",
+        "    lo, hi = DTC_EXT_DATA_MANUFACTURER_RECORDS",
+        "    obd_lo, obd_hi = DTC_EXT_DATA_OBD_RECORDS",
+        "    if first is None:",
+        "        kind = None",
+        "    elif lo <= first <= hi:",
+        '        kind = "manufacturer"',
+        "    elif obd_lo <= first <= obd_hi:",
+        '        kind = "obd"',
+        "    else:",
+        '        kind = "reserved"',
+        "    out.update(first_record_number=first, first_record_kind=kind, rest=rest)",
+        "    return out",
+        "",
+    ]
 
 
 def _dart_str(text: str) -> str:

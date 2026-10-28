@@ -42,6 +42,33 @@ read_dtc_subfunctions:
   - {id: 0x06, name: REPORT_DTC_EXT_DATA_RECORD_BY_DTC_NUMBER}
   - {id: 0x0A, name: REPORT_SUPPORTED_DTC}
 
+# Positive response framing of the two per-DTC reports D-080 reads, for host-side
+# decoding only (D-090; no MCU target gets it: the testers stream the raw answer).
+# ISO 14229-1:2013 Tables 274 and 276 (clause 11.3; 12.3 in the 2020 numbering):
+#   [0x59][sub-function][DTC high, middle, low][statusOfDTC] then the records.
+#   snapshot (0x04), per record: [record number][number of identifiers] then each
+#     identifier as [dataIdentifier, 2 bytes big-endian][its data]. The data length
+#     comes from the DID's own definition (vehicle table or obd_catalog), never from
+#     the response; a number of 0x00 means "undefined number" (the record runs to
+#     the end of the response). Record number 0x00 is legislated (WWH-OBD).
+#   ext data (0x06), per record: [record number][server-specific data]. The data
+#     length is not in the response, so only the first record number can be named
+#     without a vehicle definition. 0x01-0x8F manufacturer, 0x90-0xEF legislated OBD.
+# A positive response with no record after the DTC and status is valid (no data stored).
+dtc_record_reports:
+  dtc_and_status_length: 4
+  snapshot:
+    subfunction: REPORT_DTC_SNAPSHOT_RECORD_BY_DTC_NUMBER
+    record_header_length: 2
+    identifier_length: 2
+    undefined_number_of_identifiers: 0x00
+    legislated_record_number: 0x00
+  ext_data:
+    subfunction: REPORT_DTC_EXT_DATA_RECORD_BY_DTC_NUMBER
+    record_header_length: 1
+    manufacturer_records: [0x01, 0x8F]
+    obd_records: [0x90, 0xEF]
+
 # DTCFormatIdentifier in the 0x19 0x01 response (clause 12.3):
 # 0x01 = ISO_14229-1_DTCFormat, a 3-byte DTC as defined in Annex D.
 dtc_format_identifier: {id: 0x01, name: ISO_14229_1}

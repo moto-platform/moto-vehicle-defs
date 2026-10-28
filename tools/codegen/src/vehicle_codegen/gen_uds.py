@@ -33,6 +33,24 @@ SERVER_INT_KEYS = (
     "rx_buffer",
     "dtc_status_availability_mask",
 )
+# ISO 14229-1:2013 Tables 274/276 (D-090). These are the standard's own values, so the
+# check is a golden copy: a different value means a typo, not a vehicle variant.
+DTC_RECORD_REPORTS = {
+    "dtc_and_status_length": 4,
+    "snapshot": {
+        "subfunction": "REPORT_DTC_SNAPSHOT_RECORD_BY_DTC_NUMBER",
+        "record_header_length": 2,
+        "identifier_length": 2,
+        "undefined_number_of_identifiers": 0x00,
+        "legislated_record_number": 0x00,
+    },
+    "ext_data": {
+        "subfunction": "REPORT_DTC_EXT_DATA_RECORD_BY_DTC_NUMBER",
+        "record_header_length": 1,
+        "manufacturer_records": [0x01, 0x8F],
+        "obd_records": [0x90, 0xEF],
+    },
+}
 _J2012_RE = re.compile(r"^([PCBU])([0-3])([0-9A-F])([0-9A-F])([0-9A-F])-([0-9A-F]{2})$")
 _J2012_LETTER = {"P": 0, "C": 1, "B": 2, "U": 3}
 
@@ -83,7 +101,7 @@ def check_iso(iso: dict[str, Any]) -> list[str]:
             "negative_response_length", "suppress_pos_rsp_bit", "sessions",
             "tester_present_subfunctions", "read_dtc_subfunctions", "dtc_format_identifier",
             "group_of_dtc_all", "dtc_status_bits", "nrcs", "functional_suppressed_nrcs",
-            "p2_resolution_ms", "p2_star_resolution_ms")  # fmt: skip
+            "p2_resolution_ms", "p2_star_resolution_ms", "dtc_record_reports")  # fmt: skip
     missing = [k for k in keys if k not in iso]
     if missing:
         return [f"iso14229: missing keys {missing}"]
@@ -112,6 +130,12 @@ def check_iso(iso: dict[str, Any]) -> list[str]:
         errors.append("iso14229: functional_suppressed_nrcs must be listed nrcs")
     if iso["group_of_dtc_all"] != 0xFFFFFF:
         errors.append("iso14229: group_of_dtc_all must be 0xFFFFFF")
+    if iso["dtc_record_reports"] != DTC_RECORD_REPORTS:
+        errors.append("iso14229: dtc_record_reports differs from ISO 14229-1 Tables 274/276")
+    subs = {s["name"] for s in iso["read_dtc_subfunctions"]}
+    for report in ("snapshot", "ext_data"):
+        if DTC_RECORD_REPORTS[report]["subfunction"] not in subs:
+            errors.append(f"iso14229: dtc_record_reports.{report} sub-function is not listed")
     return errors
 
 
