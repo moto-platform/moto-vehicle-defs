@@ -8,7 +8,7 @@
 # the rest is defined here but never sent.
 #
 # Nothing here is sent. codegen emits this file for host consumers only (Python for
-# moto-server, Dart for moto-mobile), merged with the polled DIDs of the vehicle's poll
+# vehicle-server, Dart for vehicle-mobile), merged with the polled DIDs of the vehicle's poll
 # list into one catalog, so the app and the server can show every signal and mark which
 # ones flow. No C target gets it: no node polls a catalog entry.
 #
@@ -35,7 +35,7 @@
 #                 The decoder returns the name (the raw value if it is not listed).
 #   not_used_raw: a raw value that means "not used" (the decoder returns None).
 # Fields lie inside `length` and never share a bit. Generated: decode_fields() in
-# gen/python/moto_defs/vehicle_catalog.py and the Dart equivalent; decode() stays
+# gen/python/vehicle_defs/vehicle_catalog.py and the Dart equivalent; decode() stays
 # scalar only.
 #
 # O2 sensors: S1..S8 follow 0x13 (two banks) or 0x1D (four banks), whichever the ECU

@@ -4,8 +4,8 @@ import copy
 
 import pytest
 
-from moto_codegen import config
-from moto_codegen.yaml_checks import (
+from vehicle_codegen import config
+from vehicle_codegen.yaml_checks import (
     check_dtc_snapshot,
     check_dtc_warm_idle,
     dtc_snapshot_requests,
@@ -102,7 +102,7 @@ def test_a_request_the_frame_gate_refuses_is_reported(vehicle, iso, monkeypatch)
     # 0x19 0x04 plus a 3-byte DTC and a record fits one Single Frame; a longer padded
     # frame would not, so the gate twin is what refuses it.
     monkeypatch.setattr(
-        "moto_codegen.yaml_checks.frame_allowed", lambda vehicle, frame: len(frame) == 0
+        "vehicle_codegen.yaml_checks.frame_allowed", lambda vehicle, frame: len(frame) == 0
     )
     errs = check_dtc_snapshot(vehicle, iso)
     assert len([e for e in errs if "frame gate" in e]) == 4
@@ -110,7 +110,7 @@ def test_a_request_the_frame_gate_refuses_is_reported(vehicle, iso, monkeypatch)
 
 def test_generated_python_and_c_carry_the_constants(vehicle):
     snap = vehicle["dtc_snapshot"]
-    py = (config.GEN_DIR / "python" / "moto_defs" / "vehicle_cl250.py").read_text()
+    py = (config.GEN_DIR / "python" / "vehicle_defs" / "vehicle_cl250.py").read_text()
     assert f"DTC_STATUS_MASK = 0x{snap['status_mask']:02X}" in py
     assert f"DTC_MAX_PER_RUN = {snap['max_dtcs_per_run']}" in py
     assert f"DTC_SNAPSHOT_RECORD = 0x{snap['snapshot_record']:02X}" in py
@@ -196,7 +196,7 @@ def test_warm_idle_duration_must_fit_uint16(vehicle, derived, duration):
 
 
 def test_generated_warm_idle_table(vehicle):
-    py = (config.GEN_DIR / "python" / "moto_defs" / "vehicle_cl250.py").read_text()
+    py = (config.GEN_DIR / "python" / "vehicle_defs" / "vehicle_cl250.py").read_text()
     assert "DTC_WARM_IDLE_MIN_DURATION_MS = 20000" in py
     assert '("COOLANT_TEMP", "gt", 80.0),' in py
     for target in config.C_TARGETS:

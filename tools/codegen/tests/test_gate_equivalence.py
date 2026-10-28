@@ -18,7 +18,7 @@ import subprocess
 
 import pytest
 
-from moto_codegen import config
+from vehicle_codegen import config
 
 CC = shutil.which("gcc") or shutil.which("cc")
 pytestmark = pytest.mark.skipif(CC is None, reason="no C compiler")
@@ -481,8 +481,8 @@ def test_gate_functions_have_a_single_exit():
 def test_policy_with_no_allowed_subfunction_builds_and_refuses(vehicle, tmp_path):
     """A narrowed policy may keep a service with `subfunctions: []`: it must still build
     warning-free (no unused `sub`) and refuse that service for every sub-function."""
-    from moto_codegen import gen_c
-    from moto_codegen.yaml_checks import request_allowed
+    from vehicle_codegen import gen_c
+    from vehicle_codegen.yaml_checks import request_allowed
 
     policy = vehicle["tester_policy"]
     # 0x19 (sub-functions since E-23) stays: the D-080 dtc_snapshot and the D-059 scan

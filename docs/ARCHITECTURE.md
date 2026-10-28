@@ -1,4 +1,4 @@
-# moto-platform — Architecture (authoritative summary)
+# vehicle-platform — Architecture (authoritative summary)
 
 **Version:** 1.2 — 2026-10-18 (two servers D-077, position D-076, scope D-078; 1.1: units and topology per D-072/D-073) · Source: `hardware-architecture.md` v1.0 + `DECISIONS.md`
 If this file conflicts with the raw document, **this file + DECISIONS.md** govern.
@@ -10,7 +10,7 @@ If this file conflicts with the raw document, **this file + DECISIONS.md** gover
 1. **SDV:** a few powerful units + an isolated safety monitor + as many edge nodes as needed. A new function means a new software module, not a new box.
 2. **Real-time and rich workloads on separate chips:** deterministic → MCU (bare-metal/RTOS), rich → Linux.
 3. **Loose coupling:** if the Raspi, phone, or server crashes, the critical function keeps running. They add richness, they are not required.
-4. **Single source of truth:** all signal/message/DID definitions live in `moto-vehicle-defs`; code is **generated** from them.
+4. **Single source of truth:** all signal/message/DID definitions live in `vehicle-defs`; code is **generated** from them.
 5. **Standards as concepts, not as a stack:** DBC (Vector de-facto), COVESA VSS, ISO 15765-2/14229 (ISO-TP/UDS), ASAM XCP, AUTOSAR E2E, and layering concepts. The Classic/Adaptive AUTOSAR stack is NOT USED (D-006).
 
 ---
@@ -19,15 +19,15 @@ If this file conflicts with the raw document, **this file + DECISIONS.md** gover
 
 | Unit | Chip | Memory (RAM / flash) | CAN peripheral | Repo | Role |
 |---|---|---|---|---|---|
-| Domain controller | STM32H755, **Cortex-M7** core (NUCLEO-H755ZI-Q, D-072) | ~1 MB / 2 MB, shared with the M4 (M4: flash bank 2 + D2 SRAM) | FDCAN x2 (both on the M7) | `moto-rt-core` | CAN gateway, single vehicle-bus tester, logging, fusion, UDS/ISO-TP, bootloader, XCP, EKF (Layer 2), context, dyno, anomaly safety net, derived signals (D-070), power management and park mode (from io-node, D-072) |
-| Safety partition | same STM32H755, **Cortex-M4** core (D-072) | D2 SRAM / flash bank 2 | none (mailbox to the M7, E2E) | `moto-safety-node` | Lean-angle safety decision (Layer 1, closed form, D-041), own fallback IMU (D-042), blind-spot decision with 2 radars, immobilizer, LED ring and mirror LEDs (Q-026 resolved) |
-| ~~Zone/I/O~~ | ~~STM32G0~~ — retired by D-072 | — | — | `moto-io-node` (no code; archive pending) | functions moved to the M4 (blind spot, immobilizer) and the M7 (power, park mode) |
-| Connectivity, bike | ESP32-S3 (WROOM module) | 512 KB (+PSRAM) | TWAI x1 (classic) | `moto-connectivity-node` | Temporary vehicle-bus tester until rt-core (D-023); then platform bus ↔ BLE bridge to the phone and the helmet, Wi-Fi |
-| Connectivity, helmet | ESP32-S3 N16R8 (D-073) | 512 KB + 8 MB PSRAM | none | `moto-connectivity-node` (helmet env) | Visor HUD (informational), helmet microphone, push-to-talk, ESP-SR voice command, voice prompts |
-| HPC | Raspberry Pi 5 8 GB | 8 GB | 2-channel CAN HAT (SocketCAN) | `moto-linux-node`, `moto-mcp` | Kuksa, CAN→VSS, lane tracking, anomaly model, HMI, OTA distribution, MCP |
-| HIL simulator | STM32F4 (F407/F429) | 192 KB / 1 MB | bxCAN x2 | `moto-hil-bench/simulator` | Restbus (CL250 + platform nodes), vehicle dynamics model |
-| HIL fault/power | STM32F103 | 20 KB / 64 KB | bxCAN x1 | `moto-hil-bench` | Fault injection, programmable power supply |
-| HIL host / CI runner | i7 desktop, Linux | — | SocketCAN (USB-CAN) | `moto-hil-bench/host` | Scenario engine, evaluator, dashboard, self-hosted CI |
+| Domain controller | STM32H755, **Cortex-M7** core (NUCLEO-H755ZI-Q, D-072) | ~1 MB / 2 MB, shared with the M4 (M4: flash bank 2 + D2 SRAM) | FDCAN x2 (both on the M7) | `vehicle-rt-core` | CAN gateway, single vehicle-bus tester, logging, fusion, UDS/ISO-TP, bootloader, XCP, EKF (Layer 2), context, dyno, anomaly safety net, derived signals (D-070), power management and park mode (from io-node, D-072) |
+| Safety partition | same STM32H755, **Cortex-M4** core (D-072) | D2 SRAM / flash bank 2 | none (mailbox to the M7, E2E) | `vehicle-safety-node` | Lean-angle safety decision (Layer 1, closed form, D-041), own fallback IMU (D-042), blind-spot decision with 2 radars, immobilizer, LED ring and mirror LEDs (Q-026 resolved) |
+| ~~Zone/I/O~~ | ~~STM32G0~~ — retired by D-072 | — | — | `vehicle-io-node` (no code; archive pending) | functions moved to the M4 (blind spot, immobilizer) and the M7 (power, park mode) |
+| Connectivity, bike | ESP32-S3 (WROOM module) | 512 KB (+PSRAM) | TWAI x1 (classic) | `vehicle-connectivity-node` | Temporary vehicle-bus tester until rt-core (D-023); then platform bus ↔ BLE bridge to the phone and the helmet, Wi-Fi |
+| Connectivity, helmet | ESP32-S3 N16R8 (D-073) | 512 KB + 8 MB PSRAM | none | `vehicle-connectivity-node` (helmet env) | Visor HUD (informational), helmet microphone, push-to-talk, ESP-SR voice command, voice prompts |
+| HPC | Raspberry Pi 5 8 GB | 8 GB | 2-channel CAN HAT (SocketCAN) | `vehicle-linux-node`, `vehicle-mcp` | Kuksa, CAN→VSS, lane tracking, anomaly model, HMI, OTA distribution, MCP |
+| HIL simulator | STM32F4 (F407/F429) | 192 KB / 1 MB | bxCAN x2 | `vehicle-hil-bench/simulator` | Restbus (CL250 + platform nodes), vehicle dynamics model |
+| HIL fault/power | STM32F103 | 20 KB / 64 KB | bxCAN x1 | `vehicle-hil-bench` | Fault injection, programmable power supply |
+| HIL host / CI runner | i7 desktop, Linux | — | SocketCAN (USB-CAN) | `vehicle-hil-bench/host` | Scenario engine, evaluator, dashboard, self-hosted CI |
 
 Incremental rollout: a unit is not added until its function arrives (see hardware-architecture.md §7).
 
@@ -92,7 +92,7 @@ Incremental rollout: a unit is not added until its function arrives (see hardwar
 ## 5. Signal definition pipeline (D-003, D-004)
 
 ```
-moto-vehicle-defs/
+vehicle-defs/
   uds/vehicle_cl250.yaml  vehicle ECU DIDs polled by rt-core (addressing, DID, formula, poll rate; verified per D-019)
   dbc/cl250.dbc         vehicle-bus broadcast frames — only if passive traffic is ever found (Q-001); skeleton for now
   dbc/platform.dbc      platform bus (ours; GenMsgCycleTime, E2E_DataID, E2E_Protected attributes), incl. rt-core's republished vehicle signals
@@ -104,15 +104,15 @@ moto-vehicle-defs/
         │ make gen  (run before tagging, output is committed)
         ▼
   gen/c/<node>/         per-node filtered: pack/unpack + E2E protect/check + ID constants + DID table (const, no malloc)
-  gen/python/           signal constants for host/server/hil (+ BLE schema for moto-server)
-  gen/dart/             BLE layout constants for moto-mobile (Dart package moto_defs)
+  gen/python/           signal constants for host/server/hil (+ BLE schema for vehicle-server)
+  gen/dart/             BLE layout constants for vehicle-mobile (Dart package vehicle_defs)
   gen/vss/              VSS JSON for Kuksa (+ dbc2vss mapping)
 ```
 
 - MCUs only include `gen/c/<their own node>/`. The only place that parses DBC/VSS files at runtime is the Linux/host side.
-- VSS **lives only on the Raspi and above** (Kuksa, moto-mcp, server, mobile, ML). Raspi applications don't touch SocketCAN directly — they read from Kuksa.
+- VSS **lives only on the Raspi and above** (Kuksa, vehicle-mcp, server, mobile, ML). Raspi applications don't touch SocketCAN directly — they read from Kuksa.
 - The safety path (cornering, blind spot) never enters VSS.
-- Consumers pin the `external/moto-vehicle-defs` submodule to a **tag**. The schema-change process lives in the `/signal-change` skill.
+- Consumers pin the `external/vehicle-defs` submodule to a **tag**. The schema-change process lives in the `/signal-change` skill.
 
 ---
 
@@ -123,7 +123,7 @@ src/features/<module>/  ≈ SWC      independent function; modules do NOT includ
 src/services/           ≈ BSW      signal pool, time base, logging, com (pack/unpack+E2E), diag, NVM
 src/hal/                ≈ MCAL     thin wrapper over CubeMX HAL (can, imu, gps, gpio)
 cubemx/                 generated code (Core/Drivers) — not hand-edited, except USER CODE blocks
-external/moto-vehicle-defs  submodule (tagged)
+external/vehicle-defs  submodule (tagged)
 tests/host/             host-native unit tests with Unity (pure logic: EKF, ISO-TP, E2E, decision)
 ```
 
@@ -140,14 +140,14 @@ tests/host/             host-native unit tests with Unity (pure logic: EKF, ISO-
 | Cornering warning | IMU/GPS/vehicle CAN → rt-core EKF (M7) → lean + µ [mailbox, E2E, D-072] → safety-partition decision (M4) (no speed, D-041; own-IMU fallback when rt-core data is unusable, D-042) → LED ring driven by the M4 (Q-026 resolved); helmet HUD copy informational (D-073) | mailbox | µs-ms, safety |
 | Blind spot | radar x2 (UART, M4) → safety-partition decision → mirror LED; status → M7 → platform CAN; helmet HUD copy informational (D-073) | local + mailbox | reflex, safety |
 | Context data bus | rt-core `context/` + EKF + measurements → platform CAN 0x100-0x3FF → consumers | CAN | ms |
-| Derived signals (D-070) | vehicle DIDs + IMU + GPS speed → rt-core `features/derived` → microSD log (all); ride summaries → rt-core UDS DIDs; platform CAN 0x100-0x3FF only for a live consumer (Raspi anomaly model via VSS, D-004); cross-ride trends → moto-server. Never a safety-partition input | SD/CAN | latency-tolerant (QM) |
-| Telemetry/logging | rt-core → microSD (binary, block CRC) → Wi-Fi (ESP/Raspi) → moto-server → MDF4/Parquet | SD/Wi-Fi | latency-tolerant |
+| Derived signals (D-070) | vehicle DIDs + IMU + GPS speed → rt-core `features/derived` → microSD log (all); ride summaries → rt-core UDS DIDs; platform CAN 0x100-0x3FF only for a live consumer (Raspi anomaly model via VSS, D-004); cross-ride trends → vehicle-server. Never a safety-partition input | SD/CAN | latency-tolerant (QM) |
+| Telemetry/logging | rt-core → microSD (binary, block CRC) → Wi-Fi (ESP/Raspi) → vehicle-server → MDF4/Parquet | SD/Wi-Fi | latency-tolerant |
 | VSS | vehicle + platform CAN → kuksa-can-provider → Kuksa Databroker → Raspi applications (gRPC) | local | ms |
-| Cloud (D-077) | Kuksa → local moto-server on the Raspi (every ride, offline) → live stream (MQTT/Zenoh or HTTP, open) + end-of-ride batch → remote moto-server (user's machine now, VPS-ready: containers, TLS proxy, per-device token) | Wi-Fi/LTE | latency-tolerant |
-| LLM assistant | moto-mcp (read-only) on the Raspi (localhost, offline) and on the remote moto-server (TLS + auth, D-077) → LLM; position and windowed slices allowed provisionally (D-076, Q-035); the LLM does no math | local/HTTPS | none |
-| OTA | moto-server → Raspi → UDS bootloader (platform CAN) → MCU A/B bank | CAN | controlled |
-| Engineering analysis (D-081) | vehicle + platform CAN (USB adapter, listen-only), recorded logs or the moto-server live stream (`/ws/live`; only a mock source for now, the real source via the Raspi is open under D-077) → moto-analyzer (web host, later Tauri desktop); decodes only from the pinned defs, never transmits on a vehicle bus | USB/local/HTTPS | none |
-| Rider layer (D-085) | own motorcycle (Raspi, remote moto-server) → rider front end (repo open, Q-037); explanations from the LLM through moto-mcp; high-severity catalog results shown directly, without the LLM | local/HTTPS | none (advice, QM) |
+| Cloud (D-077) | Kuksa → local vehicle-server on the Raspi (every ride, offline) → live stream (MQTT/Zenoh or HTTP, open) + end-of-ride batch → remote vehicle-server (user's machine now, VPS-ready: containers, TLS proxy, per-device token) | Wi-Fi/LTE | latency-tolerant |
+| LLM assistant | vehicle-mcp (read-only) on the Raspi (localhost, offline) and on the remote vehicle-server (TLS + auth, D-077) → LLM; position and windowed slices allowed provisionally (D-076, Q-035); the LLM does no math | local/HTTPS | none |
+| OTA | vehicle-server → Raspi → UDS bootloader (platform CAN) → MCU A/B bank | CAN | controlled |
+| Engineering analysis (D-081) | vehicle + platform CAN (USB adapter, listen-only), recorded logs or the vehicle-server live stream (`/ws/live`; only a mock source for now, the real source via the Raspi is open under D-077) → vehicle-analyzer (web host, later Tauri desktop); decodes only from the pinned defs, never transmits on a vehicle bus | USB/local/HTTPS | none |
+| Rider layer (D-085) | own motorcycle (Raspi, remote vehicle-server) → rider front end (repo open, Q-037); explanations from the LLM through vehicle-mcp; high-severity catalog results shown directly, without the LLM | local/HTTPS | none (advice, QM) |
 
 ---
 
@@ -166,11 +166,11 @@ Requirement–test traceability (Ç8): requirement IDs (`REQ-<DOMAIN>-NNN`) appe
 
 ## 9. Repo setup order
 
-1. `moto-vehicle-defs` skeleton + codegen + `platform.dbc` draft → `v0.1.0`
-2. `moto-hil-bench` host (Python, hardware-free) + Renode
-3. `moto-connectivity-node` (migration of existing code)
-4. `moto-rt-core` (once the NUCLEO-H755ZI-Q arrives, D-072)
-5. `moto-server` → 6. `moto-ml` → 7. `moto-safety-node` (the M4 image, D-072) → ~~8. `moto-io-node`~~ (retired, D-072) → 9. `moto-linux-node` + `moto-mcp` → 10. `moto-mobile` → 11. `moto-analyzer` (D-081; started early by an external tool, 2026-10-20)
+1. `vehicle-defs` skeleton + codegen + `platform.dbc` draft → `v0.1.0`
+2. `vehicle-hil-bench` host (Python, hardware-free) + Renode
+3. `vehicle-connectivity-node` (migration of existing code)
+4. `vehicle-rt-core` (once the NUCLEO-H755ZI-Q arrives, D-072)
+5. `vehicle-server` → 6. `vehicle-ml` → 7. `vehicle-safety-node` (the M4 image, D-072) → ~~8. `vehicle-io-node`~~ (retired, D-072) → 9. `vehicle-linux-node` + `vehicle-mcp` → 10. `vehicle-mobile` → 11. `vehicle-analyzer` (D-081; started early by an external tool, 2026-10-20)
 
 The thesis core (Ç1-Ç8) is covered by steps 1-4 above, plus HIL, in this order.
 
@@ -178,13 +178,13 @@ The thesis core (Ç1-Ç8) is covered by steps 1-4 above, plus HIL, in this order
 
 | ID | Work package | Current target | Repo |
 |---|---|---|---|
-| Ç1 | CAN driver layer: error state machine, bus-off recovery | H755 (M7) FDCAN behind `hal/can_port` (D-001, D-072) | moto-rt-core |
-| Ç2 | ISO-TP transport (ISO 15765-2) | `features/uds/isotp_*` (done, v0.2.0) | moto-rt-core |
-| Ç3 | UDS (ISO 14229), two parts: **server** for our own nodes on the platform bus (built scope, D-040: 0x10 (01/03), 0x3E, 0x22, 0x19, 0x14 on *our* ECU), and the **vehicle client** (the poller) that only reads the CL250 (D-037). Not offered yet: 0x27, 0x2E, 0x31 and the bootloader services 0x11, 0x34-0x37; D-040 item 7 requires 0x27 (or an equivalent) before any of 0x10 02, 0x11, 0x2E, 0x31, 0x34-0x37 | `features/uds/`; client released in rt-core v0.3.0, server merged (rt-core#9), not yet tagged | moto-rt-core |
-| Ç4 | HIL bench hardware: STM32F4 restbus simulator, transceivers, termination, OBD2 connector, programmable supply | D-001, D-035 | moto-hil-bench |
-| Ç5 | HIL bench software: scenario engine, fault injection, automatic evaluation, report | log replay + live model (D-035) | moto-hil-bench |
+| Ç1 | CAN driver layer: error state machine, bus-off recovery | H755 (M7) FDCAN behind `hal/can_port` (D-001, D-072) | vehicle-rt-core |
+| Ç2 | ISO-TP transport (ISO 15765-2) | `features/uds/isotp_*` (done, v0.2.0) | vehicle-rt-core |
+| Ç3 | UDS (ISO 14229), two parts: **server** for our own nodes on the platform bus (built scope, D-040: 0x10 (01/03), 0x3E, 0x22, 0x19, 0x14 on *our* ECU), and the **vehicle client** (the poller) that only reads the CL250 (D-037). Not offered yet: 0x27, 0x2E, 0x31 and the bootloader services 0x11, 0x34-0x37; D-040 item 7 requires 0x27 (or an equivalent) before any of 0x10 02, 0x11, 0x2E, 0x31, 0x34-0x37 | `features/uds/`; client released in rt-core v0.3.0, server merged (rt-core#9), not yet tagged | vehicle-rt-core |
+| Ç4 | HIL bench hardware: STM32F4 restbus simulator, transceivers, termination, OBD2 connector, programmable supply | D-001, D-035 | vehicle-hil-bench |
+| Ç5 | HIL bench software: scenario engine, fault injection, automatic evaluation, report | log replay + live model (D-035) | vehicle-hil-bench |
 | Ç6 | Test automation: self-hosted runner, build + static analysis + on-hardware regression per commit | needs the NUCLEO-H755ZI-Q (D-072) | all firmware repos |
 | Ç7 | Data collection: signal logging, timestamps, metadata, storage schema | `phase0-data-collection-plan.md` | connectivity-node, mobile, server |
-| Ç8 | Process documentation: HARA, requirement–test traceability, FMEA (ISO 26262 approach) | location open (Q-006) | moto-vehicle-defs |
+| Ç8 | Process documentation: HARA, requirement–test traceability, FMEA (ISO 26262 approach) | location open (Q-006) | vehicle-defs |
 
 Extended scope G1-G5 (bootloader, XCP, riding modes, voice, client-server) is in the same Turkish document §5.2.

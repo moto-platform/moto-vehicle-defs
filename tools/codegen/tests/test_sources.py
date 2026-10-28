@@ -1,9 +1,9 @@
 """The committed definitions pass every check."""
 
-from moto_codegen import config, gen_vss
-from moto_codegen.dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
-from moto_codegen.gen_uds import check_dids, check_iso
-from moto_codegen.yaml_checks import check_vehicle, load_yaml
+from vehicle_codegen import config, gen_vss
+from vehicle_codegen.dbc_checks import check_cl250_dbc, check_platform_dbc, load_dbc
+from vehicle_codegen.gen_uds import check_dids, check_iso
+from vehicle_codegen.yaml_checks import check_vehicle, load_yaml
 
 
 def test_platform_dbc_is_consistent(platform_db):

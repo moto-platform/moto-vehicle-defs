@@ -8,8 +8,8 @@ import subprocess
 
 import pytest
 
-from moto_codegen import config, gen_uds
-from moto_codegen.yaml_checks import check_vehicle, load_yaml
+from vehicle_codegen import config, gen_uds
+from vehicle_codegen.yaml_checks import check_vehicle, load_yaml
 
 CC = shutil.which("gcc") or shutil.which("cc")
 FLAGS = ["-std=c99", "-Wall", "-Wextra", "-Werror", "-pedantic", "-Wshadow", "-Wconversion"]
@@ -375,7 +375,7 @@ def test_vehicle_gate_still_refuses_server_services(lib, payload):
 
 def test_python_module_matches(dids, vehicle):
     ns: dict = {}
-    exec((config.GEN_DIR / "python" / "moto_defs" / "uds.py").read_text(), ns)  # noqa: S102
+    exec((config.GEN_DIR / "python" / "vehicle_defs" / "uds.py").read_text(), ns)  # noqa: S102
     rt = ns["SERVERS"]["RT_CORE"]
     assert rt["physical_request_id"] == 0x710 and rt["physical_response_id"] == 0x718
     assert ns["TRANSPORT"]["functional_request_id"] == 0x7DF

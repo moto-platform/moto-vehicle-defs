@@ -1,7 +1,7 @@
 # Honda CL250 vehicle constants used by the derived signals (D-070 item 3), so no node
 # hard-codes a ratio or a dimension (invariant 2). rt-core gets them as
-# gen/c/rt_core/vehicle_cl250_constants.h, the Python reference (moto-server) as
-# moto_defs.vehicle_constants. Formulas never live here: they are logic, in rt-core's
+# gen/c/rt_core/vehicle_cl250_constants.h, the Python reference (vehicle-server) as
+# vehicle_defs.vehicle_constants. Formulas never live here: they are logic, in rt-core's
 # src/features/derived/ (and services/ for the gear estimate) and in the Python reference.
 #
 # status:

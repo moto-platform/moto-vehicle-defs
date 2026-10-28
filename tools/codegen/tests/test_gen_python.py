@@ -5,18 +5,18 @@ import sys
 
 import pytest
 
-from moto_codegen import config, e2e
+from vehicle_codegen import config, e2e
 
 PKG_DIR = config.GEN_DIR / "python"
-MODULES = sorted(p.stem for p in (PKG_DIR / "moto_defs").glob("*.py") if p.stem != "__init__")
+MODULES = sorted(p.stem for p in (PKG_DIR / "vehicle_defs").glob("*.py") if p.stem != "__init__")
 
 
 @pytest.mark.parametrize("module", MODULES)
 def test_generated_module_imports(module, monkeypatch):
     monkeypatch.syspath_prepend(str(PKG_DIR))
-    for name in [n for n in sys.modules if n == "moto_defs" or n.startswith("moto_defs.")]:
+    for name in [n for n in sys.modules if n == "vehicle_defs" or n.startswith("vehicle_defs.")]:
         monkeypatch.delitem(sys.modules, name)
-    importlib.import_module(f"moto_defs.{module}")
+    importlib.import_module(f"vehicle_defs.{module}")
 
 
 @pytest.mark.parametrize("data_id", [0x1023, 0x1120])
@@ -37,13 +37,13 @@ def test_heartbeat_payload_fails_as_warning_status():
 
 def _platform_module(monkeypatch):
     monkeypatch.syspath_prepend(str(PKG_DIR))
-    for name in [n for n in sys.modules if n == "moto_defs" or n.startswith("moto_defs.")]:
+    for name in [n for n in sys.modules if n == "vehicle_defs" or n.startswith("vehicle_defs.")]:
         monkeypatch.delitem(sys.modules, name)
-    return importlib.import_module("moto_defs.platform")
+    return importlib.import_module("vehicle_defs.platform")
 
 
 def _pack(table, values):
-    """Pack physical values with only the generated table (little-endian, as moto-server does)."""
+    """Pack physical values with only the generated table (little-endian, as the server does)."""
     raw_frame = 0
     for sig in table:
         assert sig.byte_order == "little_endian"
