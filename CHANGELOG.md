@@ -4,6 +4,8 @@ All notable changes to vehicle-defs. Semver (see CLAUDE.md): new message/signal 
 
 ## [Unreleased]
 
+- **Rename (D-089, defs#106):** `moto_defs` → `vehicle_defs`, `moto_codegen` → `vehicle_codegen`, C prefix `MOTO_`/`moto_` → `VEHICLE_`/`vehicle_` (`vehicle_e2e.c/h`), Dart package `vehicle_defs`, repo `vehicle-defs`. Breaking for imports and includes, no signal, DID, VSS, BLE or gate change; the next release is v0.20.0. The rename-only tags `v0.14.1` (= v0.14.0 renamed, vehicle-mobile) and `v0.19.1` (= v0.19.0 renamed, rt-core, conn, server) were cut off `main` by the external rename tool for the consumer pins; they have no GitHub release (D-089 item 3).
+
 - Docs: D-088 (derived-signal RAM above the D-070 estimate accepted; measured costs set the budget); `docs/ideas/ride-summary-did-layout.md` (proposal for the 0xFD40-0xFD4E ride-summary DID layouts, C3 part 2b, awaiting the user).
 
 - Docs: D-087 (an event's DID input uses the DID's own `stale_after_ms`; a ride on rt-core = one D-075 stop epoch; ISSUES E-24 (1)/(2)).
