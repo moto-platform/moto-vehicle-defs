@@ -48,7 +48,7 @@ The `vehicle-mcp` service transforms the motorcycle from an opaque mechanical as
            │      ├── Fast-Gate Anomaly Triage (D-029 Autoencoder Gating)
            │      └── Active Actuation: Strobe Lights, Haptic Grips, Fuel Isolation
            │
-           └──► [ SYSTEM 2: MOTO-MCP & CLOUD LLM (Contextual Reasoning & Dialogue) ]
+           └──► [ SYSTEM 2: VEHICLE-MCP & CLOUD LLM (Contextual Reasoning & Dialogue) ]
                   ├── Conversational Voice Assistant (Helmet Intercom / Mobile App)
                   ├── Predictive Maintenance & Root-Cause Failure Diagnostics
                   ├── AR Cornering & Performance Coaching
