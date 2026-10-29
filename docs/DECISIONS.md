@@ -737,6 +737,13 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Not chosen: waiting for the capture before adding anything (A5 blocked, although the framing and the J1979 PIDs are already standard); a CL250 record layout now (invented data, invariant 2); decoding on the MCU (string-free but pointless: the snapshot is a host-side labelled sample, D-080).
 - Why: on an OBD-on-UDS ECU the snapshot identifiers are typically the same 0xF4xx PIDs we already define, so most of a freeze frame decodes without a single vehicle-specific number, and the rest is shown honestly as raw bytes.
 
+**D-091 — LGPL dependencies stay optional: asammdf is the `mdf4` extra of vehicle-server, outside the default install and the image** (2026-10-29, user chose "optional extra" after Claude's options; external review of opencode's MDF4 export; D-033, D-036, D-076, D-077)
+1. **asammdf is LGPL-3.0+**, not MIT as the old `mdf4.py` TODO said. vehicle-server lists it only under `[project.optional-dependencies] mdf4` and in the dev group (so CI runs the export tests). `uv sync --no-dev`, and therefore the Docker image, does not install it; `vehicle-server export` without the extra exits 1 with the install hint.
+2. **The rule in general:** our repos stay MIT (D-036). A copyleft (LGPL) runtime dependency is used unmodified, only through an optional extra or a dev group, never in a shipped image, unless a later decision accepts it and adds the licence notice. A GPL dependency needs the user's decision first.
+3. **Position in the MDF4 export** follows D-076: off by default, `--include-position` writes position columns only into the session's parquet directory on the user's own server. An export meant for sharing (Hugging Face, phase0 plan §3.3) is made without the flag.
+- Not chosen: asammdf as a required dependency (the image would carry LGPL code, its notice, and pandas/numpy); waiting for another MDF4 writer (no maintained MIT writer comparable to asammdf).
+- Why: the export is an occasional archive/sharing step on a workstation, so making it opt-in costs nothing and keeps the server image small and MIT-only.
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
