@@ -4,6 +4,10 @@ All notable changes to vehicle-defs. Semver (see CLAUDE.md): new message/signal 
 
 ## [Unreleased]
 
+## [0.20.0] — 2026-10-30
+
+MINOR (0.x; breaking for imports and includes only): the D-089 rename and the D-090 host-side freeze-frame decoders. No DBC signal, ID, layout, scale, VSS path, DID, poll, BLE, `tester_policy`, D-020 golden copy or frame-gate change. Consumers moving from `v0.19.1` / `v0.14.1` need no code change beyond what those rename tags already required.
+
 - **D-090 (MINOR, additive; host only, no C output, no DID, poll, tester_policy or gate change):** `uds/iso14229.yaml` gets `dtc_record_reports`, the ISO 14229-1:2013 Table 274/276 positive-response framing of `0x19 0x04` (snapshot) and `0x19 0x06` (extended data), checked by codegen against a golden copy of the standard values and against `read_dtc_subfunctions`. `gen/python/vehicle_defs/vehicle_catalog.py` gets `decode_dtc_snapshot(response)` (records, values decoded through the catalog; an unknown or variable-length DID stops the walk with the rest raw and `stop` = `unknown_did` / `variable_length` / `truncated`), `decode_dtc_ext_data(response)` (first record number and kind, the rest raw) and their `DTC_*` / `STOP_*` constants. Shared synthetic vectors `tools/codegen/tests/vectors/dtc_records.yaml` (not CL250 captures). Consumers: **vehicle-analyzer** A5 (decoded freeze-frame cards, runs the vectors), **vehicle-server** / **vehicle-ml** when they bump; rt-core, conn and hil-bench output unchanged.
 
 - **Rename (D-089, defs#106):** `moto_defs` → `vehicle_defs`, `moto_codegen` → `vehicle_codegen`, C prefix `MOTO_`/`moto_` → `VEHICLE_`/`vehicle_` (`vehicle_e2e.c/h`), Dart package `vehicle_defs`, repo `vehicle-defs`. Breaking for imports and includes, no signal, DID, VSS, BLE or gate change; the next release is v0.20.0. The rename-only tags `v0.14.1` (= v0.14.0 renamed, vehicle-mobile) and `v0.19.1` (= v0.19.0 renamed, rt-core, conn, server) were cut off `main` by the external rename tool for the consumer pins; they have no GitHub release (D-089 item 3).
