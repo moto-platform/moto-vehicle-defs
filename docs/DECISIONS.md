@@ -744,6 +744,13 @@ Both modes share the scenario format and the evaluation/report. Before hardware 
 - Not chosen: asammdf as a required dependency (the image would carry LGPL code, its notice, and pandas/numpy); waiting for another MDF4 writer (no maintained MIT writer comparable to asammdf).
 - Why: the export is an occasional archive/sharing step on a workstation, so making it opt-in costs nothing and keeps the server image small and MIT-only.
 
+**D-092 — vehicle-mcp v0.1 history tools over a data-source interface** (2026-10-30, user chose "approve the v0.1 set" after Claude's options; external review of opencode's vehicle-mcp v0.1; amends the vehicle-mcp CLAUDE.md tool list; D-076, D-077, D-084, D-085, invariant 7)
+1. **Approved tools (history):** `list_sessions`, `get_session_report`, `list_series`, `get_timeseries_slice` (D-076 item 1; at most 2000 points per series), `compute_signal_stats` and `compare_sessions`. They read recorded sessions through a `HistorySource` interface; vehicle-server's read API (`GET /sessions`, `/report`, `/series`) is the default source. Statistics are computed in the tool: min/max stay exact on a min/max-downsampled window, mean/std/percentiles are null with a reason when the window is downsampled (invariant 7).
+2. **The earlier list stays as the planned set:** `get_live_snapshot`, `get_recent_stats(window_s)`, `get_event_log(n)`, `get_anomaly_status`, `get_maintenance_status` need a live source (linux-node/Kuksa, D-077) and `query_ride_history(date_range)` can follow on the history source; the D-084 fault-catalog matcher comes with C5. Any further tool still needs the user's approval.
+3. **v0.1 boundaries:** stdio only (streamable HTTP stays an open D-077 item and needs TLS + auth); no position tool, position-looking series hidden until vehicle-server serves position (D-076 item 3); runtime dependencies `mcp` (MIT) and `httpx` (BSD-3) only (D-091); no vehicle-defs submodule, since names and units come from the server, which takes them from defs (revisit with the D-084 matcher).
+- Not chosen: reshaping v0.1 to the old list (loses per-session statistics and comparison, which exist today); merging without a decision (the repo rule and the code would disagree).
+- Why: the history tools work on data that exists now, while the live tools wait for hardware; the source interface keeps the core vehicle-independent for other projects (vehicle-mcp CLAUDE.md rule 4).
+
 ## Open questions (awaiting decision)
 
 | ID | Question | When to resolve | Note |
