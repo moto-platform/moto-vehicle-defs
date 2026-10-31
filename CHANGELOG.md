@@ -4,6 +4,14 @@ All notable changes to vehicle-defs. Semver (see CLAUDE.md): new message/signal 
 
 ## [Unreleased]
 
+## [0.21.0] — 2026-10-31
+
+MINOR, additive: the STM32H755 M7↔M4 mailbox layout is generated from defs (D-093). No DBC signal, ID, layout, scale, VSS path, DID, poll, BLE, `tester_policy`, D-020 golden copy or frame-gate change.
+
+- **Mailbox layout (D-093, MINOR, additive; safety-reviewer on any later change; the layout ID also covers each slot message's signals, DataID and cycle time):** new source `mailbox/h755_mailbox.yaml` (region at SRAM4 0x38000000, 256 B reserved, `verified: false`; six slots with direction, class and one HSEM ID each; frame IDs and lengths come from `dbc/platform.dbc`). `vehicle-codegen check` fails on an unknown, duplicated or missing slot (m7_to_m4 = what SAFETY receives, m4_to_m7 = what SAFETY sends), a wrong direction or class, a slot message without E2E protection, a bad HSEM ID, a region that is not one MPU region (power-of-two size, base aligned to it) or lies outside SRAM4, an oversized layout or an unknown key. New generated `gen/c/rt_core/platform_mailbox.h` and `gen/c/safety/platform_mailbox.h` (identical, header-only: macros, three typedefs, C99 compile-time size/offset checks, `PLATFORM_MAILBOX_LAYOUT_ID`) and `gen/python/vehicle_defs/mailbox.py` (`Slot`, `SLOTS`, `BASE_ADDRESS`, `LAYOUT_ID`, ...). Consumers: **vehicle-rt-core** and **vehicle-safety-node** (both images at the same tag, or the layout ID check shows a timeout), **vehicle-hil-bench** (Python module) at their next bump.
+
+- Docs: D-093 (the M7↔M4 mailbox layout is generated from vehicle-defs; ownership, access, writer-defers and reader-baseline rules, verification list), reviewed by safety-reviewer (no BLOCKER; MAJOR-1..6 and MINOR-1..8 folded into D-093 and the codegen). Note for consumers: any later change to the DBC definition of a slot message (0x020, 0x022, 0x081, 0x120, 0x023, 0x082) changes `PLATFORM_MAILBOX_LAYOUT_ID`, so rt-core and safety-node move to such a tag together.
+
 ## [0.20.0] — 2026-10-30
 
 MINOR (0.x; breaking for imports and includes only): the D-089 rename and the D-090 host-side freeze-frame decoders. No DBC signal, ID, layout, scale, VSS path, DID, poll, BLE, `tester_policy`, D-020 golden copy or frame-gate change. Consumers moving from `v0.19.1` / `v0.14.1` need no code change beyond what those rename tags already required.
