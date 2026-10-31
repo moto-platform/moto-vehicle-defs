@@ -14,6 +14,7 @@ Single source of truth for signals in [vehicle-platform](https://github.com/vehi
 | `limits/platform_limits.yaml` | Layer 1 thresholds `k_yellow`/`k_red` (D-041), µ/mass fallback values, rt-core's speed-age rules, and a per-node `scope` (provisional, D-029, D-048) |
 | `vehicle/cl250_constants.yaml` | CL250 engine, drivetrain, tyre and fuel constants for the derived signals, each with status and source (D-070) |
 | `derived/cl250_derived.yaml` | Derived signal definitions (class A/B/C/D, inputs, rate, staleness, range, ride-summary DIDs) and their non-DID sensor inputs; formulas stay in rt-core and the Python reference (D-070) |
+| `mailbox/h755_mailbox.yaml` | STM32H755 M7↔M4 mailbox layout: region, slot order, one HSEM ID per slot; frame IDs and lengths come from `platform.dbc`; generated as `platform_mailbox.h` for rt-core and safety-node (D-093) |
 | `tools/codegen/` | Generator and checks (Python, uv) |
 | `gen/` | Generated output, committed — never edit by hand |
 

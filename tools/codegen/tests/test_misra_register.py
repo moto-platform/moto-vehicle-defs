@@ -17,7 +17,7 @@ def _register() -> dict[str, set[str]]:
     rows = {}
     for line in (MISRA_DIR / "README.md").read_text(encoding="utf-8").splitlines():
         if m := re.match(r"\| (DEV-\d{3}) \| ([^|]+) \|", line):
-            rows[m[1]] = set(re.findall(r"\b\d{1,2}\.\d{1,2}\b", m[2]))
+            rows[m[1]] = set(re.findall(r"\b\d{1,2}\.\d{1,2}\b|\bunusedStructMember\b", m[2]))
     return rows
 
 
@@ -34,9 +34,9 @@ def test_suppressions_list_is_registered():
         if m := re.fullmatch(r"# (DEV-\d{3})", line):
             dev = m[1]
         elif line and not line.startswith("#"):
-            m = re.fullmatch(r"misra-c2012-(\d+\.\d+)(:\S+)?", line)
+            m = re.fullmatch(r"(?:misra-c2012-(\d+\.\d+)|(unusedStructMember))(:\S+)?", line)
             assert m, f"suppressions.txt:{n}: only file-scoped MISRA rules belong here: {line}"
-            _check(m[1], dev, rows, f"suppressions.txt:{n}")
+            _check(m[1] or m[2], dev, rows, f"suppressions.txt:{n}")
 
 
 def test_inline_suppressions_are_registered():
